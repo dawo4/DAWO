@@ -546,6 +546,11 @@ async function resetWorkflow() {
       <div class="max-w-3xl mx-auto mb-4">
         <RefPicker v-model="wfRefs" />
       </div>
+      <!-- 步骤落盘提示：确认保存后步骤会自动前进，提示放在向导级常显，不随步骤切走 -->
+      <div v-if="charStepNote" class="max-w-3xl mx-auto mb-4 rounded-lg border px-4 py-2.5 text-[12.5px]" style="border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent)">
+        {{ charStepNote }}
+        <button class="ml-2 text-[var(--text-faint)] hover:text-[var(--text-dim)] cursor-pointer" @click="charStepNote = ''">×关闭</button>
+      </div>
       <!-- Step 0 灵感 -->
       <div v-if="cur === 0" class="max-w-3xl mx-auto space-y-4">
         <div>
@@ -588,7 +593,6 @@ async function resetWorkflow() {
         <div v-if="genText">
           <div class="text-sm mb-1.5 text-[var(--text-dim)]">{{ ['', '大纲', '角色卡', '设定集'][cur] }}（可修改）</div>
           <textarea v-model="genText" class="ink-textarea h-[420px] text-[15px] leading-8" />
-          <div v-if="charStepNote" class="text-xs mt-2" style="color: var(--accent)">{{ charStepNote }}</div>
           <div class="flex justify-end mt-3">
             <InkButton @click="[confirmOutline, confirmCharacters, confirmSettings][cur - 1]()">确认保存</InkButton>
           </div>
