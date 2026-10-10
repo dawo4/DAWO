@@ -95,6 +95,38 @@ html[data-theme='sepia'] {
   --glow-color: rgba(180, 140, 60, 0.06);
   --overlay-rgb: 239, 228, 205;
 }
+/* 月白风清：偏冷的月光纸白 */
+html[data-theme='moon'] {
+  --bg: #edf1f5;
+  --bg-soft: #e2e8ee;
+  --panel: #f8fafc;
+  --panel-2: #eaeff4;
+  --border: #c9d3dd;
+  --text: #29323d;
+  --text-dim: #64707c;
+  --text-faint: #929ea9;
+  --hover: rgba(41, 50, 61, 0.05);
+  --shadow: 0 8px 30px rgba(45, 65, 95, 0.13);
+  --orb-opacity: 0.16;
+  --glow-color: rgba(100, 140, 190, 0.06);
+  --overlay-rgb: 237, 241, 245;
+}
+/* 青瓷雨霁：淡青瓷釉的浅绿纸面 */
+html[data-theme='celadon'] {
+  --bg: #ebf1ea;
+  --bg-soft: #dfe8de;
+  --panel: #f5f9f4;
+  --panel-2: #e9f1e8;
+  --border: #c4d5c4;
+  --text: #263529;
+  --text-dim: #5f7261;
+  --text-faint: #8ca18d;
+  --hover: rgba(38, 53, 41, 0.05);
+  --shadow: 0 8px 30px rgba(50, 90, 60, 0.12);
+  --orb-opacity: 0.16;
+  --glow-color: rgba(100, 165, 115, 0.06);
+  --overlay-rgb: 235, 241, 234;
+}
 
 html,
 body,

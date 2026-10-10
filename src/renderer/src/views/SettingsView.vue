@@ -310,7 +310,9 @@ const THEME_OPTIONS = [
   { value: 'ink-green', label: '黛竹烟雨' },
   { value: 'ink-purple', label: '紫霞夜卷' },
   { value: 'light', label: '明亮纸白' },
-  { value: 'sepia', label: '羊皮古卷' }
+  { value: 'sepia', label: '羊皮古卷' },
+  { value: 'moon', label: '月白风清' },
+  { value: 'celadon', label: '青瓷雨霁' }
 ]
 
 const RADIUS_OPTIONS = [
