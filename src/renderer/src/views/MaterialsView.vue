@@ -47,6 +47,17 @@ onActivated(() => void refreshCustom())
 
 const addOpen = ref(false)
 
+// 首页「添加面板」快捷入口：有作品时自动弹新建向导；没作品则等打开后再弹
+function consumeAddRequest() {
+  if (app.materialsAddOpen && lib.current) {
+    app.materialsAddOpen = false
+    addOpen.value = true
+  }
+}
+watch(() => app.materialsAddOpen, consumeAddRequest)
+onActivated(consumeAddRequest)
+watch(() => lib.current?.title, consumeAddRequest)
+
 async function onPanelCreated(name: string) {
   // 先刷新列表再跳转，否则 section 计算找不到新面板名会退回大纲，还可能撞上「面板不存在」
   await refreshCustom()

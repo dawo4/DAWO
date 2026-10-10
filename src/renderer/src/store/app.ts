@@ -70,6 +70,8 @@ interface State {
   settingsTab: string
   /** 由首页发起的「书架页动作」请求（new = 打开新建作品表单，import = 导入文件） */
   bookshelfRequest: { action: 'new' | 'import'; nonce: number } | null
+  /** 首页「添加面板」快捷入口：切到资料区后自动弹新建面板向导 */
+  materialsAddOpen: boolean
 }
 
 export const useAppStore = defineStore('app', {
@@ -91,7 +93,8 @@ export const useAppStore = defineStore('app', {
     libraryTab: null,
     writingRightTab: 'ai',
     settingsTab: 'ai',
-    bookshelfRequest: null
+    bookshelfRequest: null,
+    materialsAddOpen: false
   }),
   getters: {
     appearance: (s) =>
