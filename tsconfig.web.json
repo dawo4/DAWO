@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
+    "strict": false,
+    "skipLibCheck": true,
+    "paths": { "@renderer/*": ["./src/renderer/src/*"] }
+  },
+  "include": ["src/renderer/src/**/*", "src/preload/index.d.ts"]
+}

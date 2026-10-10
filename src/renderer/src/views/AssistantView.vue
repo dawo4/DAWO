@@ -1,0 +1,161 @@
+<script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useAppStore } from '../store/app'
+import { useLibraryStore } from '../store/library'
+import { useConversationStore } from '../store/conversation'
+import { onHeaderAction } from '../ui/headerActions'
+import { inkConfirm } from '../ui/inkPrompt'
+import AgentConversation from '../components/conversation/AgentConversation.vue'
+import InkButton from '../ui/InkButton.vue'
+import { usePanelDrag } from '../ui/usePanelDrag'
+import { Download, Plus, Trash2, Sparkles, Clock } from 'lucide-vue-next'
+
+const app = useAppStore()
+const lib = useLibraryStore()
+const conv = useConversationStore()
+
+/** 会话历史栏可拖拽调宽 */
+const listDrag = usePanelDrag('assistant.list', 240, 200, 420)
+
+const listQuery = ref('')
+
+const filteredConversations = computed(() => {
+  const q = listQuery.value.trim().toLowerCase()
+  const list = conv.conversations
+  return q ? list.filter((c) => (c.title || '').toLowerCase().includes(q)) : list
+})
+
+const agentName = computed(() => conv.allAgents.find((a) => a.id === conv.agentId)?.name || '写作助手')
+
+/** 顶部上下文条：让作者一眼知道 AI 现在针对什么工作 */
+const contextParts = computed(() => {
+  const parts: string[] = []
+  if (lib.current) parts.push(lib.current.title)
+  if (lib.current?.genre) parts.push(lib.current.genre)
+  if (conv.activeFile) parts.push(conv.activeFile)
+  parts.push(agentName.value)
+  return parts
+})
+
+function fmtTime(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const today = new Date()
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  return d.toDateString() === today.toDateString()
+    ? `${pad(d.getHours())}:${pad(d.getMinutes())}`
+    : `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+let offHeader: (() => void) | null = null
+
+/** 删除会话不可恢复，先确认再动手 */
+async function removeConversation(id: string, title: string) {
+  const ok = await inkConfirm(`确定删除会话「${title || '新会话'}」？`, {
+    detail: '该会话的全部对话内容将被移除，此操作不可恢复。',
+    confirmText: '删除',
+    danger: true
+  })
+  if (!ok) return
+  await conv.deleteConversation(id)
+}
+
+onMounted(async () => {
+  offHeader = onHeaderAction((key) => {
+    if (key === 'assistant:new') conv.newConversation()
+  })
+  if (lib.current && conv.book !== lib.current.title) await conv.init(lib.current.title)
+  if (!conv.currentId) conv.newConversation()
+})
+
+onUnmounted(() => {
+  offHeader?.()
+  offHeader = null
+})
+</script>
+
+<template>
+  <div v-if="!lib.current" class="h-full flex flex-col items-center justify-center text-[var(--text-faint)] gap-4">
+    <p>先打开一部作品，妙笔才能读到你的稿子</p>
+    <InkButton @click="app.go('bookshelf')">去书架</InkButton>
+  </div>
+
+  <div v-else class="h-full flex">
+    <!-- 左：会话历史 -->
+    <aside
+      class="relative shrink-0 border-r border-[var(--border)] flex flex-col"
+      :style="{ width: listDrag.width.value + 'px' }"
+    >
+      <div class="panel-resizer right-0" :class="{ 'is-dragging': listDrag.dragging.value }" @mousedown="listDrag.onDown($event, 1)" />
+      <div class="px-3 py-2.5 border-b border-[var(--border)] space-y-2">
+        <button
+          class="w-full flex items-center justify-center gap-1.5 text-[12.5px] py-1.5 rounded-lg cursor-pointer text-[#1b1712] font-medium"
+          :style="{ background: 'var(--accent)' }"
+          @click="conv.newConversation()"
+        >
+          <Plus :size="13" /> 新建会话
+        </button>
+        <input v-model="listQuery" class="ink-input h-7 py-0 text-[12px]" placeholder="搜索会话…" />
+      </div>
+
+      <div class="flex-1 overflow-y-auto py-1">
+        <div
+          v-for="c in filteredConversations"
+          :key="c.id"
+          class="group flex items-center gap-1.5 px-3 py-2 cursor-pointer border-l-2"
+          :class="c.id === conv.currentId ? 'bg-[var(--panel-2)]' : 'border-transparent hover:bg-[var(--hover)]'"
+          :style="c.id === conv.currentId ? { borderColor: 'var(--accent)' } : {}"
+          @click="conv.loadConversation(c.id)"
+        >
+          <div class="min-w-0 flex-1">
+            <div class="text-[12.5px] truncate" :style="c.id === conv.currentId ? { color: 'var(--accent)' } : {}">
+              {{ c.title || '新会话' }}
+            </div>
+            <div class="text-[10.5px] text-[var(--text-faint)] flex items-center gap-1">
+              <Clock :size="9" />{{ fmtTime(c.updatedAt) }} · {{ c.messageCount }} 条
+            </div>
+          </div>
+          <button
+            class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer"
+            @click.stop="removeConversation(c.id, c.title)"
+          >
+            <Trash2 :size="12" />
+          </button>
+        </div>
+        <div v-if="!filteredConversations.length" class="px-3 py-6 text-center text-[11.5px] text-[var(--text-faint)]">
+          暂无历史会话
+        </div>
+      </div>
+
+      <button
+        class="shrink-0 flex items-center justify-center gap-1.5 text-[11.5px] py-2 border-t border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer"
+        @click="conv.exportCurrent()"
+      >
+        <Download :size="12" /> 导出当前会话
+      </button>
+    </aside>
+
+    <!-- 中：对话主体 -->
+    <section class="flex-1 min-w-0 flex flex-col">
+      <!-- 上下文指示条 -->
+      <div class="shrink-0 h-10 flex items-center gap-2 px-5 border-b border-[var(--border)]">
+        <Sparkles :size="13" :style="{ color: 'var(--accent)' }" />
+        <span class="text-[11.5px] text-[var(--text-faint)]">当前上下文</span>
+        <template v-for="(p, i) in contextParts" :key="p + i">
+          <span v-if="i" class="text-[11px] text-[var(--text-faint)]">·</span>
+          <span class="text-[11.5px]" :class="i === contextParts.length - 1 ? '' : 'text-[var(--text-dim)]'" :style="i === contextParts.length - 1 ? { color: 'var(--accent)' } : {}">
+            {{ p }}
+          </span>
+        </template>
+        <div class="flex-1" />
+        <span class="text-[11px] text-[var(--text-faint)]">
+          智能体在这里能读写整部作品；改稿会先给差异，由你决定是否接受
+        </span>
+      </div>
+
+      <div class="flex-1 min-h-0">
+        <AgentConversation full-width />
+      </div>
+    </section>
+  </div>
+</template>

@@ -1,0 +1,61 @@
+﻿<script setup lang="ts">
+import { computed, ref } from 'vue'
+import type { ToolTrace } from '../../types'
+import { ChevronDown, ChevronRight, LoaderCircle, CircleCheck, CircleAlert, Wrench } from 'lucide-vue-next'
+
+const props = defineProps<{ trace?: ToolTrace; name?: string; running?: boolean }>()
+const open = ref(false)
+
+const LABELS: Record<string, string> = {
+  list_documents: '查看作品目录',
+  read_document: '读取文稿',
+  search_book: '全文检索',
+  propose_edit: '提交修改提案',
+  list_materials: '查看素材与技能',
+  read_material: '读取素材',
+  write_material: '写入素材/技能'
+}
+
+const label = computed(() => LABELS[props.name || props.trace?.name || ''] || props.name || props.trace?.name || '工具调用')
+
+const argPreview = computed(() => {
+  const raw = props.trace?.args
+  if (!raw) return ''
+  try {
+    const o = JSON.parse(raw) as Record<string, unknown>
+    const parts: string[] = []
+    if (o.path) parts.push(String(o.path))
+    if (o.query) parts.push(`“${String(o.query)}”`)
+    if (o.name) parts.push(String(o.name))
+    if (o.summary) parts.push(String(o.summary))
+    return parts.join(' · ').slice(0, 90)
+  } catch {
+    return raw.slice(0, 90)
+  }
+})
+</script>
+
+<template>
+  <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-soft)] overflow-hidden">
+    <button class="w-full flex items-center gap-2 px-3 py-2 text-left cursor-pointer" @click="open = !open">
+      <LoaderCircle v-if="running" :size="13" class="animate-spin shrink-0" :style="{ color: 'var(--accent)' }" />
+      <CircleCheck v-else-if="trace?.ok" :size="13" class="shrink-0" style="color: #7fae7a" />
+      <CircleAlert v-else-if="trace" :size="13" class="shrink-0" style="color: #e08a7a" />
+      <Wrench v-else :size="13" class="shrink-0 text-[var(--text-faint)]" />
+      <span class="text-[12px] shrink-0">{{ label }}</span>
+      <span class="text-[11px] text-[var(--text-faint)] truncate flex-1">{{ argPreview }}</span>
+      <span v-if="trace" class="text-[10px] text-[var(--text-faint)] shrink-0">{{ trace.durationMs }}ms</span>
+      <component :is="open ? ChevronDown : ChevronRight" :size="13" class="text-[var(--text-faint)] shrink-0" />
+    </button>
+    <div v-if="open" class="px-3 pb-2.5 space-y-2 border-t border-[var(--border)] pt-2">
+      <div>
+        <div class="text-[10px] text-[var(--text-faint)] mb-1 tracking-wider">参数</div>
+        <pre class="text-[11px] whitespace-pre-wrap break-words text-[var(--text-dim)] m-0 leading-5">{{ trace?.args || '(执行中)' }}</pre>
+      </div>
+      <div v-if="trace">
+        <div class="text-[10px] text-[var(--text-faint)] mb-1 tracking-wider">结果</div>
+        <pre class="text-[11px] whitespace-pre-wrap break-words text-[var(--text-dim)] m-0 leading-5 max-h-56 overflow-y-auto">{{ trace.result }}</pre>
+      </div>
+    </div>
+  </div>
+</template>

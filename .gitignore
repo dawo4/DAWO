@@ -1,0 +1,19 @@
+# 依赖与构建产物
+node_modules/
+out/
+dist/
+
+# 打包产物（安装包 700MB+，不发仓库）
+release/
+
+# TypeScript 增量构建缓存
+*.tsbuildinfo
+
+# 编辑器 / 工具
+.trae/
+.vscode/
+.idea/
+
+# 系统文件
+Thumbs.db
+Desktop.ini

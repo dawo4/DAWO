@@ -1,0 +1,20 @@
+appId: com.dawo.app
+productName: DAWO
+directories:
+  output: release
+files:
+  - out/**
+extraResources:
+  - from: resources/preset-libraries
+    to: preset-libraries
+    filter:
+      - "**/*"
+win:
+  target: nsis
+  icon: build/icon.ico
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: DAWO
+electronLanguages:
+  - zh-CN
