@@ -169,6 +169,21 @@ function openNotes() {
   app.goLibrary('notes')
 }
 
+/** 首页 → 自定义面板：直达本书第一个自定义面板；一本都没有时落在资料区默认页 */
+async function goPanels() {
+  let target = '大纲'
+  try {
+    const list = lib.current
+      ? ((await window.api.panelsList(lib.current.title)) as { name: string; board?: string; hidden?: boolean }[])
+      : []
+    const first = list.find((p) => !p.board && !p.hidden)
+    if (first) target = first.name
+  } catch {
+    /* 查询失败则落默认页 */
+  }
+  app.goMaterials(target)
+}
+
 // ============ 常用工具 ============
 const TOOLS = [
   { key: 'new', title: 'AI 一键建书', desc: '定位 + 灵感生成', icon: SquarePen, run: () => app.requestBookshelf('new') },
@@ -176,7 +191,7 @@ const TOOLS = [
   { key: 'deai', title: '整章去 AI 味', desc: '六维信号 + 注入改写', icon: Wand2, run: () => { app.writingRightTab = 'deai'; app.go('writing') } },
   { key: 'assistant', title: '妙笔', desc: '智能体工作台', icon: UserRound, run: () => app.go('assistant') },
   { key: 'memory', title: '记忆库', desc: '全局与本书记忆', icon: Brain, run: () => { app.settingsTab = 'memory'; app.go('settings') } },
-  { key: 'panels', title: '自定义面板', desc: '专属设定工具', icon: LayoutGrid, run: () => app.go('materials') },
+  { key: 'panels', title: '自定义面板', desc: '专属设定工具', icon: LayoutGrid, run: goPanels },
   { key: 'deconstruct', title: '竞品拆书', desc: '分析节奏与爽点', icon: FileSearch, run: () => app.go('deconstruct') },
   { key: 'notes', title: '灵感便签', desc: '随手记录灵感', icon: Lightbulb, run: openNotes }
 ]
