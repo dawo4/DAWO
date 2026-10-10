@@ -44,22 +44,17 @@ watch(
 // ============ 人类信号密度（本地实时打分，不耗 token） ============
 const signal = computed(() => analyzeHumanSignal(props.chapterText || '', S.genre, lex.value))
 
-/** OOC 对照用的角色设定卡：诊断时自动注入（正文文体才读），按书缓存（无卡也缓存，避免重复读盘） */
+/** OOC 对照用的角色设定卡：诊断时自动注入（正文文体才读），按书缓存（无卡也缓存，避免重复读盘）；一人一档聚合读取 */
 async function loadCharacterCard() {
   if (!props.book) return
   if (S.characterBook === props.book) return
   S.characterCard = ''
   S.characterBook = props.book
-  for (const path of ['角色/角色设定.md', '角色/角色.md']) {
-    try {
-      const t = await window.api.fileRead(props.book, path)
-      if (t.trim()) {
-        S.characterCard = t.slice(0, 6000)
-        return
-      }
-    } catch {
-      /* 找不到就试下一个 */
-    }
+  try {
+    const all = await window.api.charactersReadAll(props.book)
+    S.characterCard = (all.joined || '').slice(0, 6000)
+  } catch {
+    /* 读失败保持空卡 */
   }
 }
 

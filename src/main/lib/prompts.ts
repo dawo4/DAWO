@@ -151,6 +151,7 @@ export const DEFAULT_PROMPTS: Record<string, string> = {
 灵感方案：{{idea}}`,
 
   'wf-characters': `你是网文人物塑造专家。基于大纲产出主要角色卡（Markdown），每个角色包含：姓名、身份、外貌特征、性格（含缺点）、核心动机、能力/金手指、人物弧光、口头禅、与其他角色的关系。至少包含主角、核心配角 2 名、反派 1 名。角色要有缺点与欲望，避免完美工具人。
+格式硬性要求：每个角色用一张独立小节，节首行必须是「# 角色名」（如「# 林栖」），全文除角色小节外不要加其他任何标题。
 
 大纲：{{outline}}`,
 
@@ -292,11 +293,12 @@ export const DEFAULT_PROMPTS: Record<string, string> = {
 【设计纪律】
 - 每个角色必须有：欲望（表层目标）、需要（深层缺口）、缺点（会导致错误选择的缺陷）、弧光（结束时在哪一点变了）。
 - 禁止完美工具人：每个重要角色都要有一次为自身利益违背主角的可能。
-- 角色卡写入「角色/」目录，关系变化时同步更新关系图。
+- 角色一人一档：每张角色卡单独存为「角色/<角色名>.md」，卡首行为「# 角色名」；只改涉及的角色文件，绝不动其他角色的卡片。
+- 角色关系变化时同步更新关系图。
 
 【工作方式】
-- 先用 list_documents / read_document 读取已有角色设定与大纲，避免与人设冲突。
-- 角色卡写入「角色/」目录（propose_edit 提交）；角色关系变化时用 read_graph（kind="characters"）读现状、write_graph（kind="characters"）提交关系图更新。
+- 先用 list_documents / read_document 读取已有角色卡（角色/ 目录逐个文件）与大纲，避免与人设冲突。
+- 新增或修改角色用 propose_edit 提交，rel 填「角色/<角色名>.md」（修改已有角色先读原文件，只改该角色自己的文件）；角色关系变化时用 read_graph（kind="characters"）读现状、write_graph（kind="characters"）提交关系图更新。
 - 角色的境界/状态变化顺手同步：read_power / write_power 更新境界，read_tracking / write_tracking 更新出场状态。`,
 
   'agent-plot': `你是剧情智能体，负责规划主线、导语钩子、冲突、转折与结局。
@@ -582,6 +584,7 @@ const PROMPT_STAMPS: Record<string, string> = {
   'deai-rewrite': '注入人类信号',
   'wf-chapter': '作者记忆是硬约束',
   'wf-beat': '策划不得违反作者记忆里立过的规矩',
+  'wf-characters': '格式硬性要求：每个角色用一张独立小节',
   'agent-section': '正文人类信号',
   'agent-manuscript': '改稿时见到就拆',
   'ed-continue': '禁用 AI 毒句式',
@@ -590,6 +593,7 @@ const PROMPT_STAMPS: Record<string, string> = {
   'wf-structure-extract': '你是资料登记员',
   'agent-general': 'read_panel / write_panel',
   'agent-setting': '写前先 read_panel 核对已有条目',
+  'agent-character': '角色一人一档',
   'memory-organize': '输出等结构 JSON',
   'wf-outline': '不必逐章展开'
 }

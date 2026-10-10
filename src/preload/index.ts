@@ -156,6 +156,10 @@ const api = {
   backupRestore: (dir: string) => ipcRenderer.invoke('backup:restore', dir),
   backupOpen: () => ipcRenderer.invoke('backup:open'),
 
+  // ============ 角色一人一档 ============
+  charactersReadAll: (book: string) => ipcRenderer.invoke('characters:readAll', book),
+  charactersSaveSplit: (book: string, text: string) => ipcRenderer.invoke('characters:saveSplit', book, text),
+
   // ============ 自动更新 ============
   updateCheck: () => ipcRenderer.invoke('update:check'),
   updateDownload: () => ipcRenderer.invoke('update:download'),

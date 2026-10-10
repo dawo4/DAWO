@@ -6,6 +6,7 @@ import * as prompts from './lib/prompts'
 import * as materials from './lib/materials'
 import * as conversations from './lib/conversations'
 import * as structured from './lib/structured'
+import * as characters from './lib/characters'
 import * as panels from './lib/panels'
 import * as lexicon from './lib/lexicon'
 import * as memory from './lib/memory'
@@ -251,6 +252,10 @@ export function registerIpc(): void {
     void shell.openPath(dir)
     return dir
   })
+
+  // ============ 角色一人一档 ============
+  ipcMain.handle('characters:readAll', (_e, book: string) => characters.readAllCharacters(book))
+  ipcMain.handle('characters:saveSplit', (_e, book: string, text: string) => characters.saveCharactersFromText(book, text))
 }
 
 export function initLibraryRoot(): void {

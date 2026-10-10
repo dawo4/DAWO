@@ -6,6 +6,7 @@ import { initPrompts } from './lib/prompts'
 import { createBackup } from './lib/backup'
 import { registerIpc, initLibraryRoot } from './ipc'
 import { initUpdater } from './lib/updater'
+import { migrateAllCharacterFiles } from './lib/characters'
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL
 if (isDev) {
@@ -72,6 +73,14 @@ app.whenReady().then(async () => {
   initPrompts()
   initLibraryRoot()
   registerIpc()
+  // 旧书迁移：整包角色卡拆成一人一档（幂等，旧文件留 .bak），异步跑不阻塞启动
+  setTimeout(() => {
+    try {
+      migrateAllCharacterFiles()
+    } catch {
+      /* 迁移失败不阻塞启动，下次再试 */
+    }
+  }, 3000)
   // 开发时清一次缓存，避免旧模块被复用
   if (isDev) {
     try {

@@ -97,9 +97,14 @@ watch(cur, async () => {
   if (cur.value === 0) stepInput.value = lib.current.idea || ''
   if (cur.value >= 1) {
     refOutline.value = await window.api.fileRead(lib.current.title, '大纲/大纲.md')
-    const map = ['大纲/灵感方案.md', '角色/角色设定.md', '设定/世界观.md']
-    const f = map[cur.value - 1]
-    if (f) genText.value = await window.api.fileRead(lib.current.title, f)
+    if (cur.value === 2) {
+      // 角色已一人一档：编辑器里展示聚合文本，确认时再按标题拆回单卡
+      genText.value = (await window.api.charactersReadAll(lib.current.title)).joined
+    } else {
+      const map = ['大纲/灵感方案.md', '', '设定/世界观.md']
+      const f = map[cur.value - 1]
+      if (f) genText.value = await window.api.fileRead(lib.current.title, f)
+    }
   }
 }, { immediate: true })
 
@@ -187,8 +192,8 @@ async function runStepGen() {
   } else if (cur.value === 2) {
     await runPrompt('wf-characters', { outline: refOutline.value }, 'structure')
   } else if (cur.value === 3) {
-    const chars = await window.api.fileRead(lib.current.title, '角色/角色设定.md')
-    await runPrompt('wf-settings', { outline: refOutline.value, characters: chars }, 'structure')
+    const chars = await window.api.charactersReadAll(lib.current.title)
+    await runPrompt('wf-settings', { outline: refOutline.value, characters: chars.joined }, 'structure')
   }
 }
 
@@ -207,9 +212,16 @@ async function confirmOutline() {
 }
 async function confirmCharacters() {
   if (!genText.value.trim()) return
-  await window.api.fileWrite(lib.current!.title, '角色/角色设定.md', genText.value)
+  // 一人一档：按「# 角色名」标题拆成单卡落盘（同名覆盖）；拆不出结构时整包存 角色/角色设定.md
+  const r = await window.api.charactersSaveSplit(lib.current!.title, genText.value)
+  await lib.refreshTree()
   await persistStep(3)
+  charStepNote.value = r.legacy
+    ? '角色卡没有按「# 角色名」分节，已整包存入 角色/角色设定.md（下次启动会尝试自动拆分）'
+    : `已按一人一档落盘 ${r.count} 张角色卡（角色/ 目录，同名卡以本次为准）`
 }
+/** 角色步确认后的落盘提示（一人一档拆了几张 / 回退整包） */
+const charStepNote = ref('')
 async function confirmSettings() {
   if (!genText.value.trim()) return
   await window.api.fileWrite(lib.current!.title, '设定/世界观.md', genText.value)
@@ -229,13 +241,13 @@ async function registerStructure() {
   if (!lib.current || registering.value) return
   registering.value = '正在把角色卡 / 世界观登记到词典、境界、地图、关系图…'
   try {
-    const characters = await window.api.fileRead(lib.current.title, '角色/角色设定.md')
+    const chars = await window.api.charactersReadAll(lib.current.title)
     const settings = await window.api.fileRead(lib.current.title, '设定/世界观.md')
-    if (!characters.trim() && !settings.trim()) {
+    if (!chars.joined.trim() && !settings.trim()) {
       registering.value = ''
       return
     }
-    const src = `【角色卡】\n${characters.slice(0, 30000)}\n\n【设定集】\n${settings.slice(0, 30000)}`
+    const src = `【角色卡】\n${chars.joined.slice(0, 30000)}\n\n【设定集】\n${settings.slice(0, 30000)}`
     const aborter = aiRun('workflow', 'wf-structure-extract', { source: src })
     const full = await aborter.promise
     const m = full.match(/\{[\s\S]*\}/)
@@ -422,35 +434,35 @@ function sliceOutlineByVolume(outline: string, chapterNo: number, total: number)
   }
 }
 
-/** 角色卡按出场切：细纲里出现的角色（词典精确匹配）+ 主角强制保留；切不出便宜（角色少或没匹配到）就回退全文 */
-async function sliceCharactersByCast(characters: string, beat: string): Promise<string> {
+/** 角色卡按出场切（一人一档版）：文件名或卡内容命中词典人物/出场登记名 → 全文；未出场的卡折叠成一行备忘；零命中回退全量 */
+async function sliceCharactersByCast(files: { path: string; name: string; content: string }[], beat: string): Promise<string> {
+  const joined = files.map((f) => f.content).join('\n\n')
   try {
-    if (characters.length < 2500) return characters // 本来就短，不值得裁
+    if (joined.length < 2500) return joined // 本来就短，不值得裁
     const dict = ((await window.api.dictRead(lib.current.title)) as { term: string; aliases: string[]; category: string }[]) || []
     const names = new Set<string>()
     for (const d of dict) {
       if (d.category !== '人物') continue
       for (const n of [d.term, ...(d.aliases || [])]) if (n && n.length >= 2 && beat.includes(n)) names.add(n)
     }
-    // 按 # 标题拆角色小节
-    const re = /^#{1,4}[^\n]*$/gm
-    const heads: number[] = []
-    let m: RegExpExecArray | null
-    while ((m = re.exec(characters))) heads.push(m.index)
-    if (!heads.length) return characters
-    const head = characters.slice(0, heads[0])
-    const sections = heads.map((h, i) => characters.slice(h, i + 1 < heads.length ? heads[i + 1] : characters.length))
-    const kept = sections.filter((s, i) => {
-      if (i === 0) return true // 主角卡强制保留（角色卡约定主角排第一）
-      const sample = s.slice(0, 400) // 标题+开头认领足够
-      for (const n of names) if (sample.includes(n)) return true
-      return false
-    })
-    // 一个都没匹配上（细纲用代称等），裁剪不可信 → 回退全量
-    if (!names.size || kept.length >= sections.length) return characters
-    return `${head}\n${kept.join('\n')}\n\n（仅保留本章出场角色的角色卡；其余角色以专名词典登记为准）`
+    // 出场追踪登记名也是匹配源（没进词典的老角色）
+    const tracks = ((await window.api.trackingRead(lib.current.title)) as { name: string }[]) || []
+    for (const t of tracks) if (t.name && t.name.length >= 2 && beat.includes(t.name)) names.add(t.name)
+    if (!names.size) return joined
+    const kept: string[] = []
+    const briefs: string[] = []
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]
+      const sample = `${f.name}\n${f.content.slice(0, 400)}`
+      const isProtagonist = i === 0 || /主角/.test(sample.slice(0, 60)) // 主角卡强制保留（首位或卡内标注主角）
+      const hit = isProtagonist || [...names].some((n) => sample.includes(n))
+      if (hit) kept.push(f.content)
+      else briefs.push(`${f.name}：未在本章出场（卡略）`)
+    }
+    if (!kept.length) return joined
+    return `${kept.join('\n\n')}\n\n${briefs.join('；')}\n\n（仅展开本章出场角色的角色卡，未出场角色只留备忘；以专名词典登记为准）`
   } catch {
-    return characters
+    return joined
   }
 }
 
@@ -458,12 +470,12 @@ async function sliceCharactersByCast(characters: string, beat: string): Promise<
 async function chapterContext(beat: string, chapterNo: number, total: number) {
   const outlineFull = await loadOutline()
   const settings = await window.api.fileRead(lib.current!.title, '设定/世界观.md')
-  const charactersFull = await window.api.fileRead(lib.current!.title, '角色/角色设定.md')
-  const out = { outline: outlineFull, settings, characters: charactersFull, foreshadow: '（伏笔登记板为空）' }
+  const chars = await window.api.charactersReadAll(lib.current!.title)
+  const out = { outline: outlineFull, settings, characters: chars.joined, foreshadow: '（伏笔登记板为空）' }
   if (trimEnabled.value) {
     try {
       out.outline = sliceOutlineByVolume(outlineFull, chapterNo, total)
-      out.characters = await sliceCharactersByCast(charactersFull, beat)
+      out.characters = await sliceCharactersByCast(chars.files, beat)
     } catch {
       /* 裁剪失败保持全量 */
     }
@@ -572,6 +584,7 @@ async function resetWorkflow() {
         <div v-if="genText">
           <div class="text-sm mb-1.5 text-[var(--text-dim)]">{{ ['', '大纲', '角色卡', '设定集'][cur] }}（可修改）</div>
           <textarea v-model="genText" class="ink-textarea h-[420px] text-[15px] leading-8" />
+          <div v-if="charStepNote" class="text-xs mt-2" style="color: var(--accent)">{{ charStepNote }}</div>
           <div class="flex justify-end mt-3">
             <InkButton @click="[confirmOutline, confirmCharacters, confirmSettings][cur - 1]()">确认保存</InkButton>
           </div>
@@ -584,7 +597,7 @@ async function resetWorkflow() {
           <div class="font-serif-ink text-lg mb-3">《{{ lib.current.title }}》书籍结构已就绪</div>
           <ul class="text-sm text-[var(--text-dim)] space-y-1.5">
             <li>· 大纲 / 大纲.md（{{ (wf.completed?.[1] && '已生成') || '未生成' }}）</li>
-            <li>· 角色 / 角色设定.md（{{ (wf.completed?.[2] && '已生成') || '未生成' }}）</li>
+            <li>· 角色 / 一人一档（{{ (wf.completed?.[2] && '已生成') || '未生成' }}）</li>
             <li>· 设定 / 世界观.md（{{ (wf.completed?.[3] && '已生成') || '未生成' }}）</li>
             <li>· 全书 {{ wf.chapterTotal }} 章，将从第 {{ wf.chapterCursor }} 章开始生文</li>
           </ul>

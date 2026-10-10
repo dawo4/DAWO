@@ -154,6 +154,10 @@ declare global {
       backupRestore: (dir: string) => Promise<string>
       backupOpen: () => Promise<string>
 
+      // 角色一人一档
+      charactersReadAll: (book: string) => Promise<{ files: { path: string; name: string; content: string }[]; joined: string }>
+      charactersSaveSplit: (book: string, text: string) => Promise<{ count: number; legacy: boolean }>
+
       // 自动更新
       updateCheck: () => Promise<{ ok: boolean; version?: string; message?: string }>
       updateDownload: () => Promise<{ ok: boolean }>
