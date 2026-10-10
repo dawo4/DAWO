@@ -369,7 +369,7 @@ function onDocClick() {
 onMounted(async () => {
   offHeader = onHeaderAction((key) => {
     if (key === 'bookshelf:new') openCreate()
-    else if (key === 'bookshelf:import') { migrateResult.value = null; showMigrate = true }
+    else if (key === 'bookshelf:import') { migrateResult.value = null; showMigrate.value = true }
   })
   await lib.loadBooks()
   await loadOverview()
