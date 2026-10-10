@@ -311,7 +311,8 @@ async function generateChapters() {
         settings: beatCtx.settings,
         characters: beatCtx.characters,
         prevSummary: no > 1 ? await chapterTail(no - 1) : '（这是第一章）',
-        chapterTotal: String(total)
+        chapterTotal: String(total),
+        memory: await memoryBlock()
       }, 'structure')
       // 生成失败/中止时断开：防止把半截细纲或半截正文当完整结果落盘
       if (paused.value || !okBeat || !genText.value.trim()) break
@@ -335,7 +336,8 @@ async function generateChapters() {
       settings: bodyCtx.settings,
       characters: bodyCtx.characters,
       foreshadow: bodyCtx.foreshadow,
-      prevTail: no > 1 ? await chapterTail(no - 1) : ''
+      prevTail: no > 1 ? await chapterTail(no - 1) : '',
+      memory: await memoryBlock()
     }, 'chapter')
     if (paused.value || !okBody || !genText.value.trim()) break
     // 3. 写盘并推进（已有内容的章节跳过不覆盖，保护手工润色稿）
@@ -367,6 +369,24 @@ async function chapterTail(no: number): Promise<string> {
   const rel = `正文/第${String(no).padStart(3, '0')}章.md`
   const text = await window.api.fileRead(lib.current!.title, rel)
   return text.slice(-500)
+}
+
+/** 作者记忆块：全局 + 本书两层，注入 wf-beat / wf-chapter，让逐章生文遵守立过的规矩 */
+async function memoryBlock(): Promise<string> {
+  try {
+    const fmt = (list: unknown): string =>
+      ((list as { text?: string }[]) || [])
+        .filter((e) => e && typeof e.text === 'string' && e.text.trim())
+        .map((e) => `- ${e.text!.trim()}`)
+        .join('\n')
+    const g = fmt(await window.api.memoryReadGlobal())
+    const b = lib.current ? fmt(await window.api.memoryReadBook(lib.current.title)) : ''
+    const parts = [g && `【全局记忆】\n${g}`, b && `【本书记忆】\n${b}`].filter(Boolean)
+    const out = parts.join('\n')
+    return out ? out.slice(0, 3000) : '（暂无）'
+  } catch {
+    return '（暂无）'
+  }
 }
 
 // ============ 保守版上下文裁剪（方案二）：大纲按卷切 + 角色卡按出场切，任何失败回退全量 ============

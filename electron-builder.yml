@@ -4,6 +4,10 @@ directories:
   output: release
 files:
   - out/**
+publish:
+  provider: github
+  owner: dawo4
+  repo: DAWO
 extraResources:
   - from: resources/preset-libraries
     to: preset-libraries

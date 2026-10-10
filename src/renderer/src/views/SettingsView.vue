@@ -11,7 +11,11 @@ import { inkPrompt, inkConfirm } from '../ui/inkPrompt'
 import { aiRun } from '../ai'
 import { useLibraryStore } from '../store/library'
 import { CREATIVE_LEVELS, THINKING_LEVELS, levelToTemp, tempToLevel } from '../ui/writingScale'
-import { Plus, Trash2, FolderOpen, RefreshCw, Search, Palette, Database, Bot, FileText, History, HardDrive, ArchiveRestore, CloudUpload, ShieldCheck, LoaderCircle, CircleCheck, ImagePlus, Globe, Eye, Brain } from 'lucide-vue-next'
+import { Plus, Trash2, FolderOpen, RefreshCw, Search, Palette, Database, Bot, FileText, History, HardDrive, ArchiveRestore, CloudUpload, ShieldCheck, LoaderCircle, CircleCheck, ImagePlus, Globe, Eye, Brain, Github } from 'lucide-vue-next'
+import dawoLogo from '../assets/dawo-logo.png'
+
+const logoUrl = dawoLogo
+const appVersion = __APP_VERSION__
 
 const app = useAppStore()
 const lib = useLibraryStore()
@@ -23,7 +27,8 @@ const GROUPS = [
     items: [
       { key: 'appearance', label: '外观' },
       { key: 'data', label: '数据' },
-      { key: 'sensitive', label: '敏感词库' }
+      { key: 'sensitive', label: '敏感词库' },
+      { key: 'about', label: '关于' }
     ]
   },
   {
@@ -44,6 +49,45 @@ const tab = computed<string>({
   get: () => app.settingsTab || 'ai',
   set: (v: string) => (app.settingsTab = v)
 })
+
+// ============ 自动更新（GitHub Releases 源） ============
+const upd = reactive({
+  state: 'idle' as 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'downloaded' | 'error',
+  version: '',
+  percent: 0,
+  message: ''
+})
+let offStatus: (() => void) | null = null
+onMounted(() => {
+  offStatus = window.api.onUpdateStatus((s) => {
+    if (s.status === 'checking') upd.state = 'checking'
+    else if (s.status === 'available') { upd.state = 'available'; upd.version = s.version || '' }
+    else if (s.status === 'none') { upd.state = 'none'; upd.version = s.version || '' }
+    else if (s.status === 'downloading') { upd.state = 'downloading'; upd.percent = s.percent || 0 }
+    else if (s.status === 'downloaded') { upd.state = 'downloaded'; upd.version = s.version || '' }
+    else if (s.status === 'error') { upd.state = 'error'; upd.message = s.message || '未知错误' }
+  })
+})
+onUnmounted(() => offStatus?.())
+async function checkUpdate() {
+  upd.state = 'checking'
+  upd.message = ''
+  const r = await window.api.updateCheck()
+  if (!r.ok) {
+    upd.state = 'error'
+    upd.message = r.message || '检查失败'
+  }
+  // 成功路径由 update:status 事件驱动（available / none）
+}
+function doDownload() {
+  void window.api.updateDownload()
+}
+function doInstall() {
+  void window.api.updateInstall()
+}
+function openReleasePage() {
+  void window.api.updateOpenPage()
+}
 
 // ============ 作者记忆（全局跨书 + 本书单书，条目式） ============
 interface MemoryEntry {
@@ -1193,6 +1237,36 @@ onUnmounted(() => {
           </table>
         </div>
         <p class="text-xs text-[var(--text-faint)]">恢复前会自动给当前版本做一次「恢复前快照」，放心操作。</p>
+      </div>
+
+      <!-- 关于 / 检查更新 -->
+      <div v-if="tab === 'about'" class="space-y-5 max-w-xl">
+        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 flex items-center gap-4">
+          <img :src="logoUrl" alt="DAWO" class="w-12 h-12 rounded-lg" />
+          <div class="flex-1">
+            <div class="text-sm font-medium">DAWO · AI 小说工作台</div>
+            <div class="text-xs text-[var(--text-faint)] mt-0.5">当前版本 v{{ appVersion }} · 免费 · 本地优先</div>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 space-y-3">
+          <div class="text-sm text-[var(--text-dim)]">软件更新</div>
+          <div class="text-xs text-[var(--text-faint)] leading-5">
+            更新源是 GitHub Releases。检查到新版本后先下载，重启即完成安装；书稿与配置不受影响。仓库私有期间可能拉不到更新信息，可点「打开 Releases 页」手动下载。
+          </div>
+          <div class="flex gap-2 items-center flex-wrap">
+            <InkButton :disabled="upd.state === 'checking' || upd.state === 'downloading'" @click="checkUpdate">
+              <RefreshCw :size="13" /> {{ upd.state === 'checking' ? '正在检查…' : '检查更新' }}
+            </InkButton>
+            <InkButton v-if="upd.state === 'available'" @click="doDownload">下载 v{{ upd.version }}</InkButton>
+            <InkButton v-if="upd.state === 'downloaded'" @click="doInstall">重启安装 v{{ upd.version }}</InkButton>
+            <InkButton variant="ghost" @click="openReleasePage"><Github :size="13" /> 打开 Releases 页</InkButton>
+          </div>
+          <div v-if="upd.state === 'downloading'" class="text-xs" style="color: var(--accent)">下载中 {{ upd.percent }}%…</div>
+          <div v-if="upd.state === 'downloaded'" class="text-xs" style="color: var(--accent)">下载完成，点「重启安装」即升级（也可直接退出，下次启动前自动装）。</div>
+          <div v-if="upd.state === 'none'" class="text-xs text-[var(--text-faint)]">已是最新版本（远端 v{{ upd.version }}）。</div>
+          <div v-if="upd.state === 'error'" class="text-xs" style="color: #e08a7a">{{ upd.message }}</div>
+        </div>
       </div>
       </div>
     </div>

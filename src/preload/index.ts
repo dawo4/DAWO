@@ -154,7 +154,18 @@ const api = {
   backupList: () => ipcRenderer.invoke('backup:list'),
   backupDelete: (dir: string) => ipcRenderer.invoke('backup:delete', dir),
   backupRestore: (dir: string) => ipcRenderer.invoke('backup:restore', dir),
-  backupOpen: () => ipcRenderer.invoke('backup:open')
+  backupOpen: () => ipcRenderer.invoke('backup:open'),
+
+  // ============ 自动更新 ============
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  updateDownload: () => ipcRenderer.invoke('update:download'),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
+  updateOpenPage: () => ipcRenderer.invoke('update:openPage'),
+  onUpdateStatus: (cb: (s: { status: string; version?: string; percent?: number; message?: string }) => void) => {
+    const listener = (_e: unknown, s: { status: string; version?: string; percent?: number; message?: string }) => cb(s)
+    ipcRenderer.on('update:status', listener)
+    return () => ipcRenderer.removeListener('update:status', listener)
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)

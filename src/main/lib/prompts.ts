@@ -159,13 +159,14 @@ export const DEFAULT_PROMPTS: Record<string, string> = {
 大纲：{{outline}}
 角色卡：{{characters}}`,
 
-  'wf-beat': `你是网文章节策划。基于全书大纲与设定，写出第 {{chapterNo}} 章的章节细纲（200 字以内），包含：本章目标、开场钩子、核心冲突事件、转折点、结尾悬念钩子。要与上一章内容衔接，推进主线。
+  'wf-beat': `你是网文章节策划。基于全书大纲与设定，写出第 {{chapterNo}} 章的章节细纲（200 字以内），包含：本章目标、开场钩子、核心冲突事件、转折点、结尾悬念钩子。要与上一章内容衔接，推进主线。策划不得违反作者记忆里立过的规矩。
 
 全书大纲：{{outline}}
 设定集：{{settings}}
 角色卡：{{characters}}
 上一章概要：{{prevSummary}}
-已完成章节数：{{chapterNo}}`,
+已完成章节数：{{chapterNo}}
+作者记忆（全局规矩与本书决策，须遵守）：{{memory}}`,
 
   'wf-chapter': `你是顶尖网文写手。请根据章节细纲写出第 {{chapterNo}} 章正文，要求：
 - 第一行输出章节标题，格式为「# 第{{chapterNo}}章 标题」
@@ -178,12 +179,14 @@ export const DEFAULT_PROMPTS: Record<string, string> = {
 - 句长要有爆发度：整章里必须有 3 处以上不超过 10 字的短句（动作戏尤其），也允许一两处一口气连下去的长句；对话占比建议两到四成
 - 叙述视角钉在 POV 角色上，叙述者不评价不总结不跳出来；角色台词要像活人说话，允许口头语、答非所问、话说一半
 - 站在人物视角写，允许人物有偏见和情绪
+- 作者记忆是硬约束：记忆里的禁令与剧情决策优先于细纲、大纲与设定，发现冲突按记忆执行
 
 章节细纲：{{beat}}
 全书大纲：{{outline}}
 设定集：{{settings}}
 角色卡：{{characters}}
 伏笔登记板（硬约束）：{{foreshadow}}
+作者记忆（全局规矩与本书决策，硬约束）：{{memory}}
 上一章结尾（衔接用）：{{prevTail}}`,
 
   'ed-continue': `你是一位网文续写引擎。请从「现有文本」的结尾处自然续写 80-150 字。要求：
@@ -577,7 +580,8 @@ let promptsDir = ''
 const PROMPT_STAMPS: Record<string, string> = {
   'deai-diagnose': '角色设定卡（OOC 对照基准',
   'deai-rewrite': '注入人类信号',
-  'wf-chapter': '伏笔登记板是硬约束',
+  'wf-chapter': '作者记忆是硬约束',
+  'wf-beat': '策划不得违反作者记忆里立过的规矩',
   'agent-section': '正文人类信号',
   'agent-manuscript': '改稿时见到就拆',
   'ed-continue': '禁用 AI 毒句式',

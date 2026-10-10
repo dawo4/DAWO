@@ -153,6 +153,15 @@ declare global {
       backupDelete: (dir: string) => Promise<void>
       backupRestore: (dir: string) => Promise<string>
       backupOpen: () => Promise<string>
+
+      // 自动更新
+      updateCheck: () => Promise<{ ok: boolean; version?: string; message?: string }>
+      updateDownload: () => Promise<{ ok: boolean }>
+      updateInstall: () => Promise<{ ok: boolean }>
+      updateOpenPage: () => Promise<{ ok: boolean }>
+      onUpdateStatus: (
+        cb: (s: { status: string; version?: string; percent?: number; message?: string }) => void
+      ) => () => void
     }
   }
 }

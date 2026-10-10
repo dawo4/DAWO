@@ -7,6 +7,7 @@ import InkEditor from '../editor/InkEditor.vue'
 import ChapterTree from '../components/ChapterTree.vue'
 import SelectionAiModal from '../components/SelectionAiModal.vue'
 import DeaiPanel from '../components/DeaiPanel.vue'
+import QuickCheck from '../components/writing/QuickCheck.vue'
 import AgentConversation from '../components/conversation/AgentConversation.vue'
 import RightMaterialPeek from '../components/writing/RightMaterialPeek.vue'
 import CustomListPanel from '../components/materials/CustomListPanel.vue'
@@ -57,6 +58,7 @@ const rightTab = computed({
 const MATE_TABS = [
   { key: 'ai', label: '智能体' },
   { key: 'deai', label: '去 AI 味' },
+  { key: '速检', label: '速检' },
   { key: '章节', label: '章节' },
   { key: '大纲', label: '大纲' },
   { key: '角色', label: '角色' },
@@ -572,6 +574,11 @@ onUnmounted(() => {
           <DeaiPanel v-if="currentFile.startsWith('正文/')" :chapter-text="content" :book="lib.current.title" :file="currentFile" @apply-text="applyWholeText" />
           <p v-else class="text-xs text-[var(--text-faint)]">打开一个章节文件后可使用整章诊断 / 改写 / 评分。</p>
         </div>
+      </div>
+
+      <!-- 随写随查速检：本章对照词典/出场/境界/伏笔 -->
+      <div v-else-if="rightTab === '速检'" class="flex-1 min-h-0 overflow-y-auto p-4">
+        <QuickCheck :book="lib.current.title" :file="currentFile" :chapter-text="content" />
       </div>
 
       <!-- 章节字数与快速跳章 -->

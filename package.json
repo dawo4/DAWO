@@ -1,6 +1,6 @@
 {
   "name": "inkdesk",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "DAWO — AI 小说写作工作台",
   "main": "out/main/index.js",
   "author": "DAWO",
@@ -30,6 +30,7 @@
     "@vue-flow/background": "^1.3.0",
     "@vue-flow/controls": "^1.1.2",
     "@vue-flow/core": "^1.42.1",
+    "electron-updater": "^6.8.9",
     "lucide-vue-next": "^0.460.0",
     "marked": "^18.0.14",
     "pinia": "^2.3.0",

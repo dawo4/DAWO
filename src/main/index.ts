@@ -5,6 +5,7 @@ import { initConfig, getConfig } from './lib/config'
 import { initPrompts } from './lib/prompts'
 import { createBackup } from './lib/backup'
 import { registerIpc, initLibraryRoot } from './ipc'
+import { initUpdater } from './lib/updater'
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL
 if (isDev) {
@@ -80,6 +81,10 @@ app.whenReady().then(async () => {
     }
   }
   createWindow()
+  // 自动更新（GitHub Releases 源）：失败静默，设置→关于里可手动查；dev 模式不启
+  if (!isDev) {
+    initUpdater()
+  }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
