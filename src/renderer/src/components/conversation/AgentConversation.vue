@@ -162,7 +162,8 @@ function fmtTime(iso: string): string {
                 <button
                   v-for="a in g.list"
                   :key="a.id"
-                  class="w-full text-left px-3.5 py-2.5 hover:bg-[var(--hover)] cursor-pointer border-b border-[var(--border)] last:border-b-0"
+                  class="w-full text-left px-3.5 py-2.5 hover:bg-[var(--hover)] cursor-pointer border-b border-[var(--border)] last:border-b-0 transition-colors"
+                  :style="a.id === conv.agentId ? { background: 'color-mix(in srgb, var(--accent) 7%, transparent)' } : {}"
                   @click="pickAgent(a.id)"
                 >
                   <div class="flex items-center gap-2">
@@ -243,25 +244,29 @@ function fmtTime(iso: string): string {
           <div v-if="summaryOpen" class="mt-2 text-[12px] text-[var(--text-dim)] whitespace-pre-wrap leading-5">{{ conv.contextSummary }}</div>
         </div>
 
-        <div v-if="!conv.messages.length" class="pt-8">
-          <div class="text-center mb-6">
-            <div class="font-serif-ink text-xl mb-1.5">{{ currentAgent.name }}</div>
-            <div class="text-[12.5px] text-[var(--text-faint)]">{{ currentAgent.desc }}</div>
+        <div v-if="!conv.messages.length" class="pt-10">
+          <div class="text-center mb-7">
+            <div class="flex items-center justify-center gap-2.5 mb-2.5">
+              <span class="h-px w-6" style="background: var(--accent)" />
+              <span class="text-[10.5px] tracking-[0.22em] text-[var(--text-faint)]">妙笔 · {{ currentAgent.stage || '智能体' }}</span>
+            </div>
+            <div class="font-serif-ink text-[24px] mb-2">{{ currentAgent.name }}</div>
+            <div class="text-[12.5px] text-[var(--text-faint)] max-w-[460px] mx-auto leading-5">{{ currentAgent.desc }}</div>
           </div>
-          <div class="grid gap-2" :class="props.fullWidth ? 'sm:grid-cols-2' : ''">
+          <div class="grid gap-2.5" :class="props.fullWidth ? 'sm:grid-cols-2' : ''">
             <button
               v-for="w in currentAgent.welcome"
               :key="w"
-              class="text-left text-[12.5px] px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--panel)] hover:border-[var(--accent)] cursor-pointer transition-colors"
+              class="text-left text-[12.5px] px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--panel)] hover:border-[var(--accent)] hover:bg-[var(--bg-soft)] hover:-translate-y-[2px] hover:shadow-[var(--shadow)] cursor-pointer transition-all duration-200 leading-5"
               @click="quickSend(w)"
             >
               {{ w }}
             </button>
           </div>
-          <div v-if="currentAgent.readScope.length" class="mt-5 text-[11.5px] text-[var(--text-faint)] text-center">
+          <div v-if="currentAgent.readScope.length" class="mt-6 text-[11.5px] text-[var(--text-faint)] text-center">
             可访问范围：{{ currentAgent.readScope.join(' · ') }}
           </div>
-          <div v-else class="mt-5 text-[11.5px] text-[var(--text-faint)] text-center">可访问全部稿件与资料</div>
+          <div v-else class="mt-6 text-[11.5px] text-[var(--text-faint)] text-center">可访问全部稿件与资料</div>
         </div>
 
         <ConversationMessage v-for="m in conv.messages" :key="m.id" :message="m" :agent-id="conv.agentId" />

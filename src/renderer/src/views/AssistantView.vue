@@ -89,8 +89,8 @@ onUnmounted(() => {
       <div class="panel-resizer right-0" :class="{ 'is-dragging': listDrag.dragging.value }" @mousedown="listDrag.onDown($event, 1)" />
       <div class="px-3 py-2.5 border-b border-[var(--border)] space-y-2">
         <button
-          class="w-full flex items-center justify-center gap-1.5 text-[12.5px] py-1.5 rounded-lg cursor-pointer text-[#1b1712] font-medium"
-          :style="{ background: 'var(--accent)' }"
+          class="w-full flex items-center justify-center gap-1.5 text-[12.5px] py-1.5 rounded-lg cursor-pointer text-[#1b1712] font-medium transition-[filter,box-shadow] hover:brightness-110"
+          style="background: var(--accent); box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 20%, transparent)"
           @click="conv.newConversation()"
         >
           <Plus :size="13" /> 新建会话
@@ -98,37 +98,41 @@ onUnmounted(() => {
         <input v-model="listQuery" class="ink-input h-7 py-0 text-[12px]" placeholder="搜索会话…" />
       </div>
 
-      <div class="flex-1 overflow-y-auto py-1">
+      <div class="flex-1 overflow-y-auto py-1.5 px-1.5 space-y-0.5">
         <div
           v-for="c in filteredConversations"
           :key="c.id"
-          class="group flex items-center gap-1.5 px-3 py-2 cursor-pointer border-l-2"
-          :class="c.id === conv.currentId ? 'bg-[var(--panel-2)]' : 'border-transparent hover:bg-[var(--hover)]'"
-          :style="c.id === conv.currentId ? { borderColor: 'var(--accent)' } : {}"
+          class="group flex items-center gap-1.5 pl-2.5 pr-1.5 py-2 cursor-pointer rounded-lg border-l-2 transition-colors"
+          :class="c.id === conv.currentId ? '' : 'border-transparent hover:bg-[var(--hover)]'"
+          :style="
+            c.id === conv.currentId
+              ? { borderColor: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 8%, transparent)' }
+              : {}
+          "
           @click="conv.loadConversation(c.id)"
         >
           <div class="min-w-0 flex-1">
             <div class="text-[12.5px] truncate" :style="c.id === conv.currentId ? { color: 'var(--accent)' } : {}">
               {{ c.title || '新会话' }}
             </div>
-            <div class="text-[10.5px] text-[var(--text-faint)] flex items-center gap-1">
+            <div class="text-[10.5px] text-[var(--text-faint)] flex items-center gap-1 mt-0.5">
               <Clock :size="9" />{{ fmtTime(c.updatedAt) }} · {{ c.messageCount }} 条
             </div>
           </div>
           <button
-            class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer"
+            class="opacity-0 group-hover:opacity-100 p-1 rounded-md text-[var(--text-faint)] hover:text-[#e08a7a] hover:bg-[var(--hover)] cursor-pointer transition-opacity"
             @click.stop="removeConversation(c.id, c.title)"
           >
             <Trash2 :size="12" />
           </button>
         </div>
-        <div v-if="!filteredConversations.length" class="px-3 py-6 text-center text-[11.5px] text-[var(--text-faint)]">
+        <div v-if="!filteredConversations.length" class="mx-1.5 my-1 py-6 text-center rounded-lg border border-dashed border-[var(--border)] text-[11.5px] text-[var(--text-faint)]">
           暂无历史会话
         </div>
       </div>
 
       <button
-        class="shrink-0 flex items-center justify-center gap-1.5 text-[11.5px] py-2 border-t border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer"
+        class="shrink-0 flex items-center justify-center gap-1.5 text-[11.5px] py-2.5 border-t border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors"
         @click="conv.exportCurrent()"
       >
         <Download :size="12" /> 导出当前会话
@@ -137,13 +141,19 @@ onUnmounted(() => {
 
     <!-- 中：对话主体 -->
     <section class="flex-1 min-w-0 flex flex-col">
-      <!-- 上下文指示条 -->
-      <div class="shrink-0 h-10 flex items-center gap-2 px-5 border-b border-[var(--border)]">
+      <!-- 上下文指示条：chips 化，一眼看清 AI 正在针对什么工作 -->
+      <div class="shrink-0 h-10 flex items-center gap-1.5 px-5 border-b border-[var(--border)]">
         <Sparkles :size="13" :style="{ color: 'var(--accent)' }" />
-        <span class="text-[11.5px] text-[var(--text-faint)]">当前上下文</span>
+        <span class="text-[11px] text-[var(--text-faint)] mr-1">上下文</span>
         <template v-for="(p, i) in contextParts" :key="p + i">
-          <span v-if="i" class="text-[11px] text-[var(--text-faint)]">·</span>
-          <span class="text-[11.5px]" :class="i === contextParts.length - 1 ? '' : 'text-[var(--text-dim)]'" :style="i === contextParts.length - 1 ? { color: 'var(--accent)' } : {}">
+          <span
+            class="text-[11px] px-2 py-0.5 rounded-full"
+            :style="
+              i === contextParts.length - 1
+                ? { background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }
+                : { background: 'var(--bg-soft)', color: 'var(--text-dim)' }
+            "
+          >
             {{ p }}
           </span>
         </template>

@@ -483,9 +483,9 @@ async function toggleApproval() {
         </button>
         <button
           v-else
-          class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer"
+          class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-[filter,box-shadow] hover:brightness-110"
           :class="canSend ? '' : 'opacity-35 cursor-not-allowed'"
-          :style="{ background: 'var(--accent)', color: '#1b1712' }"
+          :style="{ background: 'var(--accent)', color: '#1b1712', boxShadow: canSend ? '0 2px 10px color-mix(in srgb, var(--accent) 25%, transparent)' : 'none' }"
           :disabled="!canSend"
           title="发送（Enter）"
           @click="send"
