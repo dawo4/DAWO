@@ -58,8 +58,9 @@ async function main() {
   try { await send(ws, 'Page.bringToFront') } catch (e) {}
   await sleep(400)
 
-  // 01 主页（含左栏自定义面板组 + 8 工具）
-  await click(ws, '主页')
+  // 01 主页（含左栏自定义面板组 + 8 工具）——注意左栏导航项叫「首页」，叫「主页」匹配不到
+  const r01 = await click(ws, '首页')
+  if (r01 !== 'ok') throw new Error('点击「首页」失败: ' + r01)
   await sleep(700)
   await shot(ws, '01-主页')
 
