@@ -186,18 +186,18 @@ onMounted(() => void load())
 
 <template>
   <div class="h-full overflow-y-auto">
-    <div class="relative max-w-[1120px] mx-auto px-8 py-9">
+    <div class="relative max-w-[1120px] mx-auto px-8 py-6">
       <!-- 背景装饰：淡金「墨」字水印（纯装饰，不可交互） -->
       <div aria-hidden="true" class="pointer-events-none absolute -top-8 right-0 font-serif-ink text-[220px] leading-none select-none" style="color: var(--accent); opacity: 0.04">墨</div>
 
       <!-- 问候区：眉线 + 大宋体 + 引文，右侧作品入口胶囊 -->
-      <div class="rise-in relative mb-9 flex items-end justify-between gap-4">
+      <div class="rise-in relative mb-6 flex items-end justify-between gap-4">
         <div>
-          <div class="flex items-center gap-2.5 mb-2.5">
+          <div class="flex items-center gap-2.5 mb-2">
             <span class="h-px w-7" style="background: var(--accent)" />
             <span class="text-[10.5px] tracking-[0.22em] text-[var(--text-faint)]">{{ today }}</span>
           </div>
-          <h1 class="font-serif-ink text-[30px] leading-tight mb-2">{{ greeting }}</h1>
+          <h1 class="font-serif-ink text-[26px] leading-tight mb-1.5">{{ greeting }}</h1>
           <p class="text-[12px] text-[var(--text-faint)]">
             <span style="color: var(--accent)">「</span> {{ quote }}
             <span style="color: var(--accent)">」</span>
@@ -212,7 +212,7 @@ onMounted(() => void load())
       </div>
 
       <!-- 卡片组：不对称三栏，灵感卡下沉半格打破齐平 -->
-      <div class="grid grid-cols-1 lg:grid-cols-[1.35fr_1fr_0.85fr] gap-4 mb-9 items-start">
+      <div class="grid grid-cols-1 lg:grid-cols-[1.35fr_1fr_0.85fr] gap-3.5 mb-6 items-start">
         <!-- 我的书架 -->
         <div class="rise-in rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4" style="box-shadow: var(--shadow); animation-delay: 60ms">
           <div class="flex items-center gap-1.5 mb-3.5">
@@ -263,14 +263,14 @@ onMounted(() => void load())
 
         <!-- 码字进度：大号宋体数字，主按钮压轴 -->
         <div class="rise-in rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4 flex flex-col" style="box-shadow: var(--shadow); animation-delay: 140ms">
-          <div class="flex items-center gap-1.5 mb-4">
+          <div class="flex items-center gap-1.5 mb-3">
             <Feather :size="13" :style="{ color: 'var(--accent)' }" />
             <span class="text-[13px] font-medium tracking-wide">码字进度</span>
             <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
             <span class="text-[10.5px] text-[var(--text-faint)]">目标 {{ goal }}</span>
           </div>
 
-          <div class="space-y-4 flex-1">
+          <div class="space-y-3.5 flex-1">
             <div>
               <div class="flex items-baseline gap-1.5">
                 <span class="font-serif-ink text-[27px] leading-none" :style="{ color: 'var(--accent)' }">{{ todayHand }}</span>
@@ -309,7 +309,7 @@ onMounted(() => void load())
           </div>
 
           <button
-            class="mt-4 w-full flex items-center justify-center gap-1.5 text-[13px] py-2.5 rounded-lg cursor-pointer font-medium text-[#1b1712] transition-[filter,box-shadow] hover:brightness-110"
+            class="mt-3.5 w-full flex items-center justify-center gap-1.5 text-[13px] py-2.5 rounded-lg cursor-pointer font-medium text-[#1b1712] transition-[filter,box-shadow] hover:brightness-110"
             style="background: var(--accent); box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 22%, transparent)"
             @click="enterWriting"
           >
@@ -319,7 +319,7 @@ onMounted(() => void load())
 
         <!-- 灵感速记：下沉半格，打破三卡齐平 -->
         <div
-          class="rise-in rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4 flex flex-col lg:mt-7"
+          class="rise-in rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4 flex flex-col lg:mt-5"
           style="box-shadow: var(--shadow); animation-delay: 220ms"
         >
           <div class="flex items-center gap-1.5 mb-3">
@@ -330,7 +330,7 @@ onMounted(() => void load())
               便签库
             </button>
           </div>
-          <textarea v-model="note" class="ink-textarea flex-1 text-[12.5px] resize-none min-h-[120px]" placeholder="点击记录灵感…自动存进灵感便签" />
+          <textarea v-model="note" class="ink-textarea flex-1 text-[12.5px] resize-none min-h-[96px]" placeholder="点击记录灵感…自动存进灵感便签" />
           <button
             class="mt-2.5 w-full flex items-center justify-center gap-1.5 text-[12px] py-2 rounded-lg border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent)] cursor-pointer transition-colors disabled:opacity-40"
             :disabled="!note.trim()"
@@ -343,15 +343,15 @@ onMounted(() => void load())
       </div>
 
       <!-- 创作看板：最近 14 天趋势 + 作品字数排行 -->
-      <div class="rise-in grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 mb-9" style="animation-delay: 240ms">
+      <div class="rise-in grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-3.5 mb-6" style="animation-delay: 240ms">
         <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4" style="box-shadow: var(--shadow)">
-          <div class="flex items-center gap-1.5 mb-4">
+          <div class="flex items-center gap-1.5 mb-3">
             <TrendingUp :size="13" :style="{ color: 'var(--accent)' }" />
             <span class="text-[13px] font-medium tracking-wide">最近 14 天</span>
             <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
             <span class="text-[10.5px] text-[var(--text-faint)]">合计 <span class="font-serif-ink text-[12px]" style="color: var(--accent)">{{ fmtWords(trend14Total) }}</span></span>
           </div>
-          <div class="flex items-end gap-[3px] h-[84px]">
+          <div class="flex items-end gap-[3px] h-[68px]">
             <div
               v-for="t in trend14"
               :key="t.date"
@@ -373,13 +373,13 @@ onMounted(() => void load())
           </div>
         </div>
         <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4" style="box-shadow: var(--shadow)">
-          <div class="flex items-center gap-1.5 mb-4">
+          <div class="flex items-center gap-1.5 mb-3">
             <BarChart3 :size="13" :style="{ color: 'var(--accent)' }" />
             <span class="text-[13px] font-medium tracking-wide">作品字数排行</span>
             <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
           </div>
           <p v-if="!bookRanking.length" class="text-[11.5px] text-[var(--text-faint)]">还没有作品数据。</p>
-          <div v-else class="space-y-3">
+          <div v-else class="space-y-2.5">
             <div v-for="(b, idx) in bookRanking" :key="b.title" class="cursor-pointer group" @click="openBook(b.title)">
               <div class="flex items-baseline gap-2 text-[12px]">
                 <span class="font-serif-ink text-[13px] w-5 shrink-0" :style="{ color: idx === 0 ? 'var(--accent)' : 'var(--text-faint)' }">{{ String(idx + 1).padStart(2, '0') }}</span>
@@ -400,7 +400,7 @@ onMounted(() => void load())
 
       <!-- 常用工具：不做等分卡；首项主推（accent 填充），其余轻量条目，悬停浮起 -->
       <div class="rise-in" style="animation-delay: 300ms">
-        <div class="flex items-center gap-1.5 mb-3.5">
+        <div class="flex items-center gap-1.5 mb-3">
           <House :size="13" :style="{ color: 'var(--accent)' }" />
           <span class="text-[13px] font-medium tracking-wide">常用工具</span>
           <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
@@ -409,7 +409,7 @@ onMounted(() => void load())
           <button
             v-for="(t, i) in TOOLS"
             :key="t.key"
-            class="group flex items-center gap-3 p-3.5 rounded-xl text-left cursor-pointer transition-all duration-200 border hover:-translate-y-[2px]"
+            class="group flex items-center gap-3 p-3 rounded-xl text-left cursor-pointer transition-all duration-200 border hover:-translate-y-[2px]"
             :class="
               i === 0
                 ? 'text-[#1b1712] font-medium border-transparent hover:brightness-110'
