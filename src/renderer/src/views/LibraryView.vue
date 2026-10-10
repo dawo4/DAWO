@@ -482,7 +482,24 @@ function onLibChanged() {
   void libs.refresh()
 }
 
-onMounted(() => {
+// 预置库更新提示（升级安装自动补入的条目，7 天内显示）
+const presetUpdate = ref<{ at: string; added: string[] } | null>(null)
+const presetDismissed = ref(false)
+const freshPreset = computed(() => {
+  if (!presetUpdate.value) return false
+  return Date.now() - new Date(presetUpdate.value.at).getTime() < 7 * 24 * 3600 * 1000
+})
+function dismissPreset() {
+  presetDismissed.value = true
+}
+
+onMounted(async () => {
+  try {
+    const last = await window.api.presetLastUpdate()
+    if (last && !presetDismissed.value) presetUpdate.value = last
+  } catch {
+    /* 无记录 */
+  }
   offHeader = onHeaderAction((key) => {
     if (key === 'library:newEntry') newEntry()
     else if (key === 'library:importSkill') void importSkill()
@@ -549,6 +566,14 @@ watch(
         </template>
       </template>
     </PageSubNav>
+
+    <!-- 预置库更新提示：升级安装自动补入新条目后展示（只显示最近一次，7 天内） -->
+    <div v-if="presetUpdate && freshPreset" class="shrink-0 flex items-center gap-2 px-5 py-2 border-b border-[var(--border)] text-[12px]" style="background: color-mix(in srgb, var(--accent) 8%, transparent)">
+      <Sparkles :size="13" style="color: var(--accent)" />
+      <span class="text-[var(--text-dim)]">预置库更新（{{ presetUpdate.at.slice(5, 10) }}）：补入 {{ presetUpdate.added.length }} 条——{{ presetUpdate.added.slice(0, 4).join('、') }}{{ presetUpdate.added.length > 4 ? ' 等' : '' }}</span>
+      <div class="flex-1" />
+      <button class="text-[var(--text-faint)] hover:text-[var(--text-dim)] cursor-pointer" @click="dismissPreset">×</button>
+    </div>
 
     <!-- 批量操作条：有选中时出现 -->
     <div

@@ -80,8 +80,14 @@ export function registerIpc(): void {
     return win ? lib.pickSourceText(win) : null
   })
   ipcMain.handle('import:file', (_e, book: string, filePath: string) => lib.importToBook(book, filePath))
+  ipcMain.handle('import:migrate', async (e, mode: 'each' | 'merge', mergeTitle: string) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    if (!win) return { books: [], chapters: 0, errors: ['窗口不可用'] }
+    return lib.migrateImport(win, mode, mergeTitle)
+  })
 
   ipcMain.handle('app:openLibrary', () => lib.openLibraryInExplorer())
+  ipcMain.handle('preset:lastUpdate', () => materials.lastPresetUpdate())
 
   ipcMain.handle('prompts:list', () => prompts.listPrompts())
   ipcMain.handle('prompts:get', (_e, id: string) => prompts.getPrompt(id))
@@ -185,7 +191,7 @@ export function registerIpc(): void {
   ipcMain.handle('chargraph:read', (_e, book: string) => structured.readCharGraph(book))
   // 面板注册表（阶段二）：内置 9 板块 + 自定义列表面板的统一通道
   ipcMain.handle('panels:list', (_e, book: string) => panels.listPanels(book))
-  ipcMain.handle('panels:add', (_e, book: string, input: { name: string; fields?: unknown[] }) => panels.addPanel(book, input))
+  ipcMain.handle('panels:add', (_e, book: string, input: { name: string; fields?: unknown[] }) => panels.addPanel(book, input as never))
   ipcMain.handle('panels:rename', (_e, book: string, id: string, name: string) => panels.renamePanel(book, id, name))
   ipcMain.handle('panels:remove', (_e, book: string, id: string) => panels.removePanel(book, id))
   ipcMain.handle('panels:setHidden', (_e, book: string, id: string, hidden: boolean) => panels.setPanelHidden(book, id, hidden))

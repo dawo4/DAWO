@@ -3,7 +3,6 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'fs'
 import { join, normalize, sep, posix } from 'path'
 import { getConfig, TaskCfg, Provider } from './lib/config'
 import { getPrompt } from './lib/prompts'
-import { readDict, readPower, readMaps } from './lib/structured'
 import * as panels from './lib/panels'
 import * as memory from './lib/memory'
 import { toolSchemasFor } from './lib/agents'
@@ -110,6 +109,8 @@ interface ToolCtx {
   depth?: number
   /** 自定义面板（list 原型）读写授权（面板名）；省略 = 全部允许，空数组 = 全部禁止 */
   panelBoards?: string[]
+  /** 结构化板块授权（自定义智能体）；省略 = 内置智能体不限 */
+  structBoards?: string[]
 }
 
 type ToolResult = { ok: boolean; content: string; proposal?: EditProposal }
@@ -1208,6 +1209,8 @@ export async function runAgent(win: BrowserWindow, params: AgentRunParams): Prom
   const controller = new AbortController()
   runs.set(runId, controller)
   const agentStartedAt = Date.now()
+  // recordAgentCall 定义在 try 块外，无法访问块内的 agent——把展示名单独提升到外层作用域
+  let agentLabel = agentId
 
   try {
     const provider: Provider | undefined = cfg.providers.find((p) => p.id === taskCfg.providerId)
@@ -1217,6 +1220,7 @@ export async function runAgent(win: BrowserWindow, params: AgentRunParams): Prom
     }
 
     const agent = resolveAgent(agentId)
+    agentLabel = agent.name
     const ctx: ToolCtx = {
       win,
       runId,
@@ -1393,7 +1397,7 @@ export async function runAgent(win: BrowserWindow, params: AgentRunParams): Prom
     recordCall({
       kind: 'agent',
       feature: agentId,
-      featureLabel: agent.name,
+      featureLabel: agentLabel,
       provider: provider?.name || '未知服务商',
       model: taskCfg.model,
       ok: status === 'success',

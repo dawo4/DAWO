@@ -280,13 +280,13 @@ function normalizeDraft(j: Record<string, unknown>, desc: string): CustomAgent {
     name,
     desc: String(j.desc || '').trim() || desc.slice(0, 40),
     stage: String(j.stage || '自定义').trim() || '自定义',
-    promptId: '',
     prompt,
     welcome: Array.isArray(j.welcome) ? (j.welcome as unknown[]).map(String).filter((w) => w.trim()).slice(0, 4) : [],
     readScope: scope,
     libsRead: libs as LibKind[],
     libsWrite: j.libsWrite === true,
     webSearch: j.webSearch === true,
+    orchestrator: j.orchestrator === true,
     enabled: false,
     createdAt: new Date().toISOString()
   }

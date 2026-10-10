@@ -336,29 +336,28 @@ async function setGroup(title: string) {
   await lib.loadBooks()
 }
 
-async function importFile() {
-  const p = await window.api.importPick()
-  if (!p) return
-  const name = p.split(/[\\/]/).pop()!.replace(/\.(txt|md)$/i, '')
-  let created = false
+// ============ 迁移向导：散落书稿（txt/md/docx 多选）归类成书 ============
+const showMigrate = ref(false)
+const migrating = ref(false)
+const migrateMode = ref<'each' | 'merge'>('each')
+const mergeTitle = ref('')
+const migrateResult = ref<{ books: string[]; chapters: number; errors: string[] } | null>(null)
+
+async function runMigrate() {
+  migrating.value = true
+  migrateResult.value = null
   try {
-    await window.api.bookCreate({ title: name, genre: '导入作品' })
-    created = true
-    await window.api.importFile(name, p)
-  } catch (e) {
-    // 导入失败要有提示；书目录已建但导入中途失败时给出清理选项
-    const msg = (e as Error).message.replace('Error invoking remote method', '').trim()
-    if (created) {
-      const del = await inkConfirm(`导入失败：${msg}\n\n是否删除刚创建的空书「${name}」？`, { confirmText: '删除空书', cancelText: '保留' })
-      if (del) await window.api.bookDelete(name).catch(() => {})
-    } else {
-      alert(`导入失败：${msg}`)
+    const r = await window.api.importMigrate(migrateMode.value, mergeTitle.value.trim())
+    migrateResult.value = r
+    if (r.books.length) {
+      await lib.loadBooks()
+      await loadOverview()
     }
-    await lib.loadBooks()
-    return
+  } catch (e) {
+    migrateResult.value = { books: [], chapters: 0, errors: [(e as Error).message.replace('Error invoking remote method', '').trim()] }
+  } finally {
+    migrating.value = false
   }
-  await lib.loadBooks()
-  await loadOverview()
 }
 
 let offHeader: (() => void) | null = null
@@ -370,7 +369,7 @@ function onDocClick() {
 onMounted(async () => {
   offHeader = onHeaderAction((key) => {
     if (key === 'bookshelf:new') openCreate()
-    else if (key === 'bookshelf:import') void importFile()
+    else if (key === 'bookshelf:import') { migrateResult.value = null; showMigrate = true }
   })
   await lib.loadBooks()
   await loadOverview()
@@ -765,6 +764,49 @@ onUnmounted(() => {
           >
             <PenLine :size="14" /> {{ editingBook ? '保存' : '落笔' }}
           </button>
+        </div>
+      </div>
+
+      <!-- 迁移向导：散落书稿（txt/md/docx 多选）归类成书 -->
+      <div v-if="showMigrate" class="fixed inset-0 z-[76] flex items-center justify-center bg-black/50" @click.self="showMigrate = false">
+        <div class="w-[440px] rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 space-y-4" style="box-shadow: var(--shadow)">
+          <div class="font-serif-ink text-lg">迁移书稿</div>
+          <p class="text-xs text-[var(--text-faint)] leading-5">
+            把散落在外面的书稿（TXT / Markdown / Word docx，可多选）归类成书。支持 GBK 等编码自动探测；大文件按「第N章」标题自动拆章。
+          </p>
+          <div>
+            <div class="field-label">归类方式</div>
+            <div class="space-y-2">
+              <label class="flex items-start gap-2 cursor-pointer rounded-lg border border-[var(--border)] p-3" :class="{ 'border-[var(--accent)]': migrateMode === 'each' }">
+                <input v-model="migrateMode" type="radio" value="each" class="mt-0.5" />
+                <span class="text-[12.5px] leading-5"><b>每个文件一本书</b><br /><span class="text-[var(--text-faint)]">书名取文件名，适合多部作品散着存的情况</span></span>
+              </label>
+              <label class="flex items-start gap-2 cursor-pointer rounded-lg border border-[var(--border)] p-3" :class="{ 'border-[var(--accent)]': migrateMode === 'merge' }">
+                <input v-model="migrateMode" type="radio" value="merge" class="mt-0.5" />
+                <span class="text-[12.5px] leading-5"><b>全部并入一本书</b><br /><span class="text-[var(--text-faint)]">适合一部书分成多个文件存的；内容按文件名顺序拼接</span></span>
+              </label>
+            </div>
+          </div>
+          <div v-if="migrateMode === 'merge'">
+            <div class="field-label">目标书名</div>
+            <input v-model="mergeTitle" class="ink-input" placeholder="如：旧稿合集" />
+          </div>
+          <div v-if="migrateResult" class="text-[12px] leading-5 rounded-lg border border-[var(--border)] p-3">
+            <div style="color: var(--accent)">完成：建成 {{ migrateResult.books.length }} 本{{ migrateResult.chapters ? `，拆出 ${migrateResult.chapters} 章` : '' }}</div>
+            <div v-if="migrateResult.books.length" class="text-[var(--text-faint)] mt-0.5">{{ migrateResult.books.join('、') }}</div>
+            <div v-if="migrateResult.errors.length" class="mt-1" style="color: #e08a7a">{{ migrateResult.errors.join('；') }}</div>
+          </div>
+          <div class="flex justify-end gap-2 pt-1">
+            <button class="text-[13px] px-5 py-2 rounded-lg cursor-pointer text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--hover)]" @click="showMigrate = false">关闭</button>
+            <button
+              class="text-[13px] px-6 py-2 rounded-lg cursor-pointer font-medium inline-flex items-center gap-1.5 text-[#1b1712] disabled:opacity-50"
+              :style="{ background: 'var(--accent)' }"
+              :disabled="migrating || (migrateMode === 'merge' && !mergeTitle.trim())"
+              @click="runMigrate"
+            >
+              {{ migrating ? '迁移中…' : '选择文件并迁移' }}
+            </button>
+          </div>
         </div>
       </div>
     </Teleport>

@@ -635,7 +635,8 @@ export function readPower(book: string): PowerData {
  */
 export function normalizePower(data: unknown, opts?: { preserve?: boolean; prev?: PowerData }): PowerData {
   const raw = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>
-  const realms = Array.isArray(raw.realms) ? (raw.realms as Record<string, unknown>[]) : []
+  // 宽松容错：AI 直接给境界名字符串数组时转成对象（不静默丢弃）
+  const realms = Array.isArray(raw.realms) ? (raw.realms as unknown[]).map((r) => (typeof r === 'string' ? { name: r } : (r as Record<string, unknown>))) : []
   const chars = Array.isArray(raw.chars) ? (raw.chars as Record<string, unknown>[]) : []
   const prev = opts?.prev
   const prevRealms = prev?.realms || []
@@ -1012,6 +1013,7 @@ export function normalizeOutline(entries: unknown, opts?: { preserve?: boolean; 
       }
     })
     .filter((e) => e.beat.trim() || e.title.trim())
+    .map((e): OutlineEntry => ({ ...e }))
   if (opts?.preserve) {
     for (const p of prev) if (!claimed.has(p.id)) clean.push(p)
   }
@@ -1036,9 +1038,9 @@ export interface WorkflowExtract {
   graph?: { nodes?: unknown[]; edges?: unknown[] }
 }
 
-/** 以 preserve 增量合并写入：没提到的现有条目自动保留；有变化才落盘。返回各板块条目数供前端汇报 */
-export function registerWorkflowStructure(book: string, data: WorkflowExtract): Record<string, number> {
-  const result: Record<string, number> = { dict: -1, realms: -1, mapNodes: -1, graphNodes: -1 }
+/** 以 preserve 增量合并写入：没提到的现有条目自动保留；有变化才落盘。返回各板块条目数 + 新登记名单（added，供章末摘要） */
+export function registerWorkflowStructure(book: string, data: WorkflowExtract): Record<string, number | { added: string[] }> {
+  const result: Record<string, number | { added: string[] }> = { dict: -1, realms: -1, mapNodes: -1, graphNodes: -1 }
 
   if (Array.isArray(data.dict) && data.dict.length) {
     const prev = readDict(book)
@@ -1046,7 +1048,9 @@ export function registerWorkflowStructure(book: string, data: WorkflowExtract): 
     if (prev.length !== merged.length || renderDictText(prev) !== renderDictText(merged)) {
       writeJson(book, STRUCTURED_FILES.dict, { entries: merged })
     }
+    const prevTerms = new Set(prev.map((e) => e.term))
     result.dict = merged.length
+    result.dictAdded = { added: merged.filter((e) => !prevTerms.has(e.term)).map((e) => e.term).slice(0, 20) }
   }
 
   if (data.power && (Array.isArray(data.power.realms) || data.power.rules)) {
@@ -1058,6 +1062,8 @@ export function registerWorkflowStructure(book: string, data: WorkflowExtract): 
       writeJson(book, STRUCTURED_FILES.power, merged)
     }
     result.realms = merged.realms.length
+    const prevRealms = new Set(prev.realms.map((r) => r.name))
+    result.realmsAdded = { added: merged.realms.filter((r) => !prevRealms.has(r.name)).map((r) => r.name).slice(0, 20) }
   }
 
   if (Array.isArray(data.maps) && data.maps.length) {
@@ -1066,7 +1072,9 @@ export function registerWorkflowStructure(book: string, data: WorkflowExtract): 
     if (prev.length !== merged.length || renderMapsText(prev) !== renderMapsText(merged)) {
       writeJson(book, STRUCTURED_FILES.map, { maps: merged })
     }
+    const prevNodes = new Set(prev.flatMap((m) => m.nodes.map((n) => n.label)))
     result.mapNodes = merged.reduce((n, m) => n + (m.nodes?.length || 0), 0)
+    result.mapAdded = { added: merged.flatMap((m) => m.nodes.map((n) => n.label)).filter((n) => !prevNodes.has(n)).slice(0, 20) }
   }
 
   if (data.graph && Array.isArray(data.graph.nodes) && data.graph.nodes.length) {
@@ -1075,8 +1083,9 @@ export function registerWorkflowStructure(book: string, data: WorkflowExtract): 
     if (renderCharGraphText(prev.nodes, prev.edges) !== renderCharGraphText(merged.nodes, merged.edges)) {
       writeJson(book, STRUCTURED_FILES.charGraph, merged)
     }
+    const prevNames = new Set(prev.nodes.map((n) => n.name))
     result.graphNodes = merged.nodes.length
-    result.graphEdges = merged.edges.length
+    result.graphAdded = { added: merged.nodes.map((n) => n.name).filter((n) => !prevNames.has(n)).slice(0, 20) }
   }
 
   return result

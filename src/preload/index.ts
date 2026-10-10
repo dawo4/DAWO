@@ -36,8 +36,10 @@ const api = {
 
   importPick: () => ipcRenderer.invoke('import:pick'),
   importPickText: () => ipcRenderer.invoke('import:pickText'),
+  importMigrate: (mode: 'each' | 'merge', mergeTitle: string) => ipcRenderer.invoke('import:migrate', mode, mergeTitle),
   importFile: (book: string, filePath: string) => ipcRenderer.invoke('import:file', book, filePath),
   openLibrary: () => ipcRenderer.invoke('app:openLibrary'),
+  presetLastUpdate: () => ipcRenderer.invoke('preset:lastUpdate'),
 
   promptsList: () => ipcRenderer.invoke('prompts:list'),
   promptsGet: (id: string) => ipcRenderer.invoke('prompts:get', id),

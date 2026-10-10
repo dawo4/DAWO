@@ -51,13 +51,14 @@ export function ensureLibraries(): void {
  * 安装包内置预置库（resources/preset-libraries/{skills,materials}/分组/条目.md）补缺：
  * - 首次启动（纯净安装）把预置的技能与素材写入用户库
  * - 已存在的条目绝不覆盖（保留用户改动）；被用户删除的条目也不会复活（种子标记按路径记录）
- * - 应用升级自带新条目时会自动补入
+ * - 应用升级自带新条目时会自动补入（补入清单落盘，资源库页可感知）
  */
-export function seedPresetLibraries(): void {
+export function seedPresetLibraries(): { added: string[] } {
+  const added: string[] = []
   const base = app.isPackaged
     ? join(process.resourcesPath, 'preset-libraries')
     : join(app.getAppPath(), 'resources', 'preset-libraries')
-  if (!existsSync(base)) return
+  if (!existsSync(base)) return { added }
   const markPath = join(app.getPath('userData'), 'preset-libs-seeded.json')
   let mark: Record<string, true> = {}
   try {
@@ -79,7 +80,10 @@ export function seedPresetLibraries(): void {
         const relKey = `${kind}/${group}/${f}`
         const target = join(dest, group, f)
         if (mark[relKey]) continue // 这条预置之前已处理过（用户删了也不复活）
-        if (!existsSync(target)) copyFileSync(join(gdir, f), target)
+        if (!existsSync(target)) {
+          copyFileSync(join(gdir, f), target)
+          added.push(`${kind === 'skills' ? '技能' : '素材'}/${group}/${f.replace(/\.md$/, '')}`)
+        }
         mark[relKey] = true
         dirty = true
       }
@@ -91,6 +95,31 @@ export function seedPresetLibraries(): void {
     } catch {
       /* 标记写失败只是下次启动会重复补缺，无实害 */
     }
+  }
+  if (added.length) {
+    // 补入记录落盘（资源库页展示「最近更新」），保留最近一次
+    try {
+      writeFileSync(
+        join(app.getPath('userData'), 'preset-libs-last.json'),
+        JSON.stringify({ at: new Date().toISOString(), added }, null, 2),
+        'utf8'
+      )
+    } catch {
+      /* 记录写失败无实害 */
+    }
+  }
+  return { added }
+}
+
+/** 上次预置库补入记录（资源库页展示） */
+export function lastPresetUpdate(): { at: string; added: string[] } | null {
+  try {
+    const p = join(app.getPath('userData'), 'preset-libs-last.json')
+    if (!existsSync(p)) return null
+    const r = JSON.parse(readFileSync(p, 'utf8')) as { at: string; added: string[] }
+    return r.added?.length ? r : null
+  } catch {
+    return null
   }
 }
 

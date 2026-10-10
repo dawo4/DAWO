@@ -58,6 +58,12 @@ export interface AppConfig {
     glow: boolean
     orbs: boolean
     particles: boolean
+    /** 按压波纹动效 */
+    press: boolean
+    /** 页面切换淡入 */
+    pageFade: boolean
+    /** 卡片浮升入场 */
+    cardRise: boolean
   }
   activeBook: string | null
 }
@@ -162,8 +168,8 @@ export function updateConfig(patch: Record<string, unknown>): AppConfig {
     }
     return out
   }
-  cfg = merge(d, cfg) as AppConfig
-  cfg = merge(cfg, patch) as AppConfig
+  cfg = merge(d as unknown as Record<string, unknown>, cfg as unknown as Record<string, unknown>) as unknown as AppConfig
+  cfg = merge(cfg as unknown as Record<string, unknown>, patch) as unknown as AppConfig
   saveConfig()
   return cfg
 }

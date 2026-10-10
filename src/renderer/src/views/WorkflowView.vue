@@ -365,6 +365,21 @@ async function generateChapters() {
     } else {
       liveLabel.value = `第 ${no} 章 · 文件已存在，跳过写盘`
     }
+    // 3.5 章末登记 + 摘要（可开关）：登记员提取本章新专名/境界/关系/地图增量入库，diff 转人话摘要落盘；失败不阻塞生文
+    if (registerEnabled.value && genText.value.trim() && !paused.value) {
+      liveLabel.value = `第 ${no} 章 · 登记与摘要`
+      try {
+        const regAborter = aiRun('workflow', 'wf-structure-extract', { source: `【本章正文】\n${genText.value.slice(0, 30000)}` })
+        const full = await regAborter.promise
+        const m = full.match(/\{[\s\S]*\}/)
+        if (m) {
+          const reg = (await window.api.structureRegister(lib.current.title, JSON.parse(m[0]))) as Record<string, unknown>
+          await appendChapterSummary(no, beatTitle(beat), genText.value.replace(/\s/g, '').length, buildChapterSummary(reg))
+        }
+      } catch {
+        /* 登记失败不阻塞逐章生文 */
+      }
+    }
     const w = { ...wf.value, chapterCursor: no + 1 }
     w.completed = [...(w.completed || [])]
     w.completed[no] = true
@@ -409,6 +424,41 @@ async function memoryBlock(): Promise<string> {
 const TRIM_KEY = 'inkdesk.wf.trim'
 const trimEnabled = ref(localStorage.getItem(TRIM_KEY) !== '0')
 watch(trimEnabled, (v) => localStorage.setItem(TRIM_KEY, v ? '1' : '0'))
+
+// ============ 章末登记与摘要：每章写完资料登记员提取增量入库，diff 转人话摘要落盘 ============
+const REGISTER_KEY = 'inkdesk.wf.register'
+const registerEnabled = ref(localStorage.getItem(REGISTER_KEY) !== '0')
+watch(registerEnabled, (v) => localStorage.setItem(REGISTER_KEY, v ? '1' : '0'))
+
+function buildChapterSummary(reg: Record<string, unknown>): string {
+  const addedOf = (k: string): string[] => ((reg[k] as { added?: string[] } | undefined)?.added || [])
+  const lines: string[] = []
+  const dict = addedOf('dictAdded')
+  if (dict.length) lines.push(`新登记专名 ${dict.length} 个：${dict.join('、')}`)
+  const realms = addedOf('realmsAdded')
+  if (realms.length) lines.push(`新增境界：${realms.join('、')}`)
+  const graph = addedOf('graphAdded')
+  if (graph.length) lines.push(`关系图新节点：${graph.join('、')}`)
+  const map = addedOf('mapAdded')
+  if (map.length) lines.push(`地图新地点：${map.join('、')}`)
+  return lines.join('；') || '本章无新增登记'
+}
+
+/** 章末摘要落盘：报告/章末摘要.md 按章小节幂等覆盖 */
+async function appendChapterSummary(no: number, title: string, chars: number, summary: string) {
+  try {
+    const rel = '报告/章末摘要.md'
+    const old = await window.api.fileRead(lib.current!.title, rel).catch(() => '')
+    const key = `## 第 ${String(no).padStart(3, '0')} 章`
+    const date = new Date().toISOString().slice(5, 10)
+    const section = `${key} ${title}\n\n${date} · 约 ${chars} 字\n\n${summary}\n\n`
+    const re = new RegExp(`${key}[\\s\\S]*?(?=\\n## 第 |$)`)
+    const next = re.test(old) ? old.replace(re, section) : (old ? old.replace(/\s*$/, '\n\n') : '') + section
+    await window.api.fileWrite(lib.current!.title, rel, next)
+  } catch {
+    /* 摘要写失败不影响生文 */
+  }
+}
 
 /** 大纲按卷切：取「总述部分 + 当前章所在卷」。卷边界按「第X卷」标题切，章节范围按标题里的数字区间认领；认不出就均匀估算；解析失败回退全文 */
 function sliceOutlineByVolume(outline: string, chapterNo: number, total: number): string {
@@ -630,6 +680,15 @@ async function resetWorkflow() {
             @click="trimEnabled = !trimEnabled"
           >
             {{ trimEnabled ? '✓' : '' }} 裁剪注入
+          </button>
+          <button
+            class="px-3 py-1 text-[11.5px] rounded-full cursor-pointer transition-colors border"
+            :class="registerEnabled ? 'font-medium' : 'text-[var(--text-faint)]'"
+            :style="registerEnabled ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : { borderColor: 'var(--border)' }"
+            title="每章写完后资料登记员自动提取新专名/境界/关系/地图增量入库，并生成章末摘要（报告/章末摘要.md）"
+            @click="registerEnabled = !registerEnabled"
+          >
+            {{ registerEnabled ? '✓' : '' }} 章末登记
           </button>
           <span v-if="liveLabel" class="text-sm" style="color: var(--accent)">{{ liveLabel }}</span>
         </div>

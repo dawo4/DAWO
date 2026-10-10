@@ -1,6 +1,6 @@
 export interface AppConfig {
   libraryRoot: string
-  providers: { id: string; name: string; baseUrl: string; apiKey: string }[]
+  providers: { id: string; name: string; baseUrl: string; apiKey: string; /** 支持图片理解（多模态） */ vision?: boolean; /** 上下文窗口自动识别失败时手填 */ contextSize?: number }[]
   tasks: Record<string, { providerId: string; model: string; temperature: number }>
   agentParams: {
     thinkingLevel: 'off' | 'low' | 'medium' | 'high'

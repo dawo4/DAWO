@@ -25,20 +25,20 @@ export interface CharacterSection {
 /** 把整包角色卡文本按 # 标题拆成一人一节；没有任何标题结构时返回空数组（调用方回退整文件写） */
 export function splitCharacterText(text: string): CharacterSection[] {
   const lines = text.split(/\r?\n/)
-  const sections: CharacterSection[] = []
+  const raw: { name: string; lines: string[] }[] = []
   let cur: { name: string; lines: string[] } | null = null
   const headRe = /^#{1,4}\s*(.+?)\s*$/
   for (const line of lines) {
     const m = line.match(headRe)
     if (m) {
-      if (cur) sections.push(cur)
+      if (cur) raw.push(cur)
       cur = { name: sanitizeName(m[1]), lines: [line] }
     } else if (cur) {
       cur.lines.push(line)
     }
   }
-  if (cur) sections.push(cur)
-  return sections
+  if (cur) raw.push(cur)
+  return raw
     .map((s) => ({ name: s.name, content: s.lines.join('\n').trim() + '\n' }))
     .filter((s) => s.name.length >= 1)
 }

@@ -313,6 +313,11 @@ export function importToBook(book: string, filePath: string): { file: string; ch
   const content = readTextAuto(filePath)
   const name = filePath.split(/[\\/]/).pop() || '导入'
   const base = safeFileName(name.replace(/\.(txt|md)$/i, ''))
+  return importContentToBook(book, base, content)
+}
+
+/** 把已读出的文本导入书内（大文件含章节结构时自动拆章），供文件导入与迁移向导共用 */
+export function importContentToBook(book: string, base: string, content: string): { file: string; chapters?: number } {
 
   // 大文件且含章节结构时自动拆分：整本 18MB 塞进一个文件，编辑器根本打不开
   if (content.length > 200_000) {
@@ -334,6 +339,86 @@ export function importToBook(book: string, filePath: string): { file: string; ch
 
   writeTextFile(book, join('正文', `${base}.md`), content)
   return { file: join('正文', `${base}.md`) }
+}
+
+// ============ 迁移向导：散落的外部书稿（txt/md/docx 多选）归类成书 ============
+
+/** 多选外部书稿文件 */
+export async function pickMigrateFiles(win: Electron.BrowserWindow): Promise<string[] | null> {
+  const r = await dialog.showOpenDialog(win, {
+    title: '选择要迁移的书稿（可多选）',
+    filters: [{ name: '书稿文本', extensions: ['txt', 'md', 'docx'] }],
+    properties: ['openFile', 'multiSelections']
+  })
+  return r.canceled || !r.filePaths.length ? null : r.filePaths
+}
+
+/** 读外部文档：txt/md 走编码探测，docx 走 mammoth 提取纯文本 */
+async function readExternalDoc(p: string): Promise<{ name: string; text: string }> {
+  const name = (p.split(/[\\/]/).pop() || '导入').replace(/\.(txt|md|docx)$/i, '')
+  if (/\.docx$/i.test(p)) {
+    const mammoth = await import('mammoth')
+    const r = await mammoth.extractRawText({ path: p })
+    return { name, text: (r.value || '').replace(/\n{3,}/g, '\n\n').trim() }
+  }
+  return { name, text: readTextAuto(p) }
+}
+
+/**
+ * 迁移向导执行：多选文件 → 归类成书。
+ * mode 'each'：每个文件一本书（书名 = 文件名，重名自动加序号）
+ * mode 'merge'：全部并入一本书（书名 = mergeTitle，已存在则直接用；内容按文件名顺序拼接后统一拆章）
+ */
+export async function migrateImport(
+  win: Electron.BrowserWindow,
+  mode: 'each' | 'merge',
+  mergeTitle: string
+): Promise<{ books: string[]; chapters: number; errors: string[] }> {
+  const paths = await pickMigrateFiles(win)
+  if (!paths) return { books: [], chapters: 0, errors: [] }
+  const books: string[] = []
+  const errors: string[] = []
+  let chapters = 0
+
+  if (mode === 'merge') {
+    const title = safeFileName(mergeTitle || '迁移作品')
+    if (!existsSync(join(libraryRoot, title))) {
+      createBook({ title, genre: '导入作品' })
+    }
+    const docs: { name: string; text: string }[] = []
+    for (const p of paths) {
+      try {
+        const d = await readExternalDoc(p)
+        if (d.text.trim()) docs.push(d)
+      } catch (e) {
+        errors.push(`${(p.split(/[\\/]/).pop() || p)}：${(e as Error).message}`)
+      }
+    }
+    docs.sort((a, b) => a.name.localeCompare(b.name, 'zh', { numeric: true }))
+    if (!docs.length) return { books: [], chapters: 0, errors }
+    const joined = docs.map((d) => d.text).join('\n\n')
+    const r = importContentToBook(title, safeFileName(docs[0].name), joined)
+    chapters = r.chapters || 1
+    books.push(title)
+    return { books, chapters, errors }
+  }
+
+  for (const p of paths) {
+    try {
+      const d = await readExternalDoc(p)
+      if (!d.text.trim()) continue
+      let title = safeFileName(d.name)
+      let n = 2
+      while (existsSync(join(libraryRoot, title))) title = `${safeFileName(d.name)}（${n++}）`
+      createBook({ title, genre: '导入作品' })
+      const r = importContentToBook(title, safeFileName(d.name), d.text)
+      chapters += r.chapters || 1
+      books.push(title)
+    } catch (e) {
+      errors.push(`${(p.split(/[\\/]/).pop() || p)}：${(e as Error).message}`)
+    }
+  }
+  return { books, chapters, errors }
 }
 
 export async function pickImportFile(win: Electron.BrowserWindow): Promise<string | null> {

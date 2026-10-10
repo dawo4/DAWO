@@ -1,6 +1,6 @@
 {
   "name": "inkdesk",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "DAWO — AI 小说写作工作台",
   "main": "out/main/index.js",
   "author": "DAWO",
@@ -8,6 +8,8 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "node scripts/run-tests.cjs",
     "dist": "electron-vite build && electron-builder --win --publish=never"
   },
   "devDependencies": {
@@ -32,6 +34,7 @@
     "@vue-flow/core": "^1.42.1",
     "electron-updater": "^6.8.9",
     "lucide-vue-next": "^0.460.0",
+    "mammoth": "^1.13.0",
     "marked": "^18.0.14",
     "pinia": "^2.3.0",
     "vue": "^3.5.13"

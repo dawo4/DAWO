@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useAppStore } from '../store/app'
 import { useLibraryStore } from '../store/library'
-import { BookOpen, Brain, Check, ChevronRight, Feather, FileSearch, House, LayoutGrid, Lightbulb, Plus, SquarePen, UserRound, Wand2, Workflow } from 'lucide-vue-next'
+import { BookOpen, Brain, Check, ChevronRight, Feather, FileSearch, House, LayoutGrid, Lightbulb, Plus, SquarePen, UserRound, Wand2, Workflow, BarChart3, TrendingUp } from 'lucide-vue-next'
 
 const app = useAppStore()
 const lib = useLibraryStore()
@@ -115,9 +115,26 @@ async function load() {
       cur.setDate(cur.getDate() - 1)
     } else break
   }
+  // 看板：最近 14 天趋势 + 全部作品字数排行
+  const trend: { date: string; label: string; total: number }[] = []
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const key = d.toISOString().slice(0, 10)
+    trend.push({ date: key, label: `${d.getMonth() + 1}/${d.getDate()}`, total: daysAll[key] || 0 })
+  }
+  trend14.value = trend
+  bookRanking.value = [...cards].sort((a, b) => b.words - a.words).slice(0, 5)
   // 数据到位后，让进度条从 0 涨上去
   void nextTick(() => requestAnimationFrame(() => (barReady.value = true)))
 }
+
+// ============ 看板 ============
+const trend14 = ref<{ date: string; label: string; total: number }[]>([])
+const bookRanking = ref<BookCard[]>([])
+const trendMax = computed(() => Math.max(1, ...trend14.value.map((t) => t.total)))
+const trend14Total = computed(() => trend14.value.reduce((a, t) => a + t.total, 0))
+const rankMax = computed(() => Math.max(1, ...bookRanking.value.map((b) => b.words)))
 
 // ============ 动作 ============
 function openBook(title: string) {
@@ -312,6 +329,57 @@ onMounted(() => void load())
             <Check v-if="noteSaved" :size="13" style="color: var(--accent)" class="ok-pulse" />
             {{ noteSaved ? '已存入灵感便签' : '记下来' }}
           </button>
+        </div>
+      </div>
+
+      <!-- 创作看板：最近 14 天趋势 + 作品字数排行 -->
+      <div class="rise-in grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 mb-8" style="animation-delay: 240ms">
+        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4" style="box-shadow: var(--shadow)">
+          <div class="flex items-center gap-1.5 mb-3">
+            <TrendingUp :size="14" :style="{ color: 'var(--accent)' }" />
+            <span class="text-[13px] font-medium">最近 14 天</span>
+            <div class="flex-1" />
+            <span class="text-[10.5px] text-[var(--text-faint)]">合计 {{ fmtWords(trend14Total) }}</span>
+          </div>
+          <div class="flex items-end gap-[3px] h-[72px]">
+            <div
+              v-for="t in trend14"
+              :key="t.date"
+              class="flex-1 rounded-t transition-all duration-500 relative group cursor-default"
+              :style="{
+                height: barReady ? Math.max(3, (t.total / trendMax) * 100) + '%' : '3%',
+                background: t.total > 0 ? 'var(--accent)' : 'var(--bg-soft)',
+                opacity: t.total > 0 ? (t.date === trend14[trend14.length - 1]?.date ? 1 : 0.55) : 1
+              }"
+              :title="`${t.label}：${t.total} 字`"
+            >
+              <span class="absolute -top-5 left-1/2 -translate-x-1/2 text-[9.5px] text-[var(--text-dim)] opacity-0 group-hover:opacity-100 whitespace-nowrap tabular-nums">{{ t.total }} 字</span>
+            </div>
+          </div>
+          <div class="flex justify-between mt-1.5 text-[9.5px] text-[var(--text-faint)]">
+            <span>{{ trend14[0]?.label }}</span>
+            <span>{{ trend14[6]?.label }}</span>
+            <span>今天</span>
+          </div>
+        </div>
+        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4" style="box-shadow: var(--shadow)">
+          <div class="flex items-center gap-1.5 mb-3">
+            <BarChart3 :size="14" :style="{ color: 'var(--accent)' }" />
+            <span class="text-[13px] font-medium">作品字数排行</span>
+          </div>
+          <p v-if="!bookRanking.length" class="text-[11.5px] text-[var(--text-faint)]">还没有作品数据。</p>
+          <div v-else class="space-y-2.5">
+            <div v-for="b in bookRanking" :key="b.title" class="cursor-pointer group" @click="openBook(b.title)">
+              <div class="flex items-baseline gap-2 text-[12px]">
+                <span class="truncate max-w-[55%] group-hover:text-[var(--accent)] transition-colors">{{ b.title }}</span>
+                <span class="text-[10px] text-[var(--text-faint)] truncate">{{ b.genre }}</span>
+                <span class="ml-auto text-[10.5px] text-[var(--text-dim)] tabular-nums">{{ fmtWords(b.words) }}</span>
+              </div>
+              <div class="h-[4px] rounded-full mt-1 overflow-hidden" style="background: var(--bg-soft)">
+                <div class="h-full rounded-full transition-all duration-700" style="background: var(--accent); opacity: 0.7" :style="{ width: barReady ? (b.words / rankMax) * 100 + '%' : '0%' }" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

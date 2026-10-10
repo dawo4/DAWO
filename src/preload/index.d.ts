@@ -30,8 +30,10 @@ declare global {
       statsRecord: (book: string, rel: string, len: number) => Promise<void>
       importPick: () => Promise<string | null>
       importPickText: () => Promise<{ name: string; text: string } | null>
+      importMigrate: (mode: 'each' | 'merge', mergeTitle: string) => Promise<{ books: string[]; chapters: number; errors: string[] }>
       importFile: (book: string, filePath: string) => Promise<void>
       openLibrary: () => Promise<void>
+      presetLastUpdate: () => Promise<{ at: string; added: string[] } | null>
       promptsList: () => Promise<string[]>
       promptsGet: (id: string) => Promise<string>
       promptsSave: (id: string, content: string) => Promise<void>
