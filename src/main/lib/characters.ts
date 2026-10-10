@@ -1,6 +1,6 @@
 // 角色「一人一档」：旧版全部角色卡堆在 角色/角色设定.md 单文件里，AI 改一个角色要重写整文件（冲突/覆盖/大 diff）。
 // 这里提供：旧文件自动拆分迁移（一人一档，原文件留 .bak）、整包文本拆分落盘、聚合读取。
-import { existsSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { getLibraryRoot, listBooks, readTextFile } from './library'
 

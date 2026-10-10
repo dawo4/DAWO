@@ -213,12 +213,16 @@ async function confirmOutline() {
 async function confirmCharacters() {
   if (!genText.value.trim()) return
   // 一人一档：按「# 角色名」标题拆成单卡落盘（同名覆盖）；拆不出结构时整包存 角色/角色设定.md
-  const r = await window.api.charactersSaveSplit(lib.current!.title, genText.value)
-  await lib.refreshTree()
-  await persistStep(3)
-  charStepNote.value = r.legacy
-    ? '角色卡没有按「# 角色名」分节，已整包存入 角色/角色设定.md（下次启动会尝试自动拆分）'
-    : `已按一人一档落盘 ${r.count} 张角色卡（角色/ 目录，同名卡以本次为准）`
+  try {
+    const r = await window.api.charactersSaveSplit(lib.current!.title, genText.value)
+    await lib.refreshTree()
+    await persistStep(3)
+    charStepNote.value = r.legacy
+      ? '角色卡没有按「# 角色名」分节，已整包存入 角色/角色设定.md（下次启动会尝试自动拆分）'
+      : `已按一人一档落盘 ${r.count} 张角色卡（角色/ 目录，同名卡以本次为准）`
+  } catch (e) {
+    error.value = `角色卡保存失败：${(e as Error).message}`
+  }
 }
 /** 角色步确认后的落盘提示（一人一档拆了几张 / 回退整包） */
 const charStepNote = ref('')
