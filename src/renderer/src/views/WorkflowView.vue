@@ -66,6 +66,9 @@ const genHtml = computed(() => renderMarkdown(genText.value))
 const refOutline = ref('') // 大纲文本（角色/设定步骤引用）
 const running = ref(false)
 const liveLabel = ref('')
+/** 向导步骤生成耗时（推理模型思考期可能长达一两分钟，要有感知） */
+const elapsed = ref(0)
+let elapsedTimer: ReturnType<typeof setInterval> | null = null
 const chapterTotal = ref(12)
 // 按总字数估算章数：总字数（万）÷ 单章字数（千字），填了自动换算
 const estWan = ref<number | null>(null)
@@ -108,7 +111,7 @@ async function detectExisting() {
   const firstMissing = existing.value.findIndex((v) => !v)
   const target = firstMissing === -1 ? 4 : firstMissing
   if (wf.value.step < target && wf.value.step <= 3) {
-    await lib.saveMeta({ workflow: { ...wf.value, step: target } })
+    await lib.saveMeta({ workflow: { ...plainWf(), step: target } })
   }
 }
 
@@ -139,10 +142,16 @@ watch(cur, async () => {
   }
 }, { immediate: true })
 
-async function persistStep(step: number) {
+/** 工作流对象的纯数据副本：Pinia 响应式代理（含 completed 数组）不能直接过 IPC 结构化克隆 */
+function plainWf() {
   const w = { ...wf.value }
-  w.step = step
   w.completed = [...(w.completed || [])]
+  return w
+}
+
+async function persistStep(step: number) {
+  const w = plainWf()
+  w.step = step
   while (w.completed.length < step) w.completed.push(true)
   w.completed[step - 1] = true
   if (step === 5) w.chapterTotal = chapterTotal.value
@@ -153,6 +162,9 @@ async function runPrompt(promptId: string, vars: Record<string, string>, task = 
   running.value = true
   error.value = ''
   genText.value = ''
+  elapsed.value = 0
+  if (elapsedTimer) clearInterval(elapsedTimer)
+  elapsedTimer = setInterval(() => elapsed.value++, 1000)
   // 作者引用的技能 / 素材 / 灵感随生成注入
   const finalVars = { ...vars }
   const target = REF_TARGET[promptId]
@@ -206,6 +218,10 @@ async function runPrompt(promptId: string, vars: Record<string, string>, task = 
     clearInterval(watchdog)
     running.value = false
     aborter = null
+    if (elapsedTimer) {
+      clearInterval(elapsedTimer)
+      elapsedTimer = null
+    }
     if (liveLabel.value.includes('秒无响应')) liveLabel.value = labelBase
   }
 }
@@ -310,12 +326,12 @@ async function registerStructure() {
 }
 
 function back() {
-  if (wf.value.step > 0) lib.saveMeta({ workflow: { ...wf.value, step: wf.value.step - 1 } })
+  if (wf.value.step > 0) lib.saveMeta({ workflow: { ...plainWf(), step: wf.value.step - 1 } })
 }
 function jumpStep(i: number) {
   // 允许落在：当前及之前、已确认完成的、或磁盘上已有内容的步骤（自由跳转）
   if (i <= cur.value || wf.value.completed?.[i - 1] || existing.value[i]) {
-    lib.saveMeta({ workflow: { ...wf.value, step: i } })
+    lib.saveMeta({ workflow: { ...plainWf(), step: i } })
   }
 }
 
@@ -688,7 +704,10 @@ async function resetWorkflow() {
             </span>
           </div>
         </div>
-        <div v-if="running" class="ink-dots py-2"><span /><span /><span /></div>
+        <div v-if="running" class="py-2 flex items-center gap-2 text-[12px] text-[var(--text-dim)]">
+          <span class="ink-dots"><span /><span /><span /></span>
+          <span>已用 {{ elapsed }} 秒{{ liveLabel ? ` · ${liveLabel}` : ' · 生成中' }}，推理模型思考期可能较长</span>
+        </div>
         <div v-if="error" class="text-sm text-[#e08a7a]">{{ error }}</div>
         <div v-if="genText">
           <div class="text-sm mb-1.5 text-[var(--text-dim)]">{{ ['', '大纲', '角色卡', '设定集'][cur] }}（可修改）</div>
