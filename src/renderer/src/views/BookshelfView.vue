@@ -402,6 +402,10 @@ onUnmounted(() => {
       <!-- 问候与概览 -->
       <div class="mb-7 flex items-start justify-between gap-4">
         <div>
+          <div class="flex items-center gap-2.5 mb-2">
+            <span class="h-px w-7" style="background: var(--accent)" />
+            <span class="text-[10.5px] tracking-[0.22em] text-[var(--text-faint)]">书架</span>
+          </div>
           <h1 class="font-serif-ink text-2xl mb-1.5">{{ greeting }}</h1>
           <div class="flex gap-6 text-[12.5px] text-[var(--text-dim)]">
             <span>作品 <b style="color: var(--accent)">{{ lib.books.length }}</b></span>
@@ -457,8 +461,8 @@ onUnmounted(() => {
         <BookOpen :size="40" class="mx-auto mb-4 opacity-40" />
         <p class="text-[13px]">书架空空如也</p>
         <button
-          class="mt-4 text-[13px] px-4 py-2 rounded-lg cursor-pointer text-[#1b1712] font-medium"
-          :style="{ background: 'var(--accent)' }"
+          class="mt-4 text-[13px] px-4 py-2 rounded-lg cursor-pointer text-[#1b1712] font-medium transition-[filter,box-shadow] hover:brightness-110"
+          style="background: var(--accent); box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 20%, transparent)"
           @click="openCreate"
         >
           <Plus :size="13" class="inline -mt-0.5 mr-1" />创建第一部作品
@@ -758,8 +762,8 @@ onUnmounted(() => {
             取消
           </button>
           <button
-            class="text-[13px] px-6 py-2 rounded-lg cursor-pointer font-medium inline-flex items-center gap-1.5 text-[#1b1712]"
-            :style="{ background: 'var(--accent)' }"
+            class="text-[13px] px-6 py-2 rounded-lg cursor-pointer font-medium inline-flex items-center gap-1.5 text-[#1b1712] transition-[filter,box-shadow] hover:brightness-110"
+            style="background: var(--accent); box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 20%, transparent)"
             @click="create"
           >
             <PenLine :size="14" /> {{ editingBook ? '保存' : '落笔' }}

@@ -270,8 +270,9 @@ function scopeText(scope: string[]): string {
           <div
             v-for="a in customList"
             :key="a.id"
-            class="rounded-xl border bg-[var(--panel)] p-4"
+            class="rounded-xl border bg-[var(--panel)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow)]"
             :class="a.enabled ? 'border-[var(--accent)]' : 'border-[var(--border)]'"
+            :style="a.enabled ? { background: 'color-mix(in srgb, var(--accent) 4%, var(--panel))' } : {}"
           >
             <div class="flex items-center gap-2 mb-1.5">
               <span class="text-[14px] font-medium">{{ a.name }}</span>

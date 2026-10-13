@@ -255,8 +255,9 @@ watch(
       <div
         v-for="r in reports"
         :key="r.path"
-        class="w-full text-left px-4 py-2 cursor-pointer transition-colors group flex items-center gap-2"
-        :class="activePath === r.path ? 'bg-[var(--panel-2)]' : 'hover:bg-[var(--hover)]'"
+        class="w-full text-left px-4 py-2 cursor-pointer transition-colors group flex items-center gap-2 border-l-2"
+        :class="activePath === r.path ? '' : 'border-transparent hover:bg-[var(--hover)]'"
+        :style="activePath === r.path ? { borderColor: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 8%, transparent)' } : {}"
         @click="openReport(r)"
       >
         <FileText :size="13" :style="{ color: 'var(--accent)' }" class="shrink-0" />
