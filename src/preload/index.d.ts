@@ -113,7 +113,7 @@ declare global {
       outlineUpsert: (book: string, patch: Record<string, unknown>) => Promise<unknown[]>
       outlineSetStatus: (book: string, no: number, status: string) => Promise<unknown[]>
       charGraphRead: (book: string) => Promise<unknown>
-      structureRegister: (book: string, payload: unknown) => Promise<Record<string, number>>
+      structureRegister: (book: string, payload: unknown) => Promise<Record<string, number | { added: string[] }>>
       panelsList: (book: string) => Promise<unknown[]>
       panelsAdd: (book: string, input: { name: string; fields?: { key: string; label: string; type: string }[] }) => Promise<unknown>
       panelsRename: (book: string, id: string, name: string) => Promise<unknown[]>

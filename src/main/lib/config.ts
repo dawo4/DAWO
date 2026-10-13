@@ -169,7 +169,9 @@ export function updateConfig(patch: Record<string, unknown>): AppConfig {
     return out
   }
   cfg = merge(d as unknown as Record<string, unknown>, cfg as unknown as Record<string, unknown>) as unknown as AppConfig
-  cfg = merge(cfg as unknown as Record<string, unknown>, patch) as unknown as AppConfig
+  // patch 用浅合并：渲染层传的 Record 类字段（modelContexts/providerSearch 等映射表）都是完整对象，
+  // 深合并会让「删除的键」在主进程配置里静默复活
+  cfg = { ...cfg, ...patch } as unknown as AppConfig
   saveConfig()
   return cfg
 }

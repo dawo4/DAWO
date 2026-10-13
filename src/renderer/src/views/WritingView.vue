@@ -261,15 +261,21 @@ async function flushSave() {
   const delta = content.value.length - savedLen.value
   saving.value = true
   app.setSaveState(true, '保存中…')
-  await window.api.fileWrite(lib.current.title, currentFile.value, content.value)
-  if (delta > 0) {
-    await window.api.statsAdd(lib.current.title, aiTouched.value ? 0 : delta, aiTouched.value ? delta : 0)
-    stats.value = await lib.todayStats()
+  try {
+    await window.api.fileWrite(lib.current.title, currentFile.value, content.value)
+    if (delta > 0) {
+      await window.api.statsAdd(lib.current.title, aiTouched.value ? 0 : delta, aiTouched.value ? delta : 0)
+      stats.value = await lib.todayStats()
+    }
+    savedLen.value = content.value.length
+    aiTouched.value = false
+    app.setSaveState(false, `已保存 · ${content.value.length} 字`)
+  } catch (e) {
+    // 保存失败必须显性反馈并复位状态，否则顶栏永远「保存中…」
+    app.setSaveState(false, `保存失败：${(e as Error).message}`)
+  } finally {
+    saving.value = false
   }
-  savedLen.value = content.value.length
-  aiTouched.value = false
-  saving.value = false
-  app.setSaveState(false, `已保存 · ${content.value.length} 字`)
 }
 
 let openSeq = 0
@@ -279,9 +285,12 @@ async function openFile(rel: string) {
   if (currentFile.value) await flushSave()
   // 快速连点两章：过期的切换调用直接丢弃，防止旧章内容写进另一章
   if (seq !== openSeq) return
+  const text = await window.api.fileRead(lib.current.title, rel)
+  // 读取期间可能又被切走：过期响应不能落进编辑器（否则自动保存会把旧章内容写进新章文件）
+  if (seq !== openSeq) return
   currentFile.value = rel
   conv.activeFile = rel
-  content.value = await window.api.fileRead(lib.current.title, rel)
+  content.value = text
   if (seq !== openSeq) return
   savedLen.value = content.value.length
   loadedBook.value = lib.current.title

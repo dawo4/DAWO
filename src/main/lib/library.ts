@@ -267,8 +267,18 @@ export function listTree(book: string, rel = ''): TreeNode[] {
   return out.sort((a, b) => (a.dir === b.dir ? a.name.localeCompare(b.name, 'zh') : a.dir ? -1 : 1))
 }
 
+/** 书名 → 书内目录的安全解析：拒绝空名、点号相对路径与路径分隔符，防止越出书架根 */
+function safeBookDir(title: string): string {
+  const t = String(title || '')
+  if (!t || t === '.' || t === '..' || /[\\/:*?"<>|]/.test(t)) throw new Error('非法作品名')
+  const p = normalize(join(libraryRoot, t))
+  const root = normalize(libraryRoot)
+  if (p !== root && !p.startsWith(root + sep)) throw new Error('非法作品路径')
+  return p
+}
+
 export function deleteBook(title: string): void {
-  rmSync(join(libraryRoot, title), { recursive: true, force: true })
+  rmSync(safeBookDir(title), { recursive: true, force: true })
 }
 
 /** 重命名作品：目录名即书名，需要同步重命名目录并更新元信息 */
@@ -277,7 +287,7 @@ export function renameBook(oldTitle: string, newTitle: string): BookMeta {
   if (!to) throw new Error('新书名不能为空')
   if (/[\\/:*?"<>|]/.test(to) || to.includes('..')) throw new Error('书名不能包含 \\ / : * ? " < > | 等字符')
   if (to === oldTitle) return readBookMeta(oldTitle)
-  const from = join(libraryRoot, oldTitle)
+  const from = safeBookDir(oldTitle)
   if (!existsSync(from)) throw new Error('作品不存在')
   const dest = join(libraryRoot, to)
   if (existsSync(dest)) throw new Error('已存在同名作品')
@@ -567,9 +577,18 @@ export interface Stats {
 }
 
 export function readStats(book: string): Stats {
-  const p = safeResolve(book, join('.inkdesk', 'stats.json'))
-  if (existsSync(p)) return JSON.parse(readFileSync(p, 'utf-8'))
-  return { days: {}, prevCounts: {} }
+  try {
+    const p = safeResolve(book, join('.inkdesk', 'stats.json'))
+    if (!existsSync(p)) return { days: {}, prevCounts: {} }
+    const raw = JSON.parse(readFileSync(p, 'utf-8')) as Partial<Stats>
+    // 残缺 JSON 容错：写入中断后不至于统计功能整体死锁
+    return {
+      days: raw.days && typeof raw.days === 'object' ? raw.days : {},
+      prevCounts: raw.prevCounts && typeof raw.prevCounts === 'object' ? raw.prevCounts : {}
+    }
+  } catch {
+    return { days: {}, prevCounts: {} }
+  }
 }
 
 export function addStats(book: string, handwritten: number, ai: number): Stats {

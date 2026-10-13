@@ -67,15 +67,20 @@ function toggleAll() {
 function onEvent(evt: { runId: string; type: string; payload?: Record<string, unknown> }) {
   if (evt.runId !== runId.value) return
   const p = evt.payload || {}
-  const idx = typeof p.index === 'number' ? p.index : -1
-  if (evt.type === 'chapter-start' && idx >= 0) {
-    items.value[idx].status = 'run'
-  } else if (evt.type === 'chapter-proposal' && idx >= 0) {
-    items.value[idx].status = 'ok'
-    items.value[idx].proposal = p.proposal as EditProposal
-  } else if (evt.type === 'chapter-error' && idx >= 0) {
-    items.value[idx].status = 'error'
-    items.value[idx].error = String(p.error || '未知错误')
+  // 主进程发来的是勾选子集的下标，渲染层统一按 path 匹配章节行（子集≠全量列表，下标会错位）
+  const it = typeof p.path === 'string' ? items.value.find((x) => x.path === p.path) : undefined
+  if (evt.type === 'chapter-start') {
+    if (it) it.status = 'run'
+  } else if (evt.type === 'chapter-proposal') {
+    if (it) {
+      it.status = 'ok'
+      it.proposal = p.proposal as EditProposal
+    }
+  } else if (evt.type === 'chapter-error') {
+    if (it) {
+      it.status = 'error'
+      it.error = String(p.error || '未知错误')
+    }
   } else if (evt.type === 'batch-done') {
     running.value = false
     const done = Number(p.done || 0)
@@ -98,19 +103,25 @@ function start() {
   doneInfo.value = ''
   runId.value = `batch-${Date.now()}`
   running.value = true
-  void window.api.batchRevise({
-    runId: runId.value,
-    book: props.book,
-    chapters: checked.value.map((x) => ({ path: x.path, title: x.title })),
-    instruction: instruction.value.trim()
-  })
+  window.api
+    .batchRevise({
+      runId: runId.value,
+      book: props.book,
+      chapters: checked.value.map((x) => ({ path: x.path, title: x.title })),
+      instruction: instruction.value.trim()
+    })
+    .catch((e: Error) => {
+      // invoke 本身失败（参数/通道异常）时不会有任何事件兜底，必须就地复位
+      running.value = false
+      doneInfo.value = `启动失败：${e.message}`
+    })
 }
 
 function stop() {
   if (runId.value) void window.api.batchAbort(runId.value)
 }
 
-/** 事件监听：aiOnEvent 挂在 agent:event 通道上（批量事件也走这条通道） */
+/** 事件监听：agentOnEvent 挂在 agent:event 通道上（批量事件由主进程发在该通道） */
 let off: (() => void) | null = null
 watch(
   () => props.open,
@@ -118,7 +129,7 @@ watch(
     if (v) {
       loadChapters()
       doneInfo.value = ''
-      if (!off) off = window.api.aiOnEvent(onEvent)
+      if (!off) off = window.api.agentOnEvent(onEvent)
     } else if (running.value) {
       stop()
     }
@@ -133,13 +144,18 @@ onUnmounted(() => {
 /** 接受 / 拒绝：走全局提案 IPC；接受后通知写作台刷新对应文件 */
 async function decide(item: Item, accept: boolean) {
   if (!item.proposal) return
-  const r = accept
-    ? await window.api.proposalApply(item.proposal.id)
-    : await window.api.proposalReject(item.proposal.id)
-  item.status = accept ? 'applied' : 'rejected'
-  if (!accept) item.proposal = null
-  if (accept && r.ok) {
-    window.dispatchEvent(new CustomEvent('inkdesk:file-changed', { detail: { path: item.path } }))
+  try {
+    const r = accept
+      ? await window.api.proposalApply(item.proposal.id)
+      : await window.api.proposalReject(item.proposal.id)
+    item.status = accept ? 'applied' : 'rejected'
+    if (!accept) item.proposal = null
+    if (accept && r.ok) {
+      window.dispatchEvent(new CustomEvent('inkdesk:file-changed', { detail: { path: item.path } }))
+    }
+  } catch (e) {
+    item.error = `操作失败：${(e as Error).message}`
+    if (item.status === 'ok') item.status = 'error'
   }
 }
 

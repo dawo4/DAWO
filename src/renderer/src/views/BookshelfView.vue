@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAppStore } from '../store/app'
 import { useLibraryStore } from '../store/library'
 import { onHeaderAction } from '../ui/headerActions'
@@ -374,6 +374,12 @@ onMounted(async () => {
   await lib.loadBooks()
   await loadOverview()
   document.addEventListener('click', onDocClick)
+})
+
+// KeepAlive 缓存页：从写作台写了几个小时字回来，今日字数/连续创作/各书字数要重算
+onActivated(() => {
+  void lib.loadBooks()
+  void loadOverview()
 })
 
 /** 首页等页面请求书架页执行动作（跨视图，KeepAlive 下也能收到）；

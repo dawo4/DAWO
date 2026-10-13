@@ -42,28 +42,32 @@ async function load() {
   }
 }
 
-/** 选中快照：加载「快照 → 当前稿」的差异（回滚前先看清会丢掉什么） */
+/** 选中快照：加载「快照 → 当前稿」的差异（回滚前先看清会丢什么）。seq 守卫防慢返回的旧 diff 覆盖新选择 */
+let pickSeq = 0
 async function pick(v: { file: string; at: string }) {
   if (picked.value === v.file) {
     picked.value = ''
     diff.value = null
     return
   }
+  const seq = ++pickSeq
   picked.value = v.file
   diff.value = null
   if (!isChapter.value) return
   diffLoading.value = true
   try {
-    diff.value = (await window.api.historyDiff(props.book, props.rel, v.file)) as {
+    const d = (await window.api.historyDiff(props.book, props.rel, v.file)) as {
       hunks: DiffHunk[]
       additions: number
       deletions: number
       truncated: boolean
     }
+    if (seq !== pickSeq) return
+    diff.value = d
   } catch {
-    diff.value = null
+    if (seq === pickSeq) diff.value = null
   } finally {
-    diffLoading.value = false
+    if (seq === pickSeq) diffLoading.value = false
   }
 }
 

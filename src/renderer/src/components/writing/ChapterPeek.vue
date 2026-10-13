@@ -31,13 +31,18 @@ const knownCount = computed(() => chapters.value.filter((c) => c.words !== null)
 
 async function load() {
   if (!props.book) return
+  // 切书时 watch(book) 与 watch(currentFile) 会各触发一次，且旧书响应可能后到——过期结果直接丢弃
+  const seq = ++loadSeq
   try {
     const s = (await window.api.statsGet(props.book)) as { prevCounts?: Record<string, number> }
+    if (seq !== loadSeq) return
     counts.value = s?.prevCounts || {}
   } catch {
-    counts.value = {}
+    if (seq === loadSeq) counts.value = {}
   }
 }
+
+let loadSeq = 0
 
 onMounted(() => void load())
 watch(() => props.book, () => void load())

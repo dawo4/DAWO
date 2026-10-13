@@ -92,7 +92,8 @@ function close(): void {
   if (!open.value) return
   open.value = false
   window.removeEventListener('pointerdown', onOutside, true)
-  window.removeEventListener('scroll', close, true)
+  // 必须与注册时同一个函数引用，否则移除不掉（此前用 close 移除 updatePosition，滚动监听每次泄漏）
+  window.removeEventListener('scroll', updatePosition, true)
   window.removeEventListener('resize', close)
 }
 

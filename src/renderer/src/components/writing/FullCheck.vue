@@ -45,6 +45,8 @@ const LEVEL_COLOR = { red: '#e08a7a', yellow: '#d9a441', info: 'var(--accent)' }
 
 async function scan() {
   if (scanning.value || !props.book) return
+  // 锁定开扫时的书：扫描中途切书也不许拿旧章节路径读新书文件
+  const book = props.book
   const chapters = lib
     .chapterList()
     .map((c) => ({ path: c.path, no: Number(c.name.match(/第(\d+)章/)?.[1] || 0) }))
@@ -61,11 +63,11 @@ async function scan() {
 
   try {
     const [d, t, p, f, o] = await Promise.all([
-      window.api.dictRead(props.book),
-      window.api.trackingRead(props.book),
-      window.api.powerRead(props.book),
-      window.api.foreshadowRead(props.book),
-      window.api.outlineRead(props.book)
+      window.api.dictRead(book),
+      window.api.trackingRead(book),
+      window.api.powerRead(book),
+      window.api.foreshadowRead(book),
+      window.api.outlineRead(book)
     ])
     const dict = (d as DictEntry[]) || []
     const tracking = (t as TrackingEntry[]) || []
@@ -91,7 +93,7 @@ async function scan() {
       const ch = chapters[i]
       let text = ''
       try {
-        text = (await window.api.fileRead(props.book, ch.path)) as string
+        text = (await window.api.fileRead(book, ch.path)) as string
       } catch {
         continue
       }
@@ -167,6 +169,7 @@ watch(
   () => props.open,
   (v) => {
     if (v) stopFlag.value = false
+    else stopFlag.value = true // 关窗即停：后台扫描没有意义还占资源
   }
 )
 </script>

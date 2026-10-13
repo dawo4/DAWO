@@ -365,8 +365,14 @@ async function generateChapters() {
   if (!lib.current) return
   paused.value = false
   const total = wf.value.chapterTotal
+  // 切书守卫：逐章生文常跑数小时，中途切书必须立即停，不许把生成内容写进另一本书
+  const bookAtStart = lib.current.title
   try {
     while (!paused.value && wf.value.chapterCursor <= total) {
+    if (lib.current?.title !== bookAtStart) {
+      error.value = '已切换作品，逐章生文自动停止（原书进度已保存，切回后可继续）。'
+      break
+    }
     const no = wf.value.chapterCursor
     liveChapter.value = no
     // 0. 细纲板存档优先：该章已有全文细纲（beatFull，智能体提交或上次生成落盘的）直接采用，不重新构思
