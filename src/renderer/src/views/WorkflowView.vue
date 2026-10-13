@@ -83,6 +83,37 @@ let aborter: { abort: () => void } | null = null
 const wf = computed(() => lib.current?.workflow || { step: 0, chapterCursor: 1, chapterTotal: 12, completed: [] })
 const cur = computed(() => Math.min(wf.value.step, 5))
 
+/** 磁盘实况：灵感/大纲/角色/设定是否已有内容（与 completed 标记独立，用于自动跳过与自由导航） */
+const existing = ref([false, false, false, false])
+
+async function detectExisting() {
+  if (!lib.current) return
+  try {
+    const [idea, outline, chars, settings] = await Promise.all([
+      window.api.fileRead(lib.current.title, '大纲/灵感方案.md'),
+      window.api.fileRead(lib.current.title, '大纲/大纲.md'),
+      window.api.charactersReadAll(lib.current.title),
+      window.api.fileRead(lib.current.title, '设定/世界观.md')
+    ])
+    existing.value = [
+      !!(lib.current.idea?.trim() || String(idea).trim()),
+      !!String(outline).trim(),
+      !!chars.joined.trim(),
+      !!String(settings).trim()
+    ]
+  } catch {
+    /* 读取失败保持现状 */
+  }
+  // 自动跳过：当前停在向导步骤（0-3）且该步内容已存在时，直接落到第一个空缺步骤
+  const firstMissing = existing.value.findIndex((v) => !v)
+  const target = firstMissing === -1 ? 4 : firstMissing
+  if (wf.value.step < target && wf.value.step <= 3) {
+    await lib.saveMeta({ workflow: { ...wf.value, step: target } })
+  }
+}
+
+watch(() => lib.current?.title, () => void detectExisting(), { immediate: true })
+
 async function loadOutline() {
   if (!lib.current) return ''
   return window.api.fileRead(lib.current.title, '大纲/大纲.md')
@@ -203,12 +234,14 @@ async function confirmIdea() {
   await lib.saveMeta({ idea: stepInput.value })
   await window.api.fileWrite(lib.current!.title, '大纲/灵感方案.md', genText.value)
   await persistStep(1)
+  void detectExisting()
 }
 async function confirmOutline() {
   if (!genText.value.trim()) return
   await window.api.fileWrite(lib.current!.title, '大纲/大纲.md', genText.value)
   await lib.refreshTree()
   await persistStep(2)
+  void detectExisting()
 }
 async function confirmCharacters() {
   if (!genText.value.trim()) return
@@ -223,6 +256,7 @@ async function confirmCharacters() {
   } catch (e) {
     error.value = `角色卡保存失败：${(e as Error).message}`
   }
+  void detectExisting()
 }
 /** 角色步确认后的落盘提示（一人一档拆了几张 / 回退整包） */
 const charStepNote = ref('')
@@ -230,6 +264,7 @@ async function confirmSettings() {
   if (!genText.value.trim()) return
   await window.api.fileWrite(lib.current!.title, '设定/世界观.md', genText.value)
   await persistStep(4)
+  void detectExisting()
 }
 async function confirmCreate() {
   await lib.refreshTree()
@@ -278,7 +313,16 @@ function back() {
   if (wf.value.step > 0) lib.saveMeta({ workflow: { ...wf.value, step: wf.value.step - 1 } })
 }
 function jumpStep(i: number) {
-  if (wf.value.completed?.[i - 1] || i <= cur.value) lib.saveMeta({ workflow: { ...wf.value, step: i } })
+  // 允许落在：当前及之前、已确认完成的、或磁盘上已有内容的步骤（自由跳转）
+  if (i <= cur.value || wf.value.completed?.[i - 1] || existing.value[i]) {
+    lib.saveMeta({ workflow: { ...wf.value, step: i } })
+  }
+}
+
+/** 跳过当前步骤：不生成不写入，直接前进（内容可以以后手动补） */
+async function skipStep() {
+  if (cur.value >= 4) return
+  await persistStep(cur.value + 1)
 }
 
 /** 从细纲文本提取章节标题（首行「# 第N章 xxx」→「xxx」） */
@@ -576,7 +620,7 @@ async function resetWorkflow() {
               :style="i === cur ? { color: 'var(--accent)' } : {}"
               @click="jumpStep(i)"
             >
-              <CircleCheck v-if="wf.completed?.[i] || i < cur" :size="13" style="color: var(--accent)" />
+              <CircleCheck v-if="wf.completed?.[i] || i < cur || (i <= 3 && existing[i])" :size="13" style="color: var(--accent)" />
               <span>{{ i + 1 }}. {{ s }}</span>
             </button>
             <div v-if="i < STEPS.length - 1" class="w-3 h-px bg-[var(--border)]" />
@@ -607,9 +651,12 @@ async function resetWorkflow() {
           <div class="text-sm mb-1.5 text-[var(--text-dim)]">写下你的灵感（一句话、一段话都可以）</div>
           <textarea v-model="stepInput" class="ink-textarea h-24" placeholder="例如：一个失忆的灯塔守护人，每晚梦到不属于自己的记忆…" />
         </div>
-        <InkButton :disabled="running || !stepInput.trim()" @click="runPrompt('wf-idea', { input: stepInput }, 'draft')">
-          {{ running ? '生成中…' : 'AI 扩展灵感方案' }}
-        </InkButton>
+        <div class="flex items-center gap-2">
+          <InkButton :disabled="running || !stepInput.trim()" @click="runPrompt('wf-idea', { input: stepInput }, 'draft')">
+            {{ running ? '生成中…' : 'AI 扩展灵感方案' }}
+          </InkButton>
+          <InkButton variant="ghost" :disabled="running" @click="skipStep">已有方案，跳过</InkButton>
+        </div>
         <div v-if="genText">
           <div class="text-sm mb-1.5 text-[var(--text-dim)]">灵感方案（可修改）</div>
           <textarea v-model="genText" class="ink-textarea h-72 text-[15px] leading-8" />
@@ -619,13 +666,16 @@ async function resetWorkflow() {
 
       <!-- Step 1-3 生成类 -->
       <div v-else-if="cur >= 1 && cur <= 3" class="max-w-3xl mx-auto space-y-4">
-        <div class="flex items-center gap-3">
-          <InkButton
-            :disabled="running"
-            @click="runStepGen"
-          >
-            {{ genText ? '重新生成' : 'AI 生成' }}{{ ['', '大纲', '角色卡', '设定集'][cur] }}
-          </InkButton>
+        <div class="flex items-center gap-3 flex-wrap">
+          <div class="flex items-center gap-2">
+            <InkButton
+              :disabled="running"
+              @click="runStepGen"
+            >
+              {{ genText ? '重新生成' : 'AI 生成' }}{{ ['', '大纲', '角色卡', '设定集'][cur] }}
+            </InkButton>
+            <InkButton variant="ghost" :disabled="running" @click="skipStep">已有{{ ['', '大纲', '角色卡', '设定集'][cur] }}，跳过</InkButton>
+          </div>
           <div v-if="cur === 1" class="flex items-center gap-2 flex-wrap text-sm text-[var(--text-dim)]">
             <span class="inline-flex items-center gap-1">
               全书约 <input v-model.number="chapterTotal" type="number" min="4" max="2000" class="ink-input w-20 text-center py-1" /> 章
@@ -654,9 +704,9 @@ async function resetWorkflow() {
         <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6" style="box-shadow: var(--shadow)">
           <div class="font-serif-ink text-lg mb-3">《{{ lib.current.title }}》书籍结构已就绪</div>
           <ul class="text-sm text-[var(--text-dim)] space-y-1.5">
-            <li>· 大纲 / 大纲.md（{{ (wf.completed?.[1] && '已生成') || '未生成' }}）</li>
-            <li>· 角色 / 一人一档（{{ (wf.completed?.[2] && '已生成') || '未生成' }}）</li>
-            <li>· 设定 / 世界观.md（{{ (wf.completed?.[3] && '已生成') || '未生成' }}）</li>
+            <li>· 大纲 / 大纲.md（{{ (existing[1] || wf.completed?.[1]) ? '已生成' : '未生成' }}）</li>
+            <li>· 角色 / 一人一档（{{ (existing[2] || wf.completed?.[2]) ? '已生成' : '未生成' }}）</li>
+            <li>· 设定 / 世界观.md（{{ (existing[3] || wf.completed?.[3]) ? '已生成' : '未生成' }}）</li>
             <li>· 全书 {{ wf.chapterTotal }} 章，将从第 {{ wf.chapterCursor }} 章开始生文</li>
           </ul>
           <p class="text-xs text-[var(--text-faint)] mt-3">前三章已按「黄金三章」规则设计：第一章抛出核心冲突与金手指，第二章放大危机，第三章给出第一次小高潮。</p>
