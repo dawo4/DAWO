@@ -9,6 +9,7 @@ import InkPromptHost from './ui/InkPromptHost.vue'
 import AppHeader from './ui/AppHeader.vue'
 import AppNav from './ui/AppNav.vue'
 import HomeView from './views/HomeView.vue'
+import StatsView from './views/StatsView.vue'
 import BookshelfView from './views/BookshelfView.vue'
 import WritingView from './views/WritingView.vue'
 import WorkflowView from './views/WorkflowView.vue'
@@ -55,7 +56,7 @@ onMounted(async () => {
         <Transition :name="app.appearance.pageFade !== false ? 'page-fade' : 'p'" mode="out-in">
           <KeepAlive>
             <div :key="app.view" class="h-full min-h-0">
-              <component :is="{ home: HomeView, bookshelf: BookshelfView, writing: WritingView, workflow: WorkflowView, deconstruct: DeconstructView, materials: MaterialsView, library: LibraryView, agentlab: AgentLabView, assistant: AssistantView, settings: SettingsView }[app.view]" />
+              <component :is="{ home: HomeView, bookshelf: BookshelfView, writing: WritingView, workflow: WorkflowView, deconstruct: DeconstructView, materials: MaterialsView, library: LibraryView, agentlab: AgentLabView, assistant: AssistantView, stats: StatsView, settings: SettingsView }[app.view]" />
             </div>
           </KeepAlive>
         </Transition>

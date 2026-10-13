@@ -13,14 +13,33 @@ interface PowerChar { name: string; realm: string }
 interface PowerData { realms: { name: string; sortKey?: number }[]; rules: string; chars: PowerChar[] }
 interface ForeshadowEntry { id: string; content: string; plantChapter: string; planRecycle: string; status: string; note: string }
 interface OutlineLite { no: number; beat: string; beatFull?: string }
+interface CharacterFile { path: string; name: string; content: string }
+interface Voiceprint { name: string; catchphrases: string[]; forbidden: string[] }
 
 const dict = ref<DictEntry[]>([])
 const tracking = ref<TrackingEntry[]>([])
 const power = ref<PowerData>({ realms: [], rules: '', chars: [] })
 const foreshadow = ref<ForeshadowEntry[]>([])
 const outline = ref<OutlineLite[]>([])
+const voices = ref<Voiceprint[]>([])
 const loading = ref(false)
 const fullOpen = ref(false)
+
+/** 从角色卡文本解析声纹两行：口头禅 / 禁语（顿号或分号分隔，「无」视为空） */
+function parseVoiceprint(name: string, content: string): Voiceprint {
+  const vp: Voiceprint = { name, catchphrases: [], forbidden: [] }
+  for (const raw of content.split('\n')) {
+    const t = raw.trim().replace(/^[-*]\s*/, '')
+    let m = /^(?:声纹[——\-\s]*)?口头禅[：:](.+)$/.exec(t)
+    if (m) {
+      vp.catchphrases = m[1].split(/[;；、]/).map((s) => s.trim()).filter((s) => s && s !== '无')
+      continue
+    }
+    m = /^(?:声纹[——\-\s]*)?禁语[：:](.+)$/.exec(t)
+    if (m) vp.forbidden = m[1].split(/[;；、]/).map((s) => s.trim()).filter((s) => s && s !== '无')
+  }
+  return vp
+}
 
 const STATUS_COLOR: Record<string, string> = {
   健康: '#6fae6f',
@@ -34,18 +53,20 @@ async function load() {
   if (!props.book) return
   loading.value = true
   try {
-    const [d, t, p, f, o] = await Promise.all([
+    const [d, t, p, f, o, c] = await Promise.all([
       window.api.dictRead(props.book),
       window.api.trackingRead(props.book),
       window.api.powerRead(props.book),
       window.api.foreshadowRead(props.book),
-      window.api.outlineRead(props.book)
+      window.api.outlineRead(props.book),
+      window.api.charactersReadAll(props.book) as Promise<{ files?: CharacterFile[] }>
     ])
     dict.value = (d as DictEntry[]) || []
     tracking.value = (t as TrackingEntry[]) || []
     power.value = (p as PowerData) || { realms: [], rules: '', chars: [] }
     foreshadow.value = (f as ForeshadowEntry[]) || []
     outline.value = (o as OutlineLite[]) || []
+    voices.value = ((c.files || []) as CharacterFile[]).map((f2) => parseVoiceprint(f2.name, f2.content))
   } catch {
     /* 读失败静默，保留旧数据 */
   } finally {
@@ -80,6 +101,19 @@ const hitChars = computed(() => {
 const ghostWarnings = computed(() => hitChars.value.filter((c) => c.status === '死亡' || c.status === '离场'))
 /** 提醒：受伤/闭关的角色现身，行文里需要交代状态 */
 const statusWarns = computed(() => hitChars.value.filter((c) => c.status === '受伤' || c.status === '闭关'))
+/** 声纹提醒：命中角色的禁语出现在本章文字中（台词可能出戏） */
+const voiceWarns = computed(() => {
+  if (!isChapter.value || !text.value) return []
+  const out: { name: string; word: string }[] = []
+  for (const c of hitChars.value) {
+    const vp = voices.value.find((v) => v.name === c.name)
+    for (const w of vp?.forbidden || []) {
+      if (w.length >= 2 && text.value.includes(w)) out.push({ name: c.name, word: w })
+    }
+  }
+  return out
+})
+const voiceOf = (name: string): Voiceprint | undefined => voices.value.find((v) => v.name === name)
 /** 命中的非人物专名 */
 const hitTerms = computed(() => {
   if (!isChapter.value || !text.value) return []
@@ -170,7 +204,7 @@ defineExpose({ reload })
     <FullCheck :book="props.book" :open="fullOpen" @close="fullOpen = false" />
 
     <p v-if="!isChapter" class="text-xs text-[var(--text-faint)] leading-5">
-      打开一个章节文件后自动对照：登记角色（状态/所在地/境界，死亡离场现身标红）、细纲出场规划、专名词条、悬置伏笔与久悬提醒、境界越级参考、AI 毒句式红牌。全程本地匹配，零 AI 成本。
+      打开一个章节文件后自动对照：登记角色（状态/所在地/境界，死亡离场现身标红）、细纲出场规划、专名词条、悬置伏笔与久悬提醒、境界越级参考、AI 毒句式红牌、角色声纹（口头禅与禁语，写进角色卡末两行即生效）。全程本地匹配，零 AI 成本。
     </p>
 
     <template v-else>
@@ -183,6 +217,18 @@ defineExpose({ reload })
           style="border-color: #e08a7a55; background: color-mix(in srgb, #e08a7a 10%, transparent)"
         >
           <span style="color: #e08a7a">疑似吃书</span>　「{{ g.name }}」登记状态是<b>{{ g.status }}</b>，却出现在本章。若为回忆 / 闪回 / 遗言可忽略，否则需要处理。
+        </div>
+      </div>
+
+      <!-- 声纹提醒：禁语出戏 -->
+      <div v-if="voiceWarns.length" class="space-y-1.5">
+        <div
+          v-for="(w, i) in voiceWarns"
+          :key="'v' + i"
+          class="rounded-lg border p-2.5 text-[11.5px] leading-5"
+          style="border-color: #d9a44155; background: color-mix(in srgb, #d9a441 8%, transparent)"
+        >
+          <span style="color: #d9a441">声纹出戏</span>　「{{ w.word }}」是<b>{{ w.name }}</b>的禁语，却出现在本章文字中——检查说话者是否为此角色，或措辞是否出戏。
         </div>
       </div>
 
@@ -230,6 +276,9 @@ defineExpose({ reload })
             <div class="text-[10.5px] text-[var(--text-faint)] mt-1 leading-4">
               <span v-if="c.location">所在地：{{ c.location }}</span>
               <span v-if="c.lastChapter"> · 最近出场：{{ c.lastChapter }}</span>
+            </div>
+            <div v-if="voiceOf(c.name)?.catchphrases?.length" class="text-[10.5px] text-[var(--text-faint)] mt-0.5 leading-4">
+              口头禅：{{ voiceOf(c.name)!.catchphrases.join('、') }}
             </div>
             <div v-if="c.note" class="text-[10.5px] text-[var(--text-faint)] mt-0.5 leading-4">{{ c.note }}</div>
           </div>

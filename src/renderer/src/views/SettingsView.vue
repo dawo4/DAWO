@@ -271,12 +271,14 @@ function applyToAllTasks(key: string) {
   }
 }
 
-const cfg = reactive(JSON.parse(JSON.stringify(app.config)))
-// 旧版本配置快照可能缺新字段，兜底补齐
-cfg.modelContexts = cfg.modelContexts || {}
-cfg.search = cfg.search || { provider: 'auto', apiKey: '' }
-cfg.agentWebSearch = cfg.agentWebSearch || {}
-cfg.providerSearch = cfg.providerSearch || {}
+// 直接绑定全局配置对象（不再克隆快照）：设置页的编辑即时写入 store，
+// save() 只负责持久化——旧快照方案会把其他页面的并发修改（activeBook 等）覆盖回去
+const cfg = app.config as AppConfig
+// 旧版本配置缺新字段时兜底补齐
+if (cfg.modelContexts === undefined) cfg.modelContexts = {}
+if (cfg.search === undefined) cfg.search = { provider: 'auto', apiKey: '' }
+if (cfg.agentWebSearch === undefined) cfg.agentWebSearch = {}
+if (cfg.providerSearch === undefined) cfg.providerSearch = {}
 const providerModels = reactive<Record<string, string[]>>({})
 const modelErr = ref('')
 /** 获取模型：进行中的服务商 id 与成功提示（点了要有反馈，不能无声无息） */
@@ -521,9 +523,17 @@ onUnmounted(() => {
   if (saveClearTimer) clearTimeout(saveClearTimer)
 })
 
+// 外观变更自动保存。cfg 直接绑定全局对象后，save→主进程返回→原地合并会替换 appearance 引用，
+// 需用 JSON 签名判断「内容真的变了」才保存，否则保存本身会触发死循环
+let appearanceSig = JSON.stringify(cfg.appearance)
 watch(
   () => cfg.appearance,
-  () => void save(),
+  (v) => {
+    const sig = JSON.stringify(v)
+    if (sig === appearanceSig) return
+    appearanceSig = sig
+    void save()
+  },
   { deep: true }
 )
 

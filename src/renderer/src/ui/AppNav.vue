@@ -118,7 +118,8 @@ const PAGES: { key: string; label: string; icon: unknown; view: ViewName }[] = [
   { key: 'writing', label: '写作台', icon: PenLine, view: 'writing' },
   { key: 'workflow', label: '工作流', icon: Workflow, view: 'workflow' },
   { key: 'deconstruct', label: '拆书', icon: FileSearch, view: 'deconstruct' },
-  { key: 'agentlab', label: '智能体库', icon: Bot, view: 'agentlab' }
+  { key: 'agentlab', label: '智能体库', icon: Bot, view: 'agentlab' },
+  { key: 'stats', label: '数据', icon: BarChart3, view: 'stats' }
 ]
 
 /** 资源库三个库 */

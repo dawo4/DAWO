@@ -178,13 +178,15 @@ function llmTaskCfg(taskKey = 'agent'): { provider: Provider; cfg: TaskCfg } {
   return { provider, cfg }
 }
 
-/** OpenAI 兼容非流式补全；返回首个 choice 的文本。每一次调用都落 AI 调用记录 */
+/** OpenAI 兼容非流式补全；返回首个 choice 的文本。每一次调用都落 AI 调用记录。
+ *  signal 可选：调用方（如批量修订）用 AbortController 中断进行中的请求 */
 export async function llmComplete(
   system: string,
   user: string,
   feature = 'llm',
   featureLabel = '一次性调用',
-  taskKey = 'agent'
+  taskKey = 'agent',
+  signal?: AbortSignal
 ): Promise<string> {
   const { provider, cfg } = llmTaskCfg(taskKey)
   const baseUrl = provider.baseUrl.replace(/\/+$/, '')
@@ -197,7 +199,7 @@ export async function llmComplete(
         { role: 'system', content: system },
         { role: 'user', content: user }
       ] }),
-      signal: AbortSignal.timeout(120000)
+      signal: signal ?? AbortSignal.timeout(120000)
     })
     if (!res.ok) {
       const text = await res.text().catch(() => '')

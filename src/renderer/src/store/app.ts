@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import type { AppConfig } from '../types'
 
-export type ViewName = 'home' | 'bookshelf' | 'writing' | 'workflow' | 'deconstruct' | 'materials' | 'library' | 'agentlab' | 'assistant' | 'settings'
+export type ViewName = 'home' | 'bookshelf' | 'writing' | 'workflow' | 'deconstruct' | 'materials' | 'library' | 'agentlab' | 'assistant' | 'stats' | 'settings'
 
 /** 写作台布局：右栏标签页 / DeepWrite 式中栏三栏 */
 export type LayoutMode = 'tabs' | 'three-pane'
@@ -16,6 +16,7 @@ export const VIEW_TITLES: Record<ViewName, string> = {
   library: '资源库',
   agentlab: '智能体库',
   assistant: '妙笔',
+  stats: '数据',
   settings: '设置'
 }
 
@@ -122,7 +123,10 @@ export const useAppStore = defineStore('app', {
     async updateConfig(patch: Record<string, unknown>) {
       // IPC 走结构化克隆，响应式代理无法传递，先降级为普通对象
       const plain = JSON.parse(JSON.stringify(patch)) as Record<string, unknown>
-      this.config = (await window.api.configUpdate(plain)) as unknown as AppConfig
+      const returned = (await window.api.configUpdate(plain)) as unknown as AppConfig
+      // 原地合并而非整体替换：设置页等直接绑定 this.config 的地方，替换对象会让绑定脱钩
+      if (this.config) Object.assign(this.config, returned)
+      else this.config = returned
       this.applyAppearance()
     },
     async applyAppearance() {

@@ -17,11 +17,15 @@ export interface BatchParams {
   instruction: string
 }
 
-const runs = new Map<string, { aborted: boolean }>()
+const runs = new Map<string, { aborted: boolean; controller?: AbortController }>()
 
 export function batchAbort(runId: string): void {
   const r = runs.get(runId)
-  if (r) r.aborted = true
+  if (r) {
+    r.aborted = true
+    // 正在进行中的当章请求也一并中断，停止立即生效
+    r.controller?.abort()
+  }
 }
 
 function send(win: BrowserWindow, runId: string, type: string, payload?: unknown): void {
@@ -60,25 +64,28 @@ export async function startBatchRevise(win: BrowserWindow, params: BatchParams):
     send(win, runId, 'batch-error', { error: '请先选择要修订的章节' })
     return
   }
-  runs.set(runId, { aborted: false })
+  runs.set(runId, { aborted: false, controller: undefined })
   send(win, runId, 'batch-start', { total: chapters.length })
 
   let done = 0
   let failed = 0
   for (let i = 0; i < chapters.length; i++) {
     const ch = chapters[i]
-    if (runs.get(runId)?.aborted) {
+    const state = runs.get(runId)
+    if (!state || state.aborted) {
       send(win, runId, 'batch-done', { done, failed, aborted: true, total: chapters.length })
       runs.delete(runId)
       return
     }
+    // 每章一个 AbortController：中止时连进行中的请求一起掐断
+    state.controller = new AbortController()
     send(win, runId, 'chapter-start', { index: i, path: ch.path, title: ch.title })
     try {
       const base = readTextFile(book, ch.path)
       if (!base.trim()) throw new Error('章节内容为空')
       const user = `【修订指令】\n${instruction.trim()}\n\n【原文（${ch.title}）】\n${base}`
-      // 封面 tokens 估算放兜底；任务模型走「润色 / 扩写 / 纠错」
-      const out = await llmComplete(SYSTEM, user, 'batch-revise', `批量修订 · ${ch.title}`, 'polish')
+      // 封面 tokens 估算放兜底；任务模型走「润色 / 扩写 / 纠错」；中止信号让停止立即掐断当前请求
+      const out = await llmComplete(SYSTEM, user, 'batch-revise', `批量修订 · ${ch.title}`, 'polish', state.controller.signal)
       const revised = cleanOutput(out)
       if (!revised.trim()) throw new Error('模型返回了空内容')
       if (Math.abs(revised.length - base.length) > base.length * 0.7) {

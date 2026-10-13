@@ -10,6 +10,8 @@ export interface AppConfig {
   bindings: Record<string, { materials: string[]; skills: string[]; notes?: string[] }>
   /** 模型上下文窗口（key = `${providerId}/${model}`，token 数） */
   modelContexts: Record<string, number>
+  /** 模型单价（key = 模型名，元 / 百万 token，混合口径），用于 AI 成本统计 */
+  modelPrices?: Record<string, number>
   /** 联网搜索配置 */
   search: { provider: 'auto' | 'bocha' | 'tavily'; apiKey: string }
   /** 内置智能体联网搜索开关 */
