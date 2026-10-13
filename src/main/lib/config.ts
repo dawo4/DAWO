@@ -20,7 +20,7 @@ export interface TaskCfg {
 export interface AppConfig {
   libraryRoot: string
   providers: Provider[]
-  tasks: Record<'workflow' | 'draft' | 'structure' | 'chapter' | 'continue' | 'polish' | 'deai' | 'selection' | 'agent', TaskCfg>
+  tasks: Record<'workflow' | 'draft' | 'structure' | 'chapter' | 'continue' | 'polish' | 'deai' | 'selection' | 'agent' | 'embedding', TaskCfg>
   agentParams: {
     thinkingLevel: 'off' | 'low' | 'medium' | 'high'
     temperature: number
@@ -84,7 +84,8 @@ export function defaultConfig(): AppConfig {
       polish: { providerId: '', model: '', temperature: 0.6 },
       deai: { providerId: '', model: '', temperature: 0.7 },
       selection: { providerId: '', model: '', temperature: 0.6 },
-      agent: { providerId: '', model: '', temperature: 0.7 }
+      agent: { providerId: '', model: '', temperature: 0.7 },
+      embedding: { providerId: '', model: '', temperature: 0 }
     },
     agentParams: { thinkingLevel: 'medium', temperature: 0.7 },
     approvalMode: 'manual',

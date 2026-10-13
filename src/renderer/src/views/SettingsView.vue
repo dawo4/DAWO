@@ -209,8 +209,12 @@ const TASK_LABELS: Record<string, string> = {
   polish: '润色 / 扩写 / 纠错',
   deai: '去 AI 味',
   selection: '划词自定义',
-  agent: '智能体对话'
+  agent: '智能体对话',
+  embedding: '向量化检索'
 }
+
+/** 向量化是可选通道（未配置时语义检索自动降级为关键词逻辑），不计入「任务未配完」提醒 */
+const EMBEDDING_KEY = 'embedding'
 
 // ============ AI 服务页内部标签页：分门别类，避免一页竖排到底 ============
 const AI_TABS = [
@@ -229,8 +233,10 @@ watch(aiTab, (v) => {
   }
 })
 
-/** 任务配置完整性：任一任务没配服务商或模型 → 任务模型标签上挂提示点 */
-const tasksIncomplete = computed(() => Object.values(cfg.tasks).some((t) => !t.providerId || !t.model))
+/** 任务配置完整性：任一必配任务没配服务商或模型 → 任务模型标签上挂提示点（向量化可选，不提醒） */
+const tasksIncomplete = computed(
+  () => Object.entries(cfg.tasks).some(([k, t]) => k !== EMBEDDING_KEY && (!t.providerId || !t.model))
+)
 
 /** 某服务商被哪些任务使用（卡片上显示占用徽标；删除时提醒） */
 function providerUsage(id: string): string[] {
@@ -262,10 +268,11 @@ async function deleteProvider(id: string) {
   cfg.providers = cfg.providers.filter((x: { id: string }) => x.id !== id)
 }
 
-/** 把某一行任务的服务商 + 模型一键应用到全部任务（配好一个就不用挨个选） */
+/** 把某一行任务的服务商 + 模型一键应用到全部任务（配好一个就不用挨个选）；向量化要专用的嵌入模型，不跟着抄 */
 function applyToAllTasks(key: string) {
   const src = cfg.tasks[key]
   for (const k of Object.keys(TASK_LABELS)) {
+    if (k === EMBEDDING_KEY) continue
     cfg.tasks[k].providerId = src.providerId
     cfg.tasks[k].model = src.model
   }
@@ -875,9 +882,10 @@ onUnmounted(() => {
               v-model="cfg.tasks[key].model"
               class="ink-input flex-1"
               :list="'models-' + cfg.tasks[key].providerId"
-              placeholder="模型名，如 deepseek-chat"
+              :placeholder="key === EMBEDDING_KEY ? '嵌入模型名，如 BAAI/bge-m3' : '模型名，如 deepseek-chat'"
             />
             <input
+              v-if="key !== EMBEDDING_KEY"
               :value="ctxFor(cfg.tasks[key].providerId, cfg.tasks[key].model)"
               class="ink-input w-36 shrink-0"
               placeholder="上下文窗口，如 65536"
@@ -885,12 +893,19 @@ onUnmounted(() => {
               @input="setCtx(cfg.tasks[key].providerId, cfg.tasks[key].model, ($event.target as HTMLInputElement).value)"
             />
             <button
+              v-if="key !== EMBEDDING_KEY"
               class="text-[11px] px-2 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors shrink-0"
               title="把这一行的服务商和模型应用到全部任务"
               @click="applyToAllTasks(String(key))"
             >
               应用到全部
             </button>
+            <span v-if="key === EMBEDDING_KEY" class="text-[11px] text-[var(--text-faint)] shrink-0 w-36">可选：语义检索用</span>
+          </div>
+          <div class="text-[11px] text-[var(--text-faint)] leading-5 mt-2">
+            「向量化检索」驱动全书语义搜索：逐章生文构思细纲前自动检索相关前文、妙笔对话自动注入相关片段、Ctrl+K 混合检索。
+            需要服务商支持 <b>/embeddings</b> 接口（如硅基流动 BAAI/bge-m3、智谱 embedding-3、通义 text-embedding-v4、OpenAI、Ollama 本地）。
+            未配置时以上功能自动降级为关键词逻辑，不影响其他功能。
           </div>
         </div>
 

@@ -12,6 +12,7 @@ import { computeDiff, DiffHunk } from './lib/diff'
 import { readBookMeta, listTree, writeTextFile, getLibraryRoot, readTextFile, TreeNode } from './lib/library'
 import { listLibrary, readEntry, writeEntry, readEntriesForContext, LibKind, LIB_LABEL } from './lib/materials'
 import { estimateTokens, recordCall } from './lib/ailog'
+import { semanticForPrompt } from './lib/vectors'
 import {
   STRUCTURED_FILES,
   normalizeCharGraph,
@@ -1084,7 +1085,7 @@ const LEVEL_TEXT: Record<string, string> = {
   high: '充分推演：列出至少两种可行方向，比较代价后给出推荐，并指出风险与副作用。'
 }
 
-function buildSystemPrompt(params: AgentRunParams, agent: ResolvedAgent): string {
+function buildSystemPrompt(params: AgentRunParams, agent: ResolvedAgent, semanticCtx = ''): string {
   const parts: string[] = [agent.inlinePrompt || getPrompt(agent.promptId) || '']
 
   let meta: {
@@ -1173,6 +1174,11 @@ function buildSystemPrompt(params: AgentRunParams, agent: ResolvedAgent): string
     )
   }
   if (params.contextSummary) parts.push(`\n【早期对话摘要】以下是本会话更早的对话被压缩后的摘要，是你们已经聊过并确认过的内容，请以此为准保持连续：\n${params.contextSummary}`)
+  if (semanticCtx)
+    parts.push(
+      '\n【语义检索·相关片段】以下是根据作者本轮问题从全书文稿与资源库中语义检索出的相关片段（含来源与相似度），供回答时衔接上下文与保持一致性参考；需要更完整的内容再用相应工具读取原文：\n' +
+        semanticCtx
+    )
   if (params.activeFile) parts.push(`\n【作者当前打开的文件】${params.activeFile}`)
   parts.push(`\n【思考强度】${LEVEL_TEXT[params.taskOverride?.thinkingLevel || ''] || LEVEL_TEXT.medium}`)
 
@@ -1238,6 +1244,16 @@ export async function runAgent(win: BrowserWindow, params: AgentRunParams): Prom
 
     const agent = resolveAgent(agentId)
     agentLabel = agent.name
+    // 语义检索注入：拿作者本轮的话去全书文稿与资源库里捞相关片段（未配置向量化 / 失败时静默跳过）
+    let semanticCtx = ''
+    try {
+      const lastUser = [...(params.history || [])].reverse().find((m) => m.role === 'user')
+      if (params.book && lastUser && lastUser.content.trim().length >= 6) {
+        semanticCtx = await semanticForPrompt(params.book, lastUser.content)
+      }
+    } catch {
+      /* 向量化未配置或检索失败：不影响对话 */
+    }
     const ctx: ToolCtx = {
       win,
       runId,
@@ -1262,7 +1278,7 @@ export async function runAgent(win: BrowserWindow, params: AgentRunParams): Prom
     })
     const allTools = searchPatch?.tools?.length ? [...tools, ...searchPatch.tools] : tools
     const messages: Record<string, unknown>[] = [
-      { role: 'system', content: buildSystemPrompt(params, agent) },
+      { role: 'system', content: buildSystemPrompt(params, agent, semanticCtx) },
       ...(params.history || []).map((m) => ({ role: m.role, content: m.content }))
     ]
     // 多模态：把本轮图片并入最后一条 user 消息（OpenAI vision content parts 格式）

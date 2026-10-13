@@ -17,6 +17,7 @@ import FindReplace from '../components/writing/FindReplace.vue'
 import QuickName from '../components/writing/QuickName.vue'
 import TypographyPanel from '../components/writing/TypographyPanel.vue'
 import HistoryPanel from '../components/writing/HistoryPanel.vue'
+import VectorPanel from '../components/writing/VectorPanel.vue'
 import InkButton from '../ui/InkButton.vue'
 import InkModal from '../ui/InkModal.vue'
 import PageSubNav from '../ui/PageSubNav.vue'
@@ -59,6 +60,7 @@ const MATE_TABS = [
   { key: 'ai', label: '智能体' },
   { key: 'deai', label: '去 AI 味' },
   { key: '速检', label: '速检' },
+  { key: '检索', label: '检索' },
   { key: '章节', label: '章节' },
   { key: '大纲', label: '大纲' },
   { key: '角色', label: '角色' },
@@ -130,7 +132,7 @@ async function loadMateFile(path: string) {
 
 /** 扫描当前资料目录，默认打开第一个非空文件（都不非空则第一个） */
 async function loadMateTab(t: string) {
-  if (t === 'ai' || t === 'deai' || t === '章节' || !lib.current || STRUCTURED_TABS.includes(t)) return
+  if (t === 'ai' || t === 'deai' || t === '章节' || t === '检索' || !lib.current || STRUCTURED_TABS.includes(t)) return
   if (customPanels.value.some((p) => p.key === t)) return // 自定义面板自加载
   const dir = MATE_DIRS[t] || ''
   let files: string[] = []
@@ -588,6 +590,11 @@ onUnmounted(() => {
       <!-- 随写随查速检：本章对照词典/出场/境界/伏笔 -->
       <div v-else-if="rightTab === '速检'" class="flex-1 min-h-0 overflow-y-auto p-4">
         <QuickCheck :book="lib.current.title" :file="currentFile" :chapter-text="content" />
+      </div>
+
+      <!-- 语义检索索引管理 -->
+      <div v-else-if="rightTab === '检索'" class="flex-1 min-h-0 overflow-y-auto">
+        <VectorPanel />
       </div>
 
       <!-- 章节字数与快速跳章 -->

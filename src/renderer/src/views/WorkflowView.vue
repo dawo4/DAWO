@@ -387,6 +387,10 @@ async function generateChapters() {
       // 1. 章节细纲：大纲可裁剪（按卷），角色卡/设定保持全量——策划阶段需要看全貌
       liveLabel.value = `第 ${no} 章 · 构思细纲`
       const beatCtx = await chapterContext('', no, total)
+      // 语义检索：大纲 + 上一章结尾当查询，捞全书相关前文（未配置向量化时返回占位文本）
+      const semantic = await semanticBlock(
+        [beatCtx.outline.slice(0, 1200), no > 1 ? await chapterTail(no - 1) : ''].filter(Boolean).join('\n')
+      )
       const okBeat = await runPrompt('wf-beat', {
         chapterNo: String(no),
         outline: beatCtx.outline,
@@ -394,7 +398,8 @@ async function generateChapters() {
         characters: beatCtx.characters,
         prevSummary: no > 1 ? await chapterTail(no - 1) : '（这是第一章）',
         chapterTotal: String(total),
-        memory: await memoryBlock()
+        memory: await memoryBlock(),
+        semantic
       }, 'structure')
       // 生成失败/中止时断开：防止把半截细纲或半截正文当完整结果落盘
       if (paused.value || !okBeat || !genText.value.trim()) break
@@ -483,6 +488,27 @@ async function memoryBlock(): Promise<string> {
     return out ? out.slice(0, 3000) : '（暂无）'
   } catch {
     return '（暂无）'
+  }
+}
+
+/**
+ * 逐章生文前的语义检索：拿大纲 + 上一章结尾去全书文稿里捞 top-5 相关前文，
+ * 注入细纲构思，帮助跨章伏笔、人物与设定保持一致。
+ * 未配置「向量化」任务通道时返回占位文本，主流程照常（自动降级）。
+ */
+async function semanticBlock(query: string): Promise<string> {
+  if (!lib.current || !query.trim()) return '（未启用语义检索）'
+  try {
+    const r = (await window.api.vectorSearch(lib.current.title, query, 5, { scope: 'book' })) as {
+      hits: { title: string; text: string; score: number }[]
+      reason: string
+    }
+    if (!r.hits?.length) return '（未启用语义检索）'
+    return r.hits
+      .map((h, i) => `[${i + 1}] ${h.title}（相似 ${(h.score * 100).toFixed(0)}%）\n${h.text.slice(0, 500)}`)
+      .join('\n\n')
+  } catch {
+    return '（未启用语义检索）'
   }
 }
 

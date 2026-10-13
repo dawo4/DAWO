@@ -1,0 +1,484 @@
+// 向量语义检索：OpenAI 兼容 /embeddings + 本地暴力余弦（零原生依赖）。
+// 索引按书存 .inkdesk/vectors.json：正文/大纲/设定/角色等文稿逐块 + 资源库（技能/素材/便签）逐条。
+// 未配置「向量化」任务通道时所有语义功能优雅降级：调用方拿到空结果与原因说明。
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, renameSync, rmSync } from 'fs'
+import { join, normalize, sep } from 'path'
+import { getConfig, Provider, TaskCfg } from './config'
+import { getLibraryRoot, readTextAuto } from './library'
+import { LIB_LABEL, LibKind, kindRootPath, listLibrary } from './materials'
+import { estimateTokens, recordCall } from './ailog'
+
+// ============ 索引数据结构 ============
+
+interface VecChunk {
+  /** `b:{path}:{offset}` / `l:{kind}:{groupPath}:{offset}` */
+  id: string
+  /** book=本书文稿；lib=全局资源库条目 */
+  src: 'book' | 'lib'
+  /** 书内相对路径 / 库条目 `${kind}:${group}/${file}` */
+  path: string
+  /** 展示名（章节标题或库名） */
+  title: string
+  /** 在原文中的字符偏移（展示用） */
+  offset: number
+  text: string
+  /** 归一化后的向量（点积即余弦相似度） */
+  vec: number[]
+}
+
+interface VecIndex {
+  version: 1
+  model: string
+  dim: number
+  builtAt: string
+  updatedAt: string
+  /** 来源指纹：路径 → { 内容长度, mtime }，变了才重新嵌入 */
+  fps: Record<string, { len: number; mtime: number }>
+  chunks: VecChunk[]
+}
+
+// ============ 分块规则：≤3000 字整章一块，超出按 1500 字滑窗（段界贴齐，200 字重叠） ============
+
+const FULL_LIMIT = 3000
+const WIN = 1500
+const OVERLAP = 200
+const MIN_CHUNK = 30
+
+function chunkBody(text: string): { offset: number; text: string }[] {
+  const t = text.trim()
+  if (!t) return []
+  if (t.length <= FULL_LIMIT) return [{ offset: 0, text: t }]
+  const out: { offset: number; text: string }[] = []
+  let start = 0
+  while (start < t.length) {
+    let end = Math.min(start + WIN, t.length)
+    if (end < t.length) {
+      // 尽量贴齐段落/句子边界，切块更完整
+      const slice = t.slice(start, end)
+      const brk = Math.max(slice.lastIndexOf('\n'), slice.lastIndexOf('。'))
+      if (brk > WIN * 0.5) end = start + brk + 1
+    }
+    const seg = t.slice(start, end).trim()
+    if (seg.length >= MIN_CHUNK) out.push({ offset: start, text: seg })
+    if (end >= t.length) break
+    start = end - OVERLAP
+  }
+  return out
+}
+
+/** 文稿首行有内容的文字当展示标题（章节标题行） */
+function firstHeading(text: string): string {
+  for (const line of text.split('\n')) {
+    const t = line.replace(/^#+\s*/, '').trim()
+    if (t) return t.slice(0, 40)
+  }
+  return ''
+}
+
+// ============ 安全路径（与 library.ts 同规则） ============
+
+function bookDir(book: string): string {
+  const t = String(book || '')
+  if (!t || /[\\/:*?"<>|]/.test(t)) throw new Error('非法作品名')
+  const root = normalize(getLibraryRoot())
+  const p = normalize(join(root, t))
+  if (!p.startsWith(root + sep)) throw new Error('非法作品路径')
+  return p
+}
+
+function indexPath(book: string): string {
+  return join(bookDir(book), '.inkdesk', 'vectors.json')
+}
+
+function loadIndex(book: string): VecIndex | null {
+  try {
+    const p = indexPath(book)
+    if (!existsSync(p)) return null
+    const raw = JSON.parse(readFileSync(p, 'utf-8')) as VecIndex
+    if (!raw || raw.version !== 1 || !Array.isArray(raw.chunks)) return null
+    return raw
+  } catch {
+    return null
+  }
+}
+
+function saveIndex(book: string, idx: VecIndex): void {
+  mkdirSync(join(bookDir(book), '.inkdesk'), { recursive: true })
+  const p = indexPath(book)
+  const tmp = `${p}.tmp`
+  writeFileSync(tmp, JSON.stringify(idx), 'utf-8')
+  renameSync(tmp, p)
+}
+
+// ============ 嵌入调用（OpenAI 兼容 /embeddings） ============
+
+function embedTask(): { provider: Provider; cfg: TaskCfg } | null {
+  const config = getConfig()
+  const cfg: TaskCfg | undefined = config.tasks?.embedding
+  if (!cfg?.providerId || !cfg?.model) return null
+  const provider = config.providers.find((p) => p.id === cfg.providerId)
+  if (!provider) return null
+  return { provider, cfg }
+}
+
+export function embeddingConfigured(): boolean {
+  return !!embedTask()
+}
+
+function normalizeVec(v: number[]): number[] {
+  let sum = 0
+  for (const x of v) sum += x * x
+  const norm = Math.sqrt(sum) || 1
+  // 保留 5 位小数：精度对余弦排序绰绰有余，索引体积减半
+  return v.map((x) => Math.round((x / norm) * 1e5) / 1e5)
+}
+
+async function embedBatch(provider: Provider, model: string, texts: string[]): Promise<number[][]> {
+  const baseUrl = provider.baseUrl.replace(/\/+$/, '')
+  const startedAt = Date.now()
+  try {
+    const res = await fetch(`${baseUrl}/embeddings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {}) },
+      body: JSON.stringify({ model, input: texts }),
+      signal: AbortSignal.timeout(60000)
+    })
+    if (!res.ok) {
+      const t = await res.text().catch(() => '')
+      const hint = res.status === 401 ? '（API Key 无效或未填）' : res.status === 404 ? '（接口地址不支持 /embeddings 或模型名有误）' : ''
+      throw new Error(`接口返回 ${res.status}${hint}：${t.slice(0, 200)}`)
+    }
+    const json = (await res.json()) as { data?: { index: number; embedding: number[] }[] }
+    const data = (json.data || []).slice().sort((a, b) => a.index - b.index)
+    if (data.length !== texts.length || data.some((d) => !Array.isArray(d.embedding) || !d.embedding.length)) {
+      throw new Error('嵌入接口返回数据不完整')
+    }
+    recordCall({
+      kind: 'text',
+      feature: 'embedding',
+      featureLabel: '向量化检索',
+      provider: provider.name,
+      model,
+      ok: true,
+      status: 'success',
+      durationMs: Date.now() - startedAt,
+      tokens: estimateTokens(texts.join('').length),
+      tokensEstimated: true,
+      error: ''
+    })
+    return data.map((d) => normalizeVec(d.embedding))
+  } catch (e) {
+    recordCall({
+      kind: 'text',
+      feature: 'embedding',
+      featureLabel: '向量化检索',
+      provider: provider.name,
+      model,
+      ok: false,
+      status: 'failed',
+      durationMs: Date.now() - startedAt,
+      tokens: estimateTokens(texts.join('').length),
+      tokensEstimated: true,
+      error: (e as Error).message
+    })
+    throw e
+  }
+}
+
+// ============ 来源枚举 ============
+
+interface Source {
+  key: string
+  src: 'book' | 'lib'
+  path: string
+  title: string
+  text: string
+  mtime: number
+}
+
+function bookSources(book: string): Source[] {
+  const out: Source[] = []
+  const walk = (dir: string, rel: string) => {
+    const base = rel ? join(dir, rel) : dir
+    let names: string[] = []
+    try {
+      names = readdirSync(base)
+    } catch {
+      return
+    }
+    for (const name of names) {
+      if (name === '.inkdesk' || name === 'book.json') continue
+      const p = join(base, name)
+      let isDir = false
+      try {
+        isDir = statSync(p).isDirectory()
+      } catch {
+        continue
+      }
+      const next = rel ? `${rel}/${name}` : name
+      if (isDir) walk(dir, next)
+      else if (/\.(md|txt)$/i.test(name)) {
+        try {
+          const text = readTextAuto(p)
+          out.push({
+            key: `b:${next}`,
+            src: 'book',
+            path: next,
+            title: firstHeading(text) || next.replace(/\.(md|txt)$/i, ''),
+            text,
+            mtime: statSync(p).mtimeMs
+          })
+        } catch {
+          /* 单文件读取失败跳过 */
+        }
+      }
+    }
+  }
+  walk(bookDir(book), '')
+  return out
+}
+
+const LIB_KINDS: LibKind[] = ['skills', 'materials', 'notes']
+
+function libSources(): Source[] {
+  const out: Source[] = []
+  for (const kind of LIB_KINDS) {
+    try {
+      const root = kindRootPath(kind)
+      for (const g of listLibrary(kind)) {
+        for (const e of g.entries) {
+          try {
+            const p = join(root, e.path)
+            const raw = readFileSync(p, 'utf-8')
+            // 去掉 frontmatter 头再入库，避免元信息噪音
+            const body = raw.startsWith('---') ? raw.slice(raw.indexOf('\n---', 3) + 4).trim() : raw.trim()
+            if (!body) continue
+            out.push({
+              key: `l:${kind}:${e.path}`,
+              src: 'lib',
+              path: `${kind}:${e.path}`,
+              title: `${LIB_LABEL[kind]} · ${e.name}`,
+              text: body,
+              mtime: statSync(p).mtimeMs
+            })
+          } catch {
+            /* 单条目失败跳过 */
+          }
+        }
+      }
+    } catch {
+      /* 某个库不可读不影响整体 */
+    }
+  }
+  return out
+}
+
+// ============ 索引构建 / 增量同步 ============
+
+const syncing = new Map<string, Promise<{ stale: boolean; error: string }>>()
+
+function allSources(book: string, includeLib: boolean): Source[] {
+  return includeLib ? [...bookSources(book), ...libSources()] : bookSources(book)
+}
+
+/** 指纹一致的块原样保留，变化的重新分块嵌入，消失的删除 */
+function diffChunks(idx: VecIndex, sources: Source[]): { keep: VecChunk[]; changed: Source[] } {
+  const keep: VecChunk[] = []
+  const changedKeys = new Set<string>()
+  const srcByKey = new Map(sources.map((s) => [s.key, s]))
+  for (const [key, fp] of Object.entries(idx.fps)) {
+    const s = srcByKey.get(key)
+    if (!s || s.text.length !== fp.len || Math.abs(s.mtime - fp.mtime) > 1) changedKeys.add(key)
+  }
+  for (const s of sources) if (!idx.fps[s.key] || changedKeys.has(s.key)) changedKeys.add(s.key)
+  for (const c of idx.chunks) {
+    const baseKey = c.id.slice(0, c.id.lastIndexOf(':'))
+    if (!changedKeys.has(baseKey)) keep.push(c)
+  }
+  return { keep, changed: sources.filter((s) => changedKeys.has(s.key)) }
+}
+
+async function chunksFor(task: { provider: Provider; cfg: TaskCfg }, sources: Source[]): Promise<VecChunk[]> {
+  const pieces: { key: string; src: 'book' | 'lib'; path: string; title: string; offset: number; text: string }[] = []
+  for (const s of sources) {
+    for (const c of chunkBody(s.text)) pieces.push({ key: s.key, src: s.src, path: s.path, title: s.title, offset: c.offset, text: c.text })
+  }
+  const out: VecChunk[] = []
+  const BATCH = 16
+  for (let i = 0; i < pieces.length; i += BATCH) {
+    const batch = pieces.slice(i, i + BATCH)
+    const vecs = await embedBatch(task.provider, task.cfg.model, batch.map((p) => p.text))
+    batch.forEach((p, j) => {
+      out.push({ id: `${p.key}:${p.offset}`, src: p.src, path: p.path, title: p.title, offset: p.offset, text: p.text, vec: vecs[j] })
+    })
+  }
+  return out
+}
+
+/**
+ * 增量同步索引。换模型时返回 stale=true（向量空间不同，必须手动重建，防止混用两个模型的向量）。
+ * 同一本书并发调用会合并成一次。
+ */
+function syncIndex(book: string, opts: { force?: boolean } = {}): Promise<{ stale: boolean; error: string }> {
+  const existing = syncing.get(book)
+  if (existing && !opts.force) return existing
+  const job = (async (): Promise<{ stale: boolean; error: string }> => {
+    const task = embedTask()
+    if (!task) return { stale: false, error: '未配置向量化' }
+    const model = task.cfg.model
+    let idx = loadIndex(book)
+    if (!idx || opts.force) {
+      const sources = allSources(book, true)
+      const chunks = await chunksFor(task, sources)
+      idx = {
+        version: 1,
+        model,
+        dim: chunks[0]?.vec.length || 0,
+        builtAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        fps: Object.fromEntries(sources.map((s) => [s.key, { len: s.text.length, mtime: s.mtime }])),
+        chunks
+      }
+      saveIndex(book, idx)
+      return { stale: false, error: '' }
+    }
+    if (idx.model !== model) return { stale: true, error: '向量化模型已更换，索引需重建' }
+    const sources = allSources(book, true)
+    const { keep, changed } = diffChunks(idx, sources)
+    if (!changed.length) return { stale: false, error: '' }
+    const fresh = await chunksFor(task, changed)
+    idx.chunks = [...keep, ...fresh]
+    idx.dim = idx.chunks[0]?.vec.length || idx.dim
+    idx.updatedAt = new Date().toISOString()
+    const keptKeys = new Set(sources.map((s) => s.key))
+    for (const k of Object.keys(idx.fps)) if (!keptKeys.has(k)) delete idx.fps[k]
+    for (const s of changed) idx.fps[s.key] = { len: s.text.length, mtime: s.mtime }
+    saveIndex(book, idx)
+    return { stale: false, error: '' }
+  })().finally(() => syncing.delete(book))
+  syncing.set(book, job)
+  return job
+}
+
+// ============ 对外能力 ============
+
+export interface VectorHit {
+  title: string
+  path: string
+  offset: number
+  text: string
+  score: number
+  src: 'book' | 'lib'
+}
+
+export interface SearchResult {
+  hits: VectorHit[]
+  reason: string
+}
+
+/** 语义搜索：自动先做增量同步（新写的章节下一次检索就能被搜到），未配置 / 换模型返回空结果与原因 */
+export async function vectorSearch(
+  book: string,
+  query: string,
+  topK = 5,
+  opts: { scope?: 'all' | 'book'; minScore?: number } = {}
+): Promise<SearchResult> {
+  if (!query.trim()) return { hits: [], reason: '空查询' }
+  const task = embedTask()
+  if (!task) return { hits: [], reason: '未配置向量化' }
+  try {
+    const st = await syncIndex(book)
+    if (st.stale) return { hits: [], reason: st.error }
+    const idx = loadIndex(book)
+    if (!idx || !idx.chunks.length) return { hits: [], reason: '索引为空（书里还没有内容）' }
+    const [qv] = await embedBatch(task.provider, task.cfg.model, [query.slice(0, 4000)])
+    const scope = opts.scope || 'all'
+    const minScore = opts.minScore ?? 0.3
+    const pool = scope === 'book' ? idx.chunks.filter((c) => c.src === 'book') : idx.chunks
+    const scored: VectorHit[] = []
+    for (const c of pool) {
+      let dot = 0
+      for (let i = 0; i < qv.length; i++) dot += qv[i] * (c.vec[i] || 0)
+      if (dot >= minScore) scored.push({ title: c.title, path: c.path, offset: c.offset, text: c.text, score: dot, src: c.src })
+    }
+    scored.sort((a, b) => b.score - a.score)
+    return { hits: scored.slice(0, topK), reason: '' }
+  } catch (e) {
+    return { hits: [], reason: `语义检索失败：${(e as Error).message}` }
+  }
+}
+
+/** 索引状态（同步、无副作用），供写作台「检索」面板 */
+export function vectorStatus(book: string): {
+  configured: boolean
+  model: string
+  hasIndex: boolean
+  count: number
+  bookChunks: number
+  libChunks: number
+  sources: number
+  chars: number
+  estTokens: number
+  builtAt: string
+  updatedAt: string
+  stale: boolean
+} {
+  const task = embedTask()
+  const idx = loadIndex(book)
+  const chars = idx ? idx.chunks.reduce((n, c) => n + c.text.length, 0) : 0
+  return {
+    configured: !!task,
+    model: task?.cfg.model || '',
+    hasIndex: !!idx,
+    count: idx?.chunks.length || 0,
+    bookChunks: idx ? idx.chunks.filter((c) => c.src === 'book').length : 0,
+    libChunks: idx ? idx.chunks.filter((c) => c.src === 'lib').length : 0,
+    sources: idx ? Object.keys(idx.fps).length : 0,
+    chars,
+    estTokens: estimateTokens(chars),
+    builtAt: idx?.builtAt || '',
+    updatedAt: idx?.updatedAt || '',
+    stale: !!task && !!idx && idx.model !== task.cfg.model
+  }
+}
+
+/** 重建：全书 + 资源库全部重新嵌入（成本较高，UI 层负责确认） */
+export async function vectorRebuild(book: string): Promise<{ ok: boolean; count: number; tokens: number; error: string }> {
+  try {
+    const st = await syncIndex(book, { force: true })
+    if (st.error && !loadIndex(book)) return { ok: false, count: 0, tokens: 0, error: st.error }
+    const idx = loadIndex(book)
+    return { ok: true, count: idx?.chunks.length || 0, tokens: estimateTokens((idx ? idx.chunks.reduce((n, c) => n + c.text.length, 0) : 0)), error: '' }
+  } catch (e) {
+    return { ok: false, count: 0, tokens: 0, error: (e as Error).message }
+  }
+}
+
+/** 增量更新：只嵌入新增 / 变化的块 */
+export async function vectorUpdate(book: string): Promise<{ ok: boolean; count: number; error: string }> {
+  try {
+    const st = await syncIndex(book)
+    const idx = loadIndex(book)
+    return { ok: !st.error || !!idx, count: idx?.chunks.length || 0, error: st.error }
+  } catch (e) {
+    return { ok: false, count: 0, error: (e as Error).message }
+  }
+}
+
+/** 删除索引文件（换模型重建前的兜底清理用） */
+export function vectorClear(book: string): void {
+  try {
+    const p = indexPath(book)
+    if (existsSync(p)) rmSync(p)
+  } catch {
+    /* 忽略 */
+  }
+}
+
+/** 供智能体系统提示词注入：拿作者本轮的话检索全书 + 资源库，格式化成带来源的片段列表；无结果返回空串 */
+export async function semanticForPrompt(book: string, query: string, topK = 4): Promise<string> {
+  const r = await vectorSearch(book, query, topK, { minScore: 0.35 })
+  return r.hits
+    .map((h) => `· [${h.title}｜相似 ${(h.score * 100).toFixed(0)}%] ${h.text.replace(/\s+/g, ' ').slice(0, 400)}`)
+    .join('\n')
+}

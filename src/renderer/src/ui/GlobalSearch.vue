@@ -20,11 +20,15 @@ interface Hit {
   book?: string
   /** kind 为 board 时的板块名（时间线/词典/伏笔…，点击跳转到对应资料板块） */
   board?: string
+  /** 语义检索命中（混合检索：关键词命中之外补充语义相关性结果） */
+  semantic?: boolean
 }
 
 const q = ref('')
 const open = ref(false)
 const hits = ref<Hit[]>([])
+const semHits = ref<Hit[]>([])
+const semLoading = ref(false)
 const cursor = ref(0)
 const inputEl = ref<HTMLInputElement>()
 const rootEl = ref<HTMLElement>()
@@ -100,6 +104,7 @@ let boardDocs: BoardDoc[] = []
 /** 已建索引对应的作品名；用 null 做哨兵，避免「未打开作品」时 '' === '' 导致永不建索引 */
 let indexBook: string | null = null
 let timer: ReturnType<typeof setTimeout> | null = null
+let semTimer: ReturnType<typeof setTimeout> | null = null
 
 const book = computed(() => lib.current?.title || '')
 const canSearch = computed(() => q.value.trim().length > 0)
@@ -324,11 +329,53 @@ watch(q, () => {
   if (!q.value.trim()) {
     open.value = false
     hits.value = []
+    semHits.value = []
     return
   }
   open.value = true
+  semHits.value = []
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => void run(), 220)
+  // 语义检索（混合）：输入停顿更久才发一次嵌入请求，避免逐键烧 token
+  if (semTimer) clearTimeout(semTimer)
+  semTimer = setTimeout(() => void runSemantic(), 900)
+})
+
+/** 语义检索：配置了「向量化」任务通道且当前有打开的作品时，补一批语义相关结果（未配置时静默跳过） */
+async function runSemantic() {
+  const kw = q.value.trim()
+  const book = lib.current?.title || ''
+  if (!kw || !book || !app.config?.tasks?.embedding?.providerId || !app.config?.tasks?.embedding?.model) return
+  semLoading.value = true
+  try {
+    const r = (await window.api.vectorSearch(book, kw, 6)) as {
+      hits: { title: string; path: string; text: string; score: number; src: 'book' | 'lib' }[]
+    }
+    // 输入已经变了就丢弃过期结果
+    if (q.value.trim() !== kw) return
+    const out: Hit[] = []
+    for (const h of r.hits || []) {
+      if (h.src === 'lib') {
+        const m = /^([^:]+):(.+)\/([^/]+)\.md$/.exec(h.path)
+        if (m) out.push({ kind: 'lib', libKind: m[1], group: m[2], name: m[3], text: h.text.slice(0, 80), semantic: true })
+      } else {
+        out.push({ kind: 'file', path: h.path, text: h.text.slice(0, 80), semantic: true })
+      }
+    }
+    semHits.value = out
+  } catch {
+    /* 语义检索失败不影响关键词结果 */
+  } finally {
+    semLoading.value = false
+  }
+}
+
+/** 关键词命中在前，语义补充在后（同一文件/库条目只出现一次） */
+const mergedHits = computed<Hit[]>(() => {
+  if (!semHits.value.length) return hits.value
+  const keyOf = (h: Hit) => (h.kind === 'lib' ? `l:${h.libKind}:${h.group}/${h.name}` : h.path || '')
+  const seen = new Set(hits.value.map(keyOf))
+  return [...hits.value, ...semHits.value.filter((h) => !seen.has(keyOf(h)))]
 })
 
 watch(open, (v) => {
@@ -363,16 +410,16 @@ function onDocMousedown(e: MouseEvent) {
 
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') return close()
-  if (!hits.value.length) return
+  if (!mergedHits.value.length) return
   if (e.key === 'ArrowDown') {
     e.preventDefault()
-    cursor.value = (cursor.value + 1) % hits.value.length
+    cursor.value = (cursor.value + 1) % mergedHits.value.length
   } else if (e.key === 'ArrowUp') {
     e.preventDefault()
-    cursor.value = (cursor.value - 1 + hits.value.length) % hits.value.length
+    cursor.value = (cursor.value - 1 + mergedHits.value.length) % mergedHits.value.length
   } else if (e.key === 'Enter') {
     e.preventDefault()
-    pick(hits.value[cursor.value])
+    pick(mergedHits.value[cursor.value])
   }
 }
 
@@ -400,6 +447,7 @@ onUnmounted(() => {
   window.removeEventListener('inkdesk:file-changed', onFileChanged)
   window.removeEventListener('resize', updatePanelPos)
   document.removeEventListener('mousedown', onDocMousedown)
+  if (semTimer) clearTimeout(semTimer)
 })
 </script>
 
@@ -436,12 +484,12 @@ onUnmounted(() => {
       :style="panelStyle"
       class="fixed rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)] overflow-hidden z-[70]"
     >
-      <div v-if="!hits.length" class="px-4 py-5 text-center text-[12px] text-[var(--text-faint)]">
-        「{{ q }}」没有找到匹配的作品、文稿、资料或功能
+      <div v-if="!mergedHits.length" class="px-4 py-5 text-center text-[12px] text-[var(--text-faint)]">
+        {{ semLoading ? `正在语义检索「${q}」…` : `「${q}」没有找到匹配的作品、文稿、资料或功能` }}
       </div>
       <div v-else class="max-h-80 overflow-y-auto">
         <button
-          v-for="(h, i) in hits"
+          v-for="(h, i) in mergedHits"
           :key="h.kind + (h.book || h.path || h.view || h.name || '') + (h.line || '')"
           class="w-full text-left px-3.5 py-2 cursor-pointer border-b border-[var(--border)] last:border-b-0"
           :class="i === cursor ? 'bg-[var(--panel-2)]' : 'hover:bg-[var(--hover)]'"
@@ -451,6 +499,13 @@ onUnmounted(() => {
           <div class="flex items-center gap-1.5">
             <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--bg-soft)] text-[var(--text-faint)] shrink-0">
               {{ h.kind === 'page' ? '功能' : h.kind === 'book' ? '作品' : h.kind === 'board' ? '板块' : h.kind === 'lib' ? '资料' : '文稿' }}
+            </span>
+            <span
+              v-if="h.semantic"
+              class="text-[10px] px-1.5 py-0.5 rounded-full shrink-0"
+              :style="{ background: 'color-mix(in srgb, var(--accent) 18%, transparent)', color: 'var(--accent)' }"
+            >
+              语义
             </span>
             <span class="text-[12.5px] truncate" :style="{ color: 'var(--accent)' }">
               {{

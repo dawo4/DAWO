@@ -27,6 +27,29 @@ declare global {
       historyDiff: (book: string, rel: string, file: string) => Promise<{ base: string; current: string; hunks: unknown[]; additions: number; deletions: number; truncated: boolean }>
       batchRevise: (params: { runId: string; book: string; chapters: { path: string; title: string }[]; instruction: string }) => Promise<void>
       batchAbort: (runId: string) => Promise<void>
+      vectorSearch: (
+        book: string,
+        query: string,
+        topK?: number,
+        opts?: { scope?: 'all' | 'book'; minScore?: number }
+      ) => Promise<{ hits: { title: string; path: string; offset: number; text: string; score: number; src: 'book' | 'lib' }[]; reason: string }>
+      vectorStatus: (book: string) => Promise<{
+        configured: boolean
+        model: string
+        hasIndex: boolean
+        count: number
+        bookChunks: number
+        libChunks: number
+        sources: number
+        chars: number
+        estTokens: number
+        builtAt: string
+        updatedAt: string
+        stale: boolean
+      }>
+      vectorUpdate: (book: string) => Promise<{ ok: boolean; count: number; error: string }>
+      vectorRebuild: (book: string) => Promise<{ ok: boolean; count: number; tokens: number; error: string }>
+      vectorClear: (book: string) => Promise<void>
       treeList: (book: string) => Promise<unknown[]>
       statsGet: (book: string) => Promise<{ days: Record<string, { handwritten: number; ai: number }>; prevCounts: Record<string, number> }>
       statsAdd: (book: string, hand: number, ai: number) => Promise<unknown>

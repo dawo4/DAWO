@@ -32,6 +32,15 @@ const api = {
   batchRevise: (params: { runId: string; book: string; chapters: { path: string; title: string }[]; instruction: string }) =>
     ipcRenderer.invoke('batch:revise', params),
   batchAbort: (runId: string) => ipcRenderer.invoke('batch:abort', runId),
+
+  // ============ 向量语义检索 ============
+  vectorSearch: (book: string, query: string, topK?: number, opts?: Record<string, unknown>) =>
+    ipcRenderer.invoke('vector:search', book, query, topK, opts),
+  vectorStatus: (book: string) => ipcRenderer.invoke('vector:status', book),
+  vectorUpdate: (book: string) => ipcRenderer.invoke('vector:update', book),
+  vectorRebuild: (book: string) => ipcRenderer.invoke('vector:rebuild', book),
+  vectorClear: (book: string) => ipcRenderer.invoke('vector:clear', book),
+
   treeList: (book: string) => ipcRenderer.invoke('tree:list', book),
 
   statsGet: (book: string) => ipcRenderer.invoke('stats:get', book),

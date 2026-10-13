@@ -170,7 +170,8 @@ export const DEFAULT_PROMPTS: Record<string, string> = {
 角色卡：{{characters}}
 上一章概要：{{prevSummary}}
 已完成章节数：{{chapterNo}}
-作者记忆（全局规矩与本书决策，须遵守）：{{memory}}`,
+作者记忆（全局规矩与本书决策，须遵守）：{{memory}}
+前文相关片段（语义检索自本书已有文稿，供衔接与一致性参考；与细纲冲突时以大纲和上一章概要为准）：{{semantic}}`,
 
   'wf-chapter': `你是顶尖网文写手。请根据章节细纲写出第 {{chapterNo}} 章正文，要求：
 - 第一行输出章节标题，格式为「# 第{{chapterNo}}章 标题」
@@ -587,7 +588,7 @@ const PROMPT_STAMPS: Record<string, string> = {
   'deai-diagnose': '角色设定卡（OOC 对照基准',
   'deai-rewrite': '注入人类信号',
   'wf-chapter': '作者记忆是硬约束',
-  'wf-beat': '策划不得违反作者记忆里立过的规矩',
+  'wf-beat': '前文相关片段（语义检索自本书已有文稿',
   'wf-characters': '卡末带声纹两行',
   'agent-section': '正文人类信号',
   'agent-manuscript': '改稿时见到就拆',
