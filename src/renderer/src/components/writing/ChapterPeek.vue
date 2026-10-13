@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useLibraryStore } from '../../store/library'
-import { FileText } from 'lucide-vue-next'
+import { FileText, SquareCheckBig } from 'lucide-vue-next'
+import BatchRevise from './BatchRevise.vue'
 
 const props = defineProps<{ book: string; currentFile: string }>()
 const emit = defineEmits<{ (e: 'open', path: string): void }>()
 
 const lib = useLibraryStore()
+const batchOpen = ref(false)
 
 /** prevCounts 是每次打开文件时记录的字数，正好当章节字数总览用，无需额外读文件 */
 const counts = ref<Record<string, number>>({})
@@ -52,8 +54,17 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
 <template>
   <div class="h-full flex flex-col min-h-0">
     <div class="shrink-0 px-3.5 py-2.5 border-b border-[var(--border)]">
-      <div class="text-[11px] text-[var(--text-faint)]">
-        共 {{ chapters.length }} 章 · 已统计 {{ knownCount }} 章
+      <div class="text-[11px] text-[var(--text-faint)] flex items-center gap-1.5">
+        <span>共 {{ chapters.length }} 章 · 已统计 {{ knownCount }} 章</span>
+        <div class="flex-1" />
+        <button
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full cursor-pointer text-[10.5px] transition-colors"
+          :style="{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }"
+          title="多章套用同一条修订指令，逐章出差异审阅"
+          @click="batchOpen = true"
+        >
+          <SquareCheckBig :size="10" /> 批量修订
+        </button>
       </div>
       <div class="text-[12px] mt-0.5">
         合计 <span class="tabular-nums" :style="{ color: 'var(--accent)' }">{{ total.toLocaleString() }}</span> 字
@@ -84,5 +95,7 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
     <div class="shrink-0 px-3.5 py-2 border-t border-[var(--border)] text-[10.5px] text-[var(--text-faint)] leading-4">
       字数在打开章节时记录，未打开过的显示「—」
     </div>
+
+    <BatchRevise :book="props.book" :current-file="props.currentFile" :open="batchOpen" @close="batchOpen = false" />
   </div>
 </template>

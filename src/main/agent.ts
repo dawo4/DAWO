@@ -209,6 +209,23 @@ function makeProposal(
 // ============ 资源库入库提案 ============
 // 智能体写资源库不再直接落盘：先提交提案，作者在界面上确认后才写入。
 
+/**
+ * 手工创建提案（非智能体工具路径）：批量修订管道复用同一提案存储与 applyProposal/rejectProposal IPC。
+ */
+export function createManualProposal(
+  win: BrowserWindow,
+  runId: string,
+  book: string,
+  rel: string,
+  baseContent: string,
+  newContent: string,
+  summary: string
+): EditProposal {
+  const ctx: ToolCtx = { win, runId, book, scope: [], approvalMode: 'manual' }
+  const r = makeProposal(ctx, rel, baseContent, newContent, summary)
+  return r.proposal as EditProposal
+}
+
 /** 把工具的 library 参数解析为 LibKind（含灵感便签） */
 export function asLibKind(v: unknown): LibKind {
   const s = String(v || 'materials')

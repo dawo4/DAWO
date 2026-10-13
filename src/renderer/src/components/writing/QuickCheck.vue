@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // 随写随查速检：当前章正文对照词典 / 出场追踪 / 境界体系 / 伏笔板 / 本章细纲，本地匹配零 AI
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { BookOpenCheck, RefreshCw } from 'lucide-vue-next'
+import { BookOpenCheck, RefreshCw, ScanSearch } from 'lucide-vue-next'
 import { analyzeHumanSignal } from '../../lib/human-signal'
+import FullCheck from './FullCheck.vue'
 
 const props = defineProps<{ book: string; file: string; chapterText: string }>()
 
@@ -19,6 +20,7 @@ const power = ref<PowerData>({ realms: [], rules: '', chars: [] })
 const foreshadow = ref<ForeshadowEntry[]>([])
 const outline = ref<OutlineLite[]>([])
 const loading = ref(false)
+const fullOpen = ref(false)
 
 const STATUS_COLOR: Record<string, string> = {
   健康: '#6fae6f',
@@ -151,12 +153,21 @@ defineExpose({ reload })
       <div class="flex-1" />
       <button
         class="text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer"
+        title="全书一致性体检：跑遍所有章节汇总问题清单"
+        @click="fullOpen = true"
+      >
+        <ScanSearch :size="12" />
+      </button>
+      <button
+        class="text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer"
         title="重新读取词典 / 出场 / 境界 / 伏笔 / 细纲"
         @click="reload"
       >
         <RefreshCw :size="12" :class="{ 'animate-spin': loading }" />
       </button>
     </div>
+
+    <FullCheck :book="props.book" :open="fullOpen" @close="fullOpen = false" />
 
     <p v-if="!isChapter" class="text-xs text-[var(--text-faint)] leading-5">
       打开一个章节文件后自动对照：登记角色（状态/所在地/境界，死亡离场现身标红）、细纲出场规划、专名词条、悬置伏笔与久悬提醒、境界越级参考、AI 毒句式红牌。全程本地匹配，零 AI 成本。

@@ -28,6 +28,10 @@ const api = {
   historyList: (book: string, rel: string) => ipcRenderer.invoke('history:list', book, rel),
   historyRead: (book: string, rel: string, file: string) => ipcRenderer.invoke('history:read', book, rel, file),
   historyRestore: (book: string, rel: string, file: string) => ipcRenderer.invoke('history:restore', book, rel, file),
+  historyDiff: (book: string, rel: string, file: string) => ipcRenderer.invoke('history:diff', book, rel, file),
+  batchRevise: (params: { runId: string; book: string; chapters: { path: string; title: string }[]; instruction: string }) =>
+    ipcRenderer.invoke('batch:revise', params),
+  batchAbort: (runId: string) => ipcRenderer.invoke('batch:abort', runId),
   treeList: (book: string) => ipcRenderer.invoke('tree:list', book),
 
   statsGet: (book: string) => ipcRenderer.invoke('stats:get', book),

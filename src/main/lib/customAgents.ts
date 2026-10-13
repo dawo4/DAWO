@@ -170,11 +170,11 @@ export function listRoster(): { id: string; name: string; desc: string }[] {
 
 // ============ LLM 一次性调用（非流式）：AI 起草智能体定义 / 会话摘要 ============
 
-function llmTaskCfg(): { provider: Provider; cfg: TaskCfg } {
+function llmTaskCfg(taskKey = 'agent'): { provider: Provider; cfg: TaskCfg } {
   const config = getConfig()
-  const cfg: TaskCfg = config.tasks?.agent || ({} as TaskCfg)
+  const cfg: TaskCfg = config.tasks?.[taskKey] || ({} as TaskCfg)
   const provider = config.providers.find((p) => p.id === cfg.providerId)
-  if (!provider || !cfg.model) throw new Error('尚未配置智能体模型：请到「设置 → AI 服务」为「智能体对话」分配服务商与模型')
+  if (!provider || !cfg.model) throw new Error('尚未配置模型：请到「设置 → AI 服务」为对应任务分配服务商与模型')
   return { provider, cfg }
 }
 
@@ -183,9 +183,10 @@ export async function llmComplete(
   system: string,
   user: string,
   feature = 'llm',
-  featureLabel = '一次性调用'
+  featureLabel = '一次性调用',
+  taskKey = 'agent'
 ): Promise<string> {
-  const { provider, cfg } = llmTaskCfg()
+  const { provider, cfg } = llmTaskCfg(taskKey)
   const baseUrl = provider.baseUrl.replace(/\/+$/, '')
   const startedAt = Date.now()
   try {

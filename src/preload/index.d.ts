@@ -24,6 +24,9 @@ declare global {
       historyList: (book: string, rel: string) => Promise<{ file: string; at: string }[]>
       historyRead: (book: string, rel: string, file: string) => Promise<string>
       historyRestore: (book: string, rel: string, file: string) => Promise<void>
+      historyDiff: (book: string, rel: string, file: string) => Promise<{ base: string; current: string; hunks: unknown[]; additions: number; deletions: number; truncated: boolean }>
+      batchRevise: (params: { runId: string; book: string; chapters: { path: string; title: string }[]; instruction: string }) => Promise<void>
+      batchAbort: (runId: string) => Promise<void>
       treeList: (book: string) => Promise<unknown[]>
       statsGet: (book: string) => Promise<{ days: Record<string, { handwritten: number; ai: number }>; prevCounts: Record<string, number> }>
       statsAdd: (book: string, hand: number, ai: number) => Promise<unknown>

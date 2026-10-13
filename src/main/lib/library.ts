@@ -1,6 +1,7 @@
 import { app, dialog, shell } from 'electron'
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, appendFileSync, copyFileSync, renameSync } from 'fs'
 import { join, normalize, sep, extname } from 'path'
+import { computeDiff } from './diff'
 
 let libraryRoot = ''
 
@@ -171,10 +172,10 @@ export function readTextFile(book: string, rel: string): string {
 export function writeTextFile(book: string, rel: string, content: string): void {
   const p = safeResolve(book, rel)
   mkdirSync(join(p, '..'), { recursive: true })
-  // 历史快照：改动较大时留档
+  // 历史快照：正文有实际变化就留档（供写作台「历史」面板对比回滚）
   if (existsSync(p) && rel.startsWith('正文')) {
     const old = readFileSync(p, 'utf-8')
-    if (Math.abs(old.length - content.length) > 800) snapshot(book, rel, old)
+    if (old !== content) snapshot(book, rel, old)
   }
   writeFileSync(p, content, 'utf-8')
 }
@@ -185,7 +186,10 @@ function snapshot(book: string, rel: string, content: string): void {
     mkdirSync(histDir, { recursive: true })
     const name = rel.replace(/[\\/:*?"<>|]/g, '_')
     const files = readdirSync(histDir).filter((f) => f.startsWith(name)).sort()
-    if (files.length >= 10) rmSync(join(histDir, files[0]))
+    // 与最近一份快照相同则不重复留档
+    const latest = files[files.length - 1]
+    if (latest && readTextAuto(join(histDir, latest)) === content) return
+    if (files.length >= 20) rmSync(join(histDir, files[0]))
     appendFileSync(join(histDir, `${name}.${Date.now()}.bak`), content, 'utf-8')
   } catch {
     /* 快照失败不影响主流程 */
@@ -220,6 +224,21 @@ export function historyRestore(book: string, rel: string, file: string): void {
   const p = safeResolve(book, rel)
   if (existsSync(p)) snapshot(book, rel, readFileSync(p, 'utf-8'))
   writeTextFile(book, rel, content)
+}
+
+/** 快照与当前内容的差异（供回滚前预览）：old=快照，current=现文件 */
+export function historyDiff(book: string, rel: string, file: string): {
+  base: string
+  current: string
+  hunks: unknown[]
+  additions: number
+  deletions: number
+  truncated: boolean
+} {
+  const base = historyRead(book, rel, file)
+  const current = readTextFile(book, rel)
+  const diff = computeDiff(base, current)
+  return { base, current, hunks: diff.hunks, additions: diff.additions, deletions: diff.deletions, truncated: diff.truncated }
 }
 
 export interface TreeNode {

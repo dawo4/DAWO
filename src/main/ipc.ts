@@ -14,6 +14,8 @@ import * as ailog from './lib/ailog'
 import * as backup from './lib/backup'
 import { runAi, abortRun, fetchModels, testProvider, AiRunParams } from './ai'
 import { providerSearchSupported } from './lib/websearch'
+import { historyDiff } from './lib/library'
+import { startBatchRevise, batchAbort, BatchParams } from './lib/batch'
 import { runAgent, abortAgentRun, applyProposal, rejectProposal, getProposal, allProposals, bookFileList, applyLibProposal, rejectLibProposal, AgentRunParams, decideSubagent } from './agent'
 import * as customAgents from './lib/customAgents'
 
@@ -104,6 +106,14 @@ export function registerIpc(): void {
   })
   ipcMain.handle('ai:testProvider', (_e, provider: { baseUrl: string; apiKey: string }, model: string) => testProvider(provider, model))
   ipcMain.handle('ai:providerSearchSupported', (_e, baseUrl: string) => providerSearchSupported(baseUrl))
+
+  // ============ 历史快照 / 批量修订 ============
+  ipcMain.handle('history:diff', (_e, book: string, rel: string, file: string) => historyDiff(book, rel, file))
+  ipcMain.handle('batch:revise', (e, params: BatchParams) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    if (win) void startBatchRevise(win, params)
+  })
+  ipcMain.handle('batch:abort', (_e, runId: string) => batchAbort(runId))
 
   // ============ 智能体 ============
   ipcMain.handle('agent:run', (e, params: AgentRunParams) => {
