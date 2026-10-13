@@ -12,7 +12,7 @@ import * as lexicon from './lib/lexicon'
 import * as memory from './lib/memory'
 import * as ailog from './lib/ailog'
 import * as backup from './lib/backup'
-import { runAi, abortRun, fetchModels, AiRunParams } from './ai'
+import { runAi, abortRun, fetchModels, testProvider, AiRunParams } from './ai'
 import { providerSearchSupported } from './lib/websearch'
 import { runAgent, abortAgentRun, applyProposal, rejectProposal, getProposal, allProposals, bookFileList, applyLibProposal, rejectLibProposal, AgentRunParams, decideSubagent } from './agent'
 import * as customAgents from './lib/customAgents'
@@ -102,6 +102,7 @@ export function registerIpc(): void {
   ipcMain.handle('ai:fetchModels', async (_e, provider: { id: string; name: string; baseUrl: string; apiKey: string }) => {
     return fetchModels(provider)
   })
+  ipcMain.handle('ai:testProvider', (_e, provider: { baseUrl: string; apiKey: string }, model: string) => testProvider(provider, model))
   ipcMain.handle('ai:providerSearchSupported', (_e, baseUrl: string) => providerSearchSupported(baseUrl))
 
   // ============ 智能体 ============

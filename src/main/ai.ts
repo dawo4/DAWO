@@ -225,3 +225,31 @@ export async function fetchModels(provider: Provider): Promise<{ id: string; con
     .filter((m) => m.id)
     .sort((a, b) => a.id.localeCompare(b.id))
 }
+
+/** 测试服务商连通性：发一条最小对话请求（区别于 /models 只探地址），端到端验证密钥与模型 */
+export async function testProvider(
+  provider: { baseUrl: string; apiKey: string },
+  model: string
+): Promise<{ ok: boolean; latencyMs: number; model: string; error: string }> {
+  const trimmed = model.trim()
+  if (!trimmed) return { ok: false, latencyMs: 0, model: '', error: '请先填写或获取模型名' }
+  const baseUrl = provider.baseUrl.replace(/\/+$/, '')
+  const startedAt = Date.now()
+  try {
+    const res = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {}) },
+      body: JSON.stringify({ model: trimmed, stream: false, max_tokens: 1, messages: [{ role: 'user', content: 'ping' }] }),
+      signal: AbortSignal.timeout(30000)
+    })
+    const latencyMs = Date.now() - startedAt
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      return { ok: false, latencyMs, model: trimmed, error: `接口返回 ${res.status}${text ? '：' + text.slice(0, 160) : ''}` }
+    }
+    await res.json().catch(() => null)
+    return { ok: true, latencyMs, model: trimmed, error: '' }
+  } catch (e) {
+    return { ok: false, latencyMs: Date.now() - startedAt, model: trimmed, error: (e as Error).message }
+  }
+}

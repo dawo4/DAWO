@@ -11,7 +11,7 @@ import { inkPrompt, inkConfirm } from '../ui/inkPrompt'
 import { aiRun } from '../ai'
 import { useLibraryStore } from '../store/library'
 import { CREATIVE_LEVELS, THINKING_LEVELS, levelToTemp, tempToLevel } from '../ui/writingScale'
-import { Plus, Trash2, FolderOpen, RefreshCw, Search, Palette, Database, Bot, FileText, History, HardDrive, ArchiveRestore, CloudUpload, ShieldCheck, LoaderCircle, CircleCheck, ImagePlus, Globe, Eye, Brain, Github } from 'lucide-vue-next'
+import { Plus, Trash2, FolderOpen, RefreshCw, Search, Palette, Database, Bot, FileText, History, HardDrive, ArchiveRestore, CloudUpload, ShieldCheck, LoaderCircle, CircleCheck, CircleX, ImagePlus, Globe, Eye, Brain, Github } from 'lucide-vue-next'
 import dawoLogo from '../assets/dawo-logo.png'
 
 const logoUrl = dawoLogo
@@ -379,6 +379,36 @@ async function fetchModels(id: string) {
   } finally {
     fetchingId.value = ''
     if (fetchTip[id]) setTimeout(() => delete fetchTip[id], 5000)
+  }
+}
+
+/** 测试连接：进行中的服务商 id 与最近一次测试结果（成功留延迟，失败留原因） */
+const testingId = ref('')
+const testResult = reactive<Record<string, { ok: boolean; latencyMs: number; model: string; error: string }>>({})
+
+async function testProvider(id: string) {
+  const p = cfg.providers.find((x) => x.id === id)
+  if (!p?.baseUrl) {
+    testResult[id] = { ok: false, latencyMs: 0, model: '', error: '请先填写接口地址' }
+    return
+  }
+  // 测哪个模型：优先取任务分配里绑到该服务商的第一个模型，其次取已获取列表的第一个
+  const bound = Object.values(cfg.tasks)
+    .map((t) => (t.providerId === id ? t.model.trim() : ''))
+    .filter(Boolean)[0]
+  const model = bound || providerModels[id]?.[0] || ''
+  testingId.value = id
+  try {
+    testResult[id] = (await window.api.aiTestProvider({ baseUrl: p.baseUrl, apiKey: p.apiKey }, model)) as {
+      ok: boolean
+      latencyMs: number
+      model: string
+      error: string
+    }
+  } catch (e) {
+    testResult[id] = { ok: false, latencyMs: 0, model: '', error: (e as Error).message }
+  } finally {
+    testingId.value = ''
   }
 }
 
@@ -767,6 +797,19 @@ onUnmounted(() => {
                 <RefreshCw v-else :size="13" :class="{ 'text-[var(--accent)]': providerModels[p.id]?.length }" />
                 {{ fetchingId === p.id ? '获取中…' : providerModels[p.id]?.length ? `已获取 ${providerModels[p.id].length} 个` : '获取模型' }}
               </InkButton>
+              <InkButton variant="ghost" :disabled="testingId === p.id" @click="testProvider(p.id)">
+                <LoaderCircle v-if="testingId === p.id" :size="13" class="animate-spin" />
+                {{ testingId === p.id ? '测试中…' : '测试连接' }}
+              </InkButton>
+            </div>
+            <div v-if="testResult[p.id]" class="text-[11.5px] inline-flex items-center gap-1" :style="{ color: testResult[p.id].ok ? 'var(--accent)' : '#e08a7a' }">
+              <CircleCheck v-if="testResult[p.id].ok" :size="12" />
+              <CircleX v-else :size="12" />
+              {{
+                testResult[p.id].ok
+                  ? `连接正常 · 延迟 ${testResult[p.id].latencyMs}ms${testResult[p.id].model ? ` · 模型 ${testResult[p.id].model}` : ''}`
+                  : `连接失败：${testResult[p.id].error || (testResult[p.id].model ? '' : '没有可用模型——先「获取模型」或在任务分配里绑定')}`
+              }}
             </div>
             <div v-if="fetchTip[p.id]" class="ok-pulse text-[11.5px] inline-flex items-center gap-1" style="color: var(--accent)">
               <CircleCheck :size="12" /> {{ fetchTip[p.id] }}

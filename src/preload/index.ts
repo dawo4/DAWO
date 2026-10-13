@@ -49,6 +49,7 @@ const api = {
   aiRun: (params: Record<string, unknown>) => ipcRenderer.invoke('ai:run', params),
   aiAbort: (runId: string) => ipcRenderer.invoke('ai:abort', runId),
   aiFetchModels: (provider: Record<string, string>) => ipcRenderer.invoke('ai:fetchModels', provider),
+  aiTestProvider: (provider: Record<string, string>, model: string) => ipcRenderer.invoke('ai:testProvider', provider, model),
   aiProviderSearchSupported: (baseUrl: string) => ipcRenderer.invoke('ai:providerSearchSupported', baseUrl),
   aiOnEvent: (cb: (evt: { runId: string; type: string; payload?: unknown }) => void) => {
     const handler = (_e: IpcRendererEvent, evt: { runId: string; type: string; payload?: unknown }) => cb(evt)
