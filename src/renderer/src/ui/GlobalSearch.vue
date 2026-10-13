@@ -341,14 +341,16 @@ watch(q, () => {
   semTimer = setTimeout(() => void runSemantic(), 900)
 })
 
-/** 语义检索：配置了「向量化」任务通道且当前有打开的作品时，补一批语义相关结果（未配置时静默跳过） */
+/** 语义检索：配置了「向量化检索」且当前有打开的作品时，补一批语义相关结果（可单独关闭；未配置时静默跳过） */
 async function runSemantic() {
   const kw = q.value.trim()
   const book = lib.current?.title || ''
-  if (!kw || !book || !app.config?.tasks?.embedding?.providerId || !app.config?.tasks?.embedding?.model) return
+  const vo = app.config?.embeddingOpts
+  if (!kw || !book || vo?.injectSearch === false) return
+  if (!app.config?.tasks?.embedding?.providerId || !app.config?.tasks?.embedding?.model) return
   semLoading.value = true
   try {
-    const r = (await window.api.vectorSearch(book, kw, 6)) as {
+    const r = (await window.api.vectorSearch(book, kw, vo?.topKSearch || 6)) as {
       hits: { title: string; path: string; text: string; score: number; src: 'book' | 'lib' }[]
     }
     // 输入已经变了就丢弃过期结果

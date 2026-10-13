@@ -6,6 +6,29 @@ export interface AppConfig {
     thinkingLevel: 'off' | 'low' | 'medium' | 'high'
     temperature: number
   }
+  /** 向量化检索（语义搜索）行为配置；通道本身存在 tasks.embedding */
+  embeddingOpts?: {
+    /** 索引是否纳入资源库（技能/素材/便签） */
+    includeLib: boolean
+    /** 正文不超过该字数整章一块 */
+    chunkFull: number
+    /** 超出整章上限后的滑窗大小（字） */
+    winSize: number
+    /** 相似度阈值（0-1） */
+    minScore: number
+    /** 逐章生文构思细纲前注入相关前文 */
+    injectBeat: boolean
+    /** 细纲注入条数 */
+    topKBeat: number
+    /** 妙笔对话自动检索注入 */
+    injectAgent: boolean
+    /** 妙笔注入条数 */
+    topKAgent: number
+    /** Ctrl+K 混合检索 */
+    injectSearch: boolean
+    /** 全局搜索语义补充条数 */
+    topKSearch: number
+  }
   approvalMode: 'manual' | 'auto-approve'
   bindings: Record<string, { materials: string[]; skills: string[]; notes?: string[] }>
   /** 模型上下文窗口（key = `${providerId}/${model}`，token 数） */

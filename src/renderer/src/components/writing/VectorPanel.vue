@@ -116,8 +116,8 @@ function goSettings() {
         妙笔对话自动注入相关片段、Ctrl+K 支持语义混合检索。
       </p>
       <p class="text-[11px] text-[var(--text-faint)] leading-5">
-        到「设置 → AI 服务 → 任务模型 → 向量化检索」填入支持 /embeddings 接口的服务商与嵌入模型
-        （如硅基流动 BAAI/bge-m3、Ollama 本地）。未配置不影响其他功能。
+        到「设置 → AI 服务 → 向量化检索」填入支持 /embeddings 接口的服务商与嵌入模型
+        （如硅基流动 BAAI/bge-m3、Ollama 本地），并可调整索引范围、切块与注入开关。未配置不影响其他功能。
       </p>
       <button
         class="w-full flex items-center justify-center gap-1.5 text-[11.5px] py-1.5 rounded-lg cursor-pointer text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] transition-colors"

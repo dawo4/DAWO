@@ -3,7 +3,7 @@
 // 未配置「向量化」任务通道时所有语义功能优雅降级：调用方拿到空结果与原因说明。
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, renameSync, rmSync } from 'fs'
 import { join, normalize, sep } from 'path'
-import { getConfig, Provider, TaskCfg } from './config'
+import { getConfig, Provider, TaskCfg, AppConfig } from './config'
 import { getLibraryRoot, readTextAuto } from './library'
 import { LIB_LABEL, LibKind, kindRootPath, listLibrary } from './materials'
 import { estimateTokens, recordCall } from './ailog'
@@ -37,31 +37,55 @@ interface VecIndex {
   chunks: VecChunk[]
 }
 
-// ============ 分块规则：≤3000 字整章一块，超出按 1500 字滑窗（段界贴齐，200 字重叠） ============
+// ============ 行为配置（设置 → AI 服务 → 向量化检索） ============
 
-const FULL_LIMIT = 3000
-const WIN = 1500
-const OVERLAP = 200
+type EmbeddingOpts = AppConfig['embeddingOpts']
+
+/** 读取并兜底清洗向量化行为配置：越界数值拉回合法区间，缺省用默认值 */
+function vecOpts(): EmbeddingOpts {
+  const raw = (getConfig().embeddingOpts || {}) as Partial<EmbeddingOpts>
+  const num = (v: unknown, d: number, min: number, max: number): number => {
+    const n = Number(v)
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : d
+  }
+  return {
+    includeLib: raw.includeLib !== false,
+    chunkFull: num(raw.chunkFull, 3000, 500, 20000),
+    winSize: num(raw.winSize, 1500, 300, 8000),
+    minScore: typeof raw.minScore === 'number' && raw.minScore >= 0 && raw.minScore <= 1 ? raw.minScore : 0.3,
+    injectBeat: raw.injectBeat !== false,
+    topKBeat: num(raw.topKBeat, 5, 1, 20),
+    injectAgent: raw.injectAgent !== false,
+    topKAgent: num(raw.topKAgent, 4, 1, 20),
+    injectSearch: raw.injectSearch !== false,
+    topKSearch: num(raw.topKSearch, 6, 1, 20)
+  }
+}
+
+// ============ 分块规则：≤整章上限整块，超出按滑窗（段界贴齐，15% 重叠） ============
+
 const MIN_CHUNK = 30
 
 function chunkBody(text: string): { offset: number; text: string }[] {
+  const { chunkFull, winSize } = vecOpts()
+  const overlap = Math.max(100, Math.round(winSize * 0.15))
   const t = text.trim()
   if (!t) return []
-  if (t.length <= FULL_LIMIT) return [{ offset: 0, text: t }]
+  if (t.length <= chunkFull) return [{ offset: 0, text: t }]
   const out: { offset: number; text: string }[] = []
   let start = 0
   while (start < t.length) {
-    let end = Math.min(start + WIN, t.length)
+    let end = Math.min(start + winSize, t.length)
     if (end < t.length) {
       // 尽量贴齐段落/句子边界，切块更完整
       const slice = t.slice(start, end)
       const brk = Math.max(slice.lastIndexOf('\n'), slice.lastIndexOf('。'))
-      if (brk > WIN * 0.5) end = start + brk + 1
+      if (brk > winSize * 0.5) end = start + brk + 1
     }
     const seg = t.slice(start, end).trim()
     if (seg.length >= MIN_CHUNK) out.push({ offset: start, text: seg })
     if (end >= t.length) break
-    start = end - OVERLAP
+    start = end - overlap
   }
   return out
 }
@@ -277,8 +301,9 @@ function libSources(): Source[] {
 
 const syncing = new Map<string, Promise<{ stale: boolean; error: string }>>()
 
-function allSources(book: string, includeLib: boolean): Source[] {
-  return includeLib ? [...bookSources(book), ...libSources()] : bookSources(book)
+function allSources(book: string, includeLib?: boolean): Source[] {
+  const withLib = includeLib ?? vecOpts().includeLib
+  return withLib ? [...bookSources(book), ...libSources()] : bookSources(book)
 }
 
 /** 指纹一致的块原样保留，变化的重新分块嵌入，消失的删除 */
@@ -393,7 +418,7 @@ export async function vectorSearch(
     if (!idx || !idx.chunks.length) return { hits: [], reason: '索引为空（书里还没有内容）' }
     const [qv] = await embedBatch(task.provider, task.cfg.model, [query.slice(0, 4000)])
     const scope = opts.scope || 'all'
-    const minScore = opts.minScore ?? 0.3
+    const minScore = opts.minScore ?? vecOpts().minScore
     const pool = scope === 'book' ? idx.chunks.filter((c) => c.src === 'book') : idx.chunks
     const scored: VectorHit[] = []
     for (const c of pool) {
@@ -475,9 +500,11 @@ export function vectorClear(book: string): void {
   }
 }
 
-/** 供智能体系统提示词注入：拿作者本轮的话检索全书 + 资源库，格式化成带来源的片段列表；无结果返回空串 */
-export async function semanticForPrompt(book: string, query: string, topK = 4): Promise<string> {
-  const r = await vectorSearch(book, query, topK, { minScore: 0.35 })
+/** 供智能体系统提示词注入：拿作者本轮的话检索全书 + 资源库，格式化成带来源的片段列表；关闭开关 / 无结果返回空串 */
+export async function semanticForPrompt(book: string, query: string, topK?: number): Promise<string> {
+  const opts = vecOpts()
+  if (!opts.injectAgent) return ''
+  const r = await vectorSearch(book, query, topK ?? opts.topKAgent, { minScore: Math.max(0.35, opts.minScore) })
   return r.hits
     .map((h) => `· [${h.title}｜相似 ${(h.score * 100).toFixed(0)}%] ${h.text.replace(/\s+/g, ' ').slice(0, 400)}`)
     .join('\n')

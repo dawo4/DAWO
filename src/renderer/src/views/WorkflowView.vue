@@ -492,14 +492,16 @@ async function memoryBlock(): Promise<string> {
 }
 
 /**
- * 逐章生文前的语义检索：拿大纲 + 上一章结尾去全书文稿里捞 top-5 相关前文，
+ * 逐章生文前的语义检索：拿大纲 + 上一章结尾去全书文稿里捞相关前文，
  * 注入细纲构思，帮助跨章伏笔、人物与设定保持一致。
- * 未配置「向量化」任务通道时返回占位文本，主流程照常（自动降级）。
+ * 可在「设置 → AI 服务 → 向量化检索」关闭或调条数；未配置向量化时返回占位文本，主流程照常（自动降级）。
  */
 async function semanticBlock(query: string): Promise<string> {
+  const vo = app.config?.embeddingOpts
+  if (vo && vo.injectBeat === false) return '（未启用语义检索）'
   if (!lib.current || !query.trim()) return '（未启用语义检索）'
   try {
-    const r = (await window.api.vectorSearch(lib.current.title, query, 5, { scope: 'book' })) as {
+    const r = (await window.api.vectorSearch(lib.current.title, query, vo?.topKBeat || 5, { scope: 'book' })) as {
       hits: { title: string; text: string; score: number }[]
       reason: string
     }

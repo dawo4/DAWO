@@ -209,17 +209,17 @@ const TASK_LABELS: Record<string, string> = {
   polish: '润色 / 扩写 / 纠错',
   deai: '去 AI 味',
   selection: '划词自定义',
-  agent: '智能体对话',
-  embedding: '向量化检索'
+  agent: '智能体对话'
 }
 
-/** 向量化是可选通道（未配置时语义检索自动降级为关键词逻辑），不计入「任务未配完」提醒 */
+/** 向量化通道单独放在「向量化检索」标签页配置；清理服务商引用时要一并处理 */
 const EMBEDDING_KEY = 'embedding'
 
 // ============ AI 服务页内部标签页：分门别类，避免一页竖排到底 ============
 const AI_TABS = [
   { key: 'providers', label: '服务商' },
   { key: 'tasks', label: '任务模型' },
+  { key: 'vector', label: '向量化检索' },
   { key: 'search', label: '联网搜索' },
   { key: 'behavior', label: '智能体行为' }
 ]
@@ -238,11 +238,13 @@ const tasksIncomplete = computed(
   () => Object.entries(cfg.tasks).some(([k, t]) => k !== EMBEDDING_KEY && (!t.providerId || !t.model))
 )
 
-/** 某服务商被哪些任务使用（卡片上显示占用徽标；删除时提醒） */
+/** 某服务商被哪些任务使用（卡片上显示占用徽标；删除时提醒），向量化通道一并计入 */
 function providerUsage(id: string): string[] {
-  return Object.entries(TASK_LABELS)
+  const out = Object.entries(TASK_LABELS)
     .filter(([k]) => cfg.tasks[k]?.providerId === id)
     .map(([, label]) => label)
+  if (cfg.tasks[EMBEDDING_KEY]?.providerId === id) out.push('向量化检索')
+  return out
 }
 
 /** 删除服务商：在用则确认，确认后清空引用它的任务配置（防残留死引用导致「尚未配置 AI 服务」） */
@@ -261,6 +263,10 @@ async function deleteProvider(id: string) {
         cfg.tasks[k].model = ''
       }
     }
+    if (cfg.tasks[EMBEDDING_KEY]?.providerId === id) {
+      cfg.tasks[EMBEDDING_KEY].providerId = ''
+      cfg.tasks[EMBEDDING_KEY].model = ''
+    }
   } else if (p?.name) {
     const ok = await inkConfirm(`删除服务商「${p.name}」？`, { confirmText: '删除', danger: true })
     if (!ok) return
@@ -270,17 +276,42 @@ async function deleteProvider(id: string) {
 
 /** 把某一行任务的服务商 + 模型一键应用到全部任务（配好一个就不用挨个选）；向量化要专用的嵌入模型，不跟着抄 */
 function applyToAllTasks(key: string) {
+  if (key === EMBEDDING_KEY) return
   const src = cfg.tasks[key]
   for (const k of Object.keys(TASK_LABELS)) {
-    if (k === EMBEDDING_KEY) continue
     cfg.tasks[k].providerId = src.providerId
     cfg.tasks[k].model = src.model
   }
 }
 
+// ============ 向量化检索标签页 ============
+/** 相似度阈值选项（低→宽松召回多，高→严格只留强相关） */
+const MIN_SCORE_OPTS = [
+  { label: '宽松（0.20）· 结果多噪音也多', value: 0.2 },
+  { label: '标准（0.30）· 推荐', value: 0.3 },
+  { label: '适中（0.40）', value: 0.4 },
+  { label: '严格（0.50）· 只留强相关', value: 0.5 }
+]
+const TOPK_OPTS = Array.from({ length: 10 }, (_, i) => ({ label: `${i + 1} 条`, value: i + 1 }))
+const CHUNK_FULL_OPTS = [1500, 2000, 3000, 4000, 6000].map((n) => ({ label: `${n} 字`, value: n }))
+const WIN_OPTS = [800, 1000, 1500, 2000, 3000].map((n) => ({ label: `${n} 字`, value: n }))
+
 // 直接绑定全局配置对象（不再克隆快照）：设置页的编辑即时写入 store，
 // save() 只负责持久化——旧快照方案会把其他页面的并发修改（activeBook 等）覆盖回去
 const cfg = app.config as AppConfig
+/** 向量化检索行为配置对象（通道本身在 cfg.tasks[EMBEDDING_KEY]）；极老配置缺对象时现场补默认值 */
+const vo = (cfg.embeddingOpts ||= {
+  includeLib: true,
+  chunkFull: 3000,
+  winSize: 1500,
+  minScore: 0.3,
+  injectBeat: true,
+  topKBeat: 5,
+  injectAgent: true,
+  topKAgent: 4,
+  injectSearch: true,
+  topKSearch: 6
+}) as NonNullable<AppConfig['embeddingOpts']>
 // 旧版本配置缺新字段时兜底补齐
 if (cfg.modelContexts === undefined) cfg.modelContexts = {}
 if (cfg.search === undefined) cfg.search = { provider: 'auto', apiKey: '' }
@@ -882,10 +913,9 @@ onUnmounted(() => {
               v-model="cfg.tasks[key].model"
               class="ink-input flex-1"
               :list="'models-' + cfg.tasks[key].providerId"
-              :placeholder="key === EMBEDDING_KEY ? '嵌入模型名，如 BAAI/bge-m3' : '模型名，如 deepseek-chat'"
+              placeholder="模型名，如 deepseek-chat"
             />
             <input
-              v-if="key !== EMBEDDING_KEY"
               :value="ctxFor(cfg.tasks[key].providerId, cfg.tasks[key].model)"
               class="ink-input w-36 shrink-0"
               placeholder="上下文窗口，如 65536"
@@ -893,19 +923,94 @@ onUnmounted(() => {
               @input="setCtx(cfg.tasks[key].providerId, cfg.tasks[key].model, ($event.target as HTMLInputElement).value)"
             />
             <button
-              v-if="key !== EMBEDDING_KEY"
               class="text-[11px] px-2 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors shrink-0"
               title="把这一行的服务商和模型应用到全部任务"
               @click="applyToAllTasks(String(key))"
             >
               应用到全部
             </button>
-            <span v-if="key === EMBEDDING_KEY" class="text-[11px] text-[var(--text-faint)] shrink-0 w-36">可选：语义检索用</span>
           </div>
-          <div class="text-[11px] text-[var(--text-faint)] leading-5 mt-2">
-            「向量化检索」驱动全书语义搜索：逐章生文构思细纲前自动检索相关前文、妙笔对话自动注入相关片段、Ctrl+K 混合检索。
-            需要服务商支持 <b>/embeddings</b> 接口（如硅基流动 BAAI/bge-m3、智谱 embedding-3、通义 text-embedding-v4、OpenAI、Ollama 本地）。
-            未配置时以上功能自动降级为关键词逻辑，不影响其他功能。
+        </div>
+
+        <!-- 向量化检索 -->
+        <div v-show="aiTab === 'vector'" class="space-y-1">
+          <div class="text-sm text-[var(--text-dim)] mb-1">向量化检索（语义搜索）</div>
+          <div class="text-[11px] text-[var(--text-faint)] leading-5 mb-3">
+            给全书文稿与资源库建立本地向量索引，驱动三处语义能力：逐章生文构思细纲前自动检索相关前文、妙笔对话自动注入相关片段、
+            Ctrl+K 语义混合检索。需要服务商支持 <b>/embeddings</b> 接口（如硅基流动 BAAI/bge-m3、智谱 embedding-3、通义 text-embedding-v4、OpenAI、Ollama 本地）。
+            <span style="color: var(--accent)">未配置服务商与模型时以上功能自动降级，不影响其他功能。</span>
+          </div>
+
+          <!-- 通道配置 -->
+          <div class="flex items-center gap-2 mb-2.5">
+            <span class="w-40 text-sm shrink-0">嵌入模型</span>
+            <InkSelect
+              v-model="cfg.tasks[EMBEDDING_KEY].providerId"
+              class="w-40 shrink-0"
+              :options="[{ label: '选择服务商', value: '' }, ...cfg.providers.map((p) => ({ label: p.name, value: p.id }))]"
+            />
+            <input
+              v-model="cfg.tasks[EMBEDDING_KEY].model"
+              class="ink-input flex-1"
+              :list="'models-' + cfg.tasks[EMBEDDING_KEY].providerId"
+              placeholder="嵌入模型名，如 BAAI/bge-m3"
+            />
+          </div>
+          <div class="text-[11px] text-[var(--text-faint)] leading-5 mb-4">
+            与对话模型不同：嵌入模型只负责把文字转成向量，不能用来聊天。换模型后已有索引不兼容，需要到写作台「检索」面板重建。
+          </div>
+
+          <!-- 索引范围与切块 -->
+          <div class="text-xs text-[var(--text-dim)] tracking-wider mt-4 mb-2">索引范围与切块</div>
+          <div class="space-y-2.5 mb-2">
+            <div class="flex items-center gap-3">
+              <InkToggle v-model="vo.includeLib" label="索引资源库" />
+              <span class="text-[11px] text-[var(--text-faint)]">技能库 / 素材库 / 灵感便签也纳入语义检索；关闭后增量同步自动清掉已嵌的库块</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-40 text-sm shrink-0">整章一块上限</span>
+              <InkSelect v-model="vo.chunkFull" class="w-40 shrink-0" :options="CHUNK_FULL_OPTS" />
+              <span class="text-[11px] text-[var(--text-faint)]">不超过该字数的文件整篇作为一块，检索粒度最完整</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-40 text-sm shrink-0">滑窗大小</span>
+              <InkSelect v-model="vo.winSize" class="w-40 shrink-0" :options="WIN_OPTS" />
+              <span class="text-[11px] text-[var(--text-faint)]">超过整章上限的长文按此窗口切块（自动带 15% 重叠、贴齐段落边界）</span>
+            </div>
+          </div>
+
+          <!-- 检索行为 -->
+          <div class="text-xs text-[var(--text-dim)] tracking-wider mt-4 mb-2">检索行为</div>
+          <div class="flex items-center gap-2 mb-2.5">
+            <span class="w-40 text-sm shrink-0">相似度阈值</span>
+            <InkSelect v-model="vo.minScore" class="w-40 shrink-0" :options="MIN_SCORE_OPTS" />
+            <span class="text-[11px] text-[var(--text-faint)]">低于阈值的检索结果直接丢弃</span>
+          </div>
+
+          <!-- 三个注入点 -->
+          <div class="text-xs text-[var(--text-dim)] tracking-wider mt-4 mb-2">三个注入点（可单独开关）</div>
+          <div class="space-y-2.5">
+            <div class="flex items-center gap-3">
+              <InkToggle v-model="vo.injectBeat" label="逐章生文 · 细纲前注入" />
+              <InkSelect v-model="vo.topKBeat" class="w-28 shrink-0" :options="TOPK_OPTS" :disabled="!vo.injectBeat" />
+              <span class="text-[11px] text-[var(--text-faint)]">构思细纲前检索全书相关前文，跨章伏笔与设定更一致</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <InkToggle v-model="vo.injectAgent" label="妙笔对话 · 自动注入" />
+              <InkSelect v-model="vo.topKAgent" class="w-28 shrink-0" :options="TOPK_OPTS" :disabled="!vo.injectAgent" />
+              <span class="text-[11px] text-[var(--text-faint)]">按作者本轮的话检索，相关片段带来源进系统提示词</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <InkToggle v-model="vo.injectSearch" label="Ctrl+K · 语义混合检索" />
+              <InkSelect v-model="vo.topKSearch" class="w-28 shrink-0" :options="TOPK_OPTS" :disabled="!vo.injectSearch" />
+              <span class="text-[11px] text-[var(--text-faint)]">关键词命中之外补充语义相关结果（带「语义」徽标）</span>
+            </div>
+          </div>
+
+          <div class="text-[11px] text-[var(--text-faint)] leading-5 mt-4">
+            索引与维护入口在写作台右栏「检索」标签：状态一览、增量更新、重建（含 token 成本确认）。
+            改动切块参数后需重建索引才对已有块生效；增删章节与资源库条目无需手动维护——每次检索自动增量同步。
+            每次向量化调用都会记入「数据」页的 AI 成本统计。
           </div>
         </div>
 

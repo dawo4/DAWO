@@ -25,6 +25,29 @@ export interface AppConfig {
     thinkingLevel: 'off' | 'low' | 'medium' | 'high'
     temperature: number
   }
+  /** 向量化检索（语义搜索）行为配置；通道本身存在 tasks.embedding */
+  embeddingOpts: {
+    /** 索引是否纳入资源库（技能/素材/便签）；关闭后增量同步会自动清掉已嵌的库块 */
+    includeLib: boolean
+    /** 正文不超过该字数整章一块 */
+    chunkFull: number
+    /** 超出整章上限后的滑窗大小（字） */
+    winSize: number
+    /** 相似度阈值：低于它的检索结果直接丢弃（0-1） */
+    minScore: number
+    /** 逐章生文构思细纲前注入相关前文 */
+    injectBeat: boolean
+    /** 细纲注入条数 */
+    topKBeat: number
+    /** 妙笔对话自动检索注入 */
+    injectAgent: boolean
+    /** 妙笔注入条数 */
+    topKAgent: number
+    /** Ctrl+K 混合检索 */
+    injectSearch: boolean
+    /** 全局搜索语义补充条数 */
+    topKSearch: number
+  }
   approvalMode: 'manual' | 'auto-approve'
   bindings: Record<string, { materials: string[]; skills: string[] }>
   /** 敏感词库：产出正文时规避这些词 */
@@ -88,6 +111,18 @@ export function defaultConfig(): AppConfig {
       embedding: { providerId: '', model: '', temperature: 0 }
     },
     agentParams: { thinkingLevel: 'medium', temperature: 0.7 },
+    embeddingOpts: {
+      includeLib: true,
+      chunkFull: 3000,
+      winSize: 1500,
+      minScore: 0.3,
+      injectBeat: true,
+      topKBeat: 5,
+      injectAgent: true,
+      topKAgent: 4,
+      injectSearch: true,
+      topKSearch: 6
+    },
     approvalMode: 'manual',
     bindings: {},
     sensitiveWords: [],
@@ -127,6 +162,7 @@ export function initConfig(): void {
         ...cfg,
         tasks: { ...d.tasks, ...(cfg.tasks || {}) },
         agentParams: { ...d.agentParams, ...(cfg.agentParams || {}) },
+        embeddingOpts: { ...d.embeddingOpts, ...(cfg.embeddingOpts || {}) },
         bindings: { ...(d.bindings || {}), ...(cfg.bindings || {}) },
         backup: { ...d.backup, ...(cfg.backup || {}) },
         appearance: { ...d.appearance, ...(cfg.appearance || {}) }
