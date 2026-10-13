@@ -101,7 +101,7 @@ watch(cur, async () => {
       // 角色已一人一档：编辑器里展示聚合文本，确认时再按标题拆回单卡
       genText.value = (await window.api.charactersReadAll(lib.current.title)).joined
     } else {
-      const map = ['大纲/灵感方案.md', '', '设定/世界观.md']
+      const map = ['大纲/大纲.md', '', '设定/世界观.md']
       const f = map[cur.value - 1]
       if (f) genText.value = await window.api.fileRead(lib.current.title, f)
     }

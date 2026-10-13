@@ -172,8 +172,8 @@ export function readTextFile(book: string, rel: string): string {
 export function writeTextFile(book: string, rel: string, content: string): void {
   const p = safeResolve(book, rel)
   mkdirSync(join(p, '..'), { recursive: true })
-  // 历史快照：正文有实际变化就留档（供写作台「历史」面板对比回滚）
-  if (existsSync(p) && rel.startsWith('正文')) {
+  // 历史快照：正文有实际变化就留档（供写作台「历史」面板对比回滚）；大纲文件同样保护
+  if (existsSync(p) && (rel.startsWith('正文') || rel === '大纲/大纲.md')) {
     const old = readFileSync(p, 'utf-8')
     if (old !== content) snapshot(book, rel, old)
   }
