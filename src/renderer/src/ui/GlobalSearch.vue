@@ -358,8 +358,10 @@ async function runSemantic() {
     const out: Hit[] = []
     for (const h of r.hits || []) {
       if (h.src === 'lib') {
+        // path 是 `kind:组/文件.md`，但打开条目要按显示名（frontmatter name）匹配——从 title（「素材库 · 显示名」）里取
         const m = /^([^:]+):(.+)\/([^/]+)\.md$/.exec(h.path)
-        if (m) out.push({ kind: 'lib', libKind: m[1], group: m[2], name: m[3], text: h.text.slice(0, 80), semantic: true })
+        const displayName = (h.title || '').split(' · ').slice(1).join(' · ') || m?.[3] || ''
+        if (m) out.push({ kind: 'lib', libKind: m[1], group: m[2], name: displayName, text: h.text.slice(0, 80), semantic: true })
       } else {
         out.push({ kind: 'file', path: h.path, text: h.text.slice(0, 80), semantic: true })
       }

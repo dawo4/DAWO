@@ -217,10 +217,21 @@ interface Source {
   path: string
   title: string
   text: string
+  /** 内容长度：指纹命中跳读时用缓存值（text 为空串） */
+  len: number
   mtime: number
 }
 
-function bookSources(book: string): Source[] {
+type Fps = Record<string, { len: number; mtime: number }>
+
+/** 指纹命中（mtime 基本一致）= 上次同步后没变过，不必重读全文 */
+function fpHit(fps: Fps | undefined, key: string, mtime: number): { len: number; mtime: number } | null {
+  const fp = fps?.[key]
+  if (!fp || Math.abs(fp.mtime - mtime) > 1) return null
+  return fp
+}
+
+function bookSources(book: string, fps?: Fps): Source[] {
   const out: Source[] = []
   const walk = (dir: string, rel: string) => {
     const base = rel ? join(dir, rel) : dir
@@ -243,14 +254,22 @@ function bookSources(book: string): Source[] {
       if (isDir) walk(dir, next)
       else if (/\.(md|txt)$/i.test(name)) {
         try {
+          const key = `b:${next}`
+          const mtime = statSync(p).mtimeMs
+          const hit = fpHit(fps, key, mtime)
+          if (hit) {
+            out.push({ key, src: 'book', path: next, title: '', text: '', len: hit.len, mtime })
+            continue
+          }
           const text = readTextAuto(p)
           out.push({
-            key: `b:${next}`,
+            key,
             src: 'book',
             path: next,
             title: firstHeading(text) || next.replace(/\.(md|txt)$/i, ''),
             text,
-            mtime: statSync(p).mtimeMs
+            len: text.length,
+            mtime
           })
         } catch {
           /* 单文件读取失败跳过 */
@@ -264,7 +283,7 @@ function bookSources(book: string): Source[] {
 
 const LIB_KINDS: LibKind[] = ['skills', 'materials', 'notes']
 
-function libSources(): Source[] {
+function libSources(fps?: Fps): Source[] {
   const out: Source[] = []
   for (const kind of LIB_KINDS) {
     try {
@@ -273,17 +292,25 @@ function libSources(): Source[] {
         for (const e of g.entries) {
           try {
             const p = join(root, e.path)
+            const key = `l:${kind}:${e.path}`
+            const mtime = statSync(p).mtimeMs
+            const hit = fpHit(fps, key, mtime)
+            if (hit) {
+              out.push({ key, src: 'lib', path: `${kind}:${e.path}`, title: '', text: '', len: hit.len, mtime })
+              continue
+            }
             const raw = readFileSync(p, 'utf-8')
             // 去掉 frontmatter 头再入库，避免元信息噪音
             const body = raw.startsWith('---') ? raw.slice(raw.indexOf('\n---', 3) + 4).trim() : raw.trim()
             if (!body) continue
             out.push({
-              key: `l:${kind}:${e.path}`,
+              key,
               src: 'lib',
               path: `${kind}:${e.path}`,
               title: `${LIB_LABEL[kind]} · ${e.name}`,
               text: body,
-              mtime: statSync(p).mtimeMs
+              len: body.length,
+              mtime
             })
           } catch {
             /* 单条目失败跳过 */
@@ -301,9 +328,8 @@ function libSources(): Source[] {
 
 const syncing = new Map<string, Promise<{ stale: boolean; error: string }>>()
 
-function allSources(book: string, includeLib?: boolean): Source[] {
-  const withLib = includeLib ?? vecOpts().includeLib
-  return withLib ? [...bookSources(book), ...libSources()] : bookSources(book)
+function allSources(book: string, fps?: Fps): Source[] {
+  return vecOpts().includeLib ? [...bookSources(book, fps), ...libSources(fps)] : bookSources(book, fps)
 }
 
 /** 指纹一致的块原样保留，变化的重新分块嵌入，消失的删除 */
@@ -313,7 +339,7 @@ function diffChunks(idx: VecIndex, sources: Source[]): { keep: VecChunk[]; chang
   const srcByKey = new Map(sources.map((s) => [s.key, s]))
   for (const [key, fp] of Object.entries(idx.fps)) {
     const s = srcByKey.get(key)
-    if (!s || s.text.length !== fp.len || Math.abs(s.mtime - fp.mtime) > 1) changedKeys.add(key)
+    if (!s || s.len !== fp.len || Math.abs(s.mtime - fp.mtime) > 1) changedKeys.add(key)
   }
   for (const s of sources) if (!idx.fps[s.key] || changedKeys.has(s.key)) changedKeys.add(s.key)
   for (const c of idx.chunks) {
@@ -353,7 +379,8 @@ function syncIndex(book: string, opts: { force?: boolean } = {}): Promise<{ stal
     const model = task.cfg.model
     let idx = loadIndex(book)
     if (!idx || opts.force) {
-      const sources = allSources(book, true)
+      // 全量构建：不带指纹缓存，读全部内容
+      const sources = allSources(book)
       const chunks = await chunksFor(task, sources)
       idx = {
         version: 1,
@@ -361,14 +388,15 @@ function syncIndex(book: string, opts: { force?: boolean } = {}): Promise<{ stal
         dim: chunks[0]?.vec.length || 0,
         builtAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        fps: Object.fromEntries(sources.map((s) => [s.key, { len: s.text.length, mtime: s.mtime }])),
+        fps: Object.fromEntries(sources.map((s) => [s.key, { len: s.len, mtime: s.mtime }])),
         chunks
       }
       saveIndex(book, idx)
       return { stale: false, error: '' }
     }
     if (idx.model !== model) return { stale: true, error: '向量化模型已更换，索引需重建' }
-    const sources = allSources(book, true)
+    // 增量同步：指纹没变的来源跳过读文件，只 stat
+    const sources = allSources(book, idx.fps)
     const { keep, changed } = diffChunks(idx, sources)
     if (!changed.length) return { stale: false, error: '' }
     const fresh = await chunksFor(task, changed)
@@ -377,7 +405,7 @@ function syncIndex(book: string, opts: { force?: boolean } = {}): Promise<{ stal
     idx.updatedAt = new Date().toISOString()
     const keptKeys = new Set(sources.map((s) => s.key))
     for (const k of Object.keys(idx.fps)) if (!keptKeys.has(k)) delete idx.fps[k]
-    for (const s of changed) idx.fps[s.key] = { len: s.text.length, mtime: s.mtime }
+    for (const s of changed) idx.fps[s.key] = { len: s.len, mtime: s.mtime }
     saveIndex(book, idx)
     return { stale: false, error: '' }
   })().finally(() => syncing.delete(book))
@@ -450,7 +478,15 @@ export function vectorStatus(book: string): {
 } {
   const task = embedTask()
   const idx = loadIndex(book)
-  const chars = idx ? idx.chunks.reduce((n, c) => n + c.text.length, 0) : 0
+  let chars = idx ? idx.chunks.reduce((n, c) => n + c.text.length, 0) : 0
+  // 还没建过索引（或换模型待重建）时，现场枚举来源估算体量，让「重建成本」有个靠谱的数
+  if ((!idx || (task && idx.model !== task.cfg.model)) && task) {
+    try {
+      chars = allSources(book).reduce((n, s) => n + s.len, 0)
+    } catch {
+      /* 书不存在等场景维持 0 */
+    }
+  }
   return {
     configured: !!task,
     model: task?.cfg.model || '',
