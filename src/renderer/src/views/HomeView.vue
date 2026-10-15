@@ -222,7 +222,8 @@ onMounted(() => void load())
             <span class="text-[10.5px] text-[var(--text-faint)]">最近 {{ recentBooks.length }} 本</span>
           </div>
 
-          <div v-if="recentBooks.length" class="space-y-1">
+          <!-- 高度上限：书架随书数增长会把首页撑出视口，超过两本在卡内滚动（滚动条悬停浮现） -->
+          <div v-if="recentBooks.length" class="panel-rail-scroll space-y-1 max-h-[152px] overflow-y-auto">
             <div
               v-for="b in recentBooks"
               :key="b.title"
