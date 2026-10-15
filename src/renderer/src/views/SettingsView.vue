@@ -129,9 +129,7 @@ async function fetchNotes() {
   }
 }
 
-function fmtBytes(n: number): string {
-  return n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`
-}
+// fmtBytes 复用下方「AI 调用记录」区的同名函数（B/KB/MB 三档）
 
 /** 更新检查设置（旧配置缺对象时现场补默认值） */
 const updConf = (cfg.update ||= { autoCheck: true, frequency: 'startup' }) as NonNullable<AppConfig['update']>
