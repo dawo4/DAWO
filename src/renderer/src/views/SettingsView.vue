@@ -446,6 +446,26 @@ async function testEmb() {
     embTesting.value = false
   }
 }
+
+/** 停用向量化：清空嵌入服务与旧版通道引用。旧版测试时配过的向量化会被自动迁移成独立配置，
+ *  作者以为「没配置」实际在向旧地址发全书嵌入——此按钮一键归零，语义功能立即彻底静默 */
+async function clearEmbedding() {
+  const ok = await inkConfirm('停用后所有语义检索功能立即关闭（生文细纲注入 / 妙笔注入 / Ctrl+K 语义检索），索引文件保留，随时可重新配置。确定停用？', {
+    confirmText: '停用'
+  })
+  if (!ok) return
+  es.baseUrl = ''
+  es.apiKey = ''
+  es.model = ''
+  if (cfg.tasks[EMBEDDING_KEY]) {
+    cfg.tasks[EMBEDDING_KEY].providerId = ''
+    cfg.tasks[EMBEDDING_KEY].model = ''
+  }
+  embTest.value = null
+  embErr.value = ''
+  embModels.value = []
+  await save()
+}
 // 旧版本配置缺新字段时兜底补齐
 if (cfg.modelContexts === undefined) cfg.modelContexts = {}
 if (cfg.search === undefined) cfg.search = { provider: 'auto', apiKey: '' }
@@ -1077,7 +1097,18 @@ onUnmounted(() => {
 
           <!-- 嵌入服务（独立面板，与服务商列表互不影响） -->
           <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3.5 mb-4 space-y-3">
-            <div class="text-xs text-[var(--text-dim)] tracking-wider">嵌入服务（独立于上方服务商列表，删除 / 修改对话模型服务商不影响这里）</div>
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-xs text-[var(--text-dim)] tracking-wider">嵌入服务（独立于上方服务商列表，删除 / 修改对话模型服务商不影响这里）</div>
+              <button
+                v-if="es.baseUrl || es.model || cfg.tasks[EMBEDDING_KEY]?.providerId"
+                class="text-[11px] px-2 py-0.5 rounded-full cursor-pointer border transition-colors shrink-0"
+                style="border-color: #e08a7a66; color: #e08a7a"
+                title="清空嵌入服务配置与旧版通道引用，所有语义检索立即停用（索引文件保留）"
+                @click="clearEmbedding"
+              >
+                停用向量化
+              </button>
+            </div>
             <div class="flex items-center gap-2">
               <span class="w-20 text-sm shrink-0">接口地址</span>
               <input v-model="es.baseUrl" class="ink-input flex-1" placeholder="https://api.siliconflow.cn/v1" />
