@@ -85,12 +85,28 @@ onUnmounted(() => offStatus?.())
 async function checkUpdate() {
   upd.state = 'checking'
   upd.message = ''
-  const r = await window.api.updateCheck()
-  if (!r.ok) {
+  // 35 秒看门狗：主进程 30 秒超时兜底之外的最后一道保险，任何原因收不到结果都不许永远转圈
+  let done = false
+  const watchdog = setTimeout(() => {
+    if (!done && upd.state === 'checking') {
+      upd.state = 'error'
+      upd.message = '检查超时：连不上 GitHub（网络原因，可尝试开代理后重试），或到 Releases 页手动下载。'
+    }
+  }, 35000)
+  try {
+    const r = await window.api.updateCheck()
+    if (!r.ok) {
+      upd.state = 'error'
+      upd.message = r.message || '检查失败'
+    }
+    // 成功路径由 update:status 事件驱动（available / none）
+  } catch (e) {
     upd.state = 'error'
-    upd.message = r.message || '检查失败'
+    upd.message = (e as Error).message || '检查失败'
+  } finally {
+    done = true
+    clearTimeout(watchdog)
   }
-  // 成功路径由 update:status 事件驱动（available / none）
 }
 function doDownload() {
   upd.lastAction = 'download'

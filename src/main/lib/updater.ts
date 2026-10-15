@@ -46,6 +46,24 @@ function maybeAutoCheck(): void {
   }, 15000)
 }
 
+/** 给不带超时的 Promise 加兜底：到点仍未完成就按超时失败（原 Promise 结果丢弃） */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label}超时：连不上更新源（网络原因，可尝试开代理后重试）`)), ms)
+    timer.unref?.()
+    p.then(
+      (v) => {
+        clearTimeout(timer)
+        resolve(v)
+      },
+      (e) => {
+        clearTimeout(timer)
+        reject(e)
+      }
+    )
+  })
+}
+
 function send(status: string, payload?: Record<string, unknown>): void {
   try {
     // 窗口可能在激活时重建，发送时动态取最新一个
@@ -86,7 +104,9 @@ export function initUpdater(): void {
 
   ipcMain.handle('update:check', async () => {
     try {
-      const r = await autoUpdater.checkForUpdates()
+      // 30 秒兜底超时：electron-updater 的请求没有自带超时，网络不通（如需要代理而没开）时会无限挂起，
+      // 表现为渲染层永远停在「正在检查…」
+      const r = await withTimeout(autoUpdater.checkForUpdates(), 30000, '检查更新')
       markChecked()
       return { ok: true, version: r?.updateInfo?.version || '' }
     } catch (e) {
