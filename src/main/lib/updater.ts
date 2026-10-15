@@ -2,8 +2,11 @@
 // 仓库当前私有：latest.yml 拉不到（404），错误统一转成人话并给 Releases 页兜底入口；转公开后全自动生效
 import { autoUpdater } from 'electron-updater'
 import { BrowserWindow, ipcMain, shell } from 'electron'
+import { getConfig } from './config'
+import { createBackup } from './backup'
 
 const RELEASES_URL = 'https://github.com/dawo4/DAWO/releases'
+const RELEASES_API = 'https://api.github.com/repos/dawo4/DAWO/releases/latest'
 
 function send(status: string, payload?: Record<string, unknown>): void {
   try {
@@ -50,12 +53,52 @@ export function initUpdater(): void {
     autoUpdater.downloadUpdate().catch(() => {})
     return { ok: true }
   })
-  ipcMain.handle('update:install', () => {
+  ipcMain.handle('update:install', async () => {
+    // 安装前自动备份当前作品（可在「保存与备份」里关）：更新有风险，稿子先行
+    try {
+      const cfg = getConfig()
+      if (cfg.backup?.backupOnUpdate !== false && cfg.activeBook) {
+        createBackup(cfg.activeBook, cfg.backup?.dir)
+      }
+    } catch {
+      /* 备份失败不拦安装（备份目录不可写等场景，更新照常进行） */
+    }
     autoUpdater.quitAndInstall()
     return { ok: true }
   })
   ipcMain.handle('update:openPage', async () => {
     await shell.openExternal(RELEASES_URL)
     return { ok: true }
+  })
+  // 更新日志：拉最新 Release 的说明（Markdown）、发布日期与安装包体积，供设置页展示
+  ipcMain.handle('update:notes', async () => {
+    try {
+      const res = await fetch(RELEASES_API, {
+        headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'DAWO-updater' },
+        signal: AbortSignal.timeout(20000)
+      })
+      if (!res.ok) {
+        const hint = res.status === 403 ? '（请求频率受限，稍后再试）' : res.status === 404 ? '（仓库私有或还没有 Release）' : ''
+        return { ok: false, message: `GitHub 接口返回 ${res.status}${hint}` }
+      }
+      const j = (await res.json()) as {
+        tag_name?: string
+        body?: string
+        published_at?: string
+        html_url?: string
+        assets?: { name: string; size: number }[]
+      }
+      const exe = (j.assets || []).find((a) => /\.(exe|nsis|zip)$/i.test(a.name))
+      return {
+        ok: true,
+        tag: (j.tag_name || '').replace(/^v/, ''),
+        notes: j.body || '',
+        publishedAt: j.published_at || '',
+        sizeBytes: exe?.size || 0,
+        htmlUrl: j.html_url || RELEASES_URL
+      }
+    } catch (e) {
+      return { ok: false, message: friendlyError(e as Error) }
+    }
   })
 }

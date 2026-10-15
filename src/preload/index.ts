@@ -182,6 +182,7 @@ const api = {
   updateDownload: () => ipcRenderer.invoke('update:download'),
   updateInstall: () => ipcRenderer.invoke('update:install'),
   updateOpenPage: () => ipcRenderer.invoke('update:openPage'),
+  updateNotes: () => ipcRenderer.invoke('update:notes'),
   onUpdateStatus: (cb: (s: { status: string; version?: string; percent?: number; message?: string }) => void) => {
     const listener = (_e: unknown, s: { status: string; version?: string; percent?: number; message?: string }) => cb(s)
     ipcRenderer.on('update:status', listener)

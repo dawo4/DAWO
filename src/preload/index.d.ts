@@ -193,6 +193,7 @@ declare global {
       updateDownload: () => Promise<{ ok: boolean }>
       updateInstall: () => Promise<{ ok: boolean }>
       updateOpenPage: () => Promise<{ ok: boolean }>
+      updateNotes: () => Promise<{ ok: boolean; tag: string; notes: string; publishedAt: string; sizeBytes: number; htmlUrl: string; message?: string }>
       onUpdateStatus: (
         cb: (s: { status: string; version?: string; percent?: number; message?: string }) => void
       ) => () => void

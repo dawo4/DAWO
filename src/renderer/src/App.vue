@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useAppStore } from './store/app'
 import { useLibraryStore } from './store/library'
 import GlowCursor from './ui/GlowCursor.vue'
@@ -33,6 +33,17 @@ onMounted(async () => {
     if (b) await lib.openBook(b.title)
   }
 })
+
+// 全局订阅更新状态：启动静默检查发现新版本时顶栏冒轻提示（设置页另有自己的订阅驱动面板）
+let offUpdateStatus: (() => void) | null = null
+onMounted(() => {
+  offUpdateStatus = window.api.onUpdateStatus((s) => {
+    if (s.status === 'available') app.updateVersion = s.version || ''
+    else if (s.status === 'none' || s.status === 'error') app.updateVersion = ''
+    // downloading / downloaded 保持提示，直到安装完成（quitAndInstall 会重启，重启后自然消失）
+  })
+})
+onUnmounted(() => offUpdateStatus?.())
 </script>
 
 <template>

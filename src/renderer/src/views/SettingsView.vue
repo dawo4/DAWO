@@ -8,6 +8,7 @@ import InkToggle from '../ui/InkToggle.vue'
 import InkSegmented from '../ui/InkSegmented.vue'
 import { onHeaderAction } from '../ui/headerActions'
 import { inkPrompt, inkConfirm } from '../ui/inkPrompt'
+import { renderMarkdown } from '../ui/markdown'
 import { aiRun } from '../ai'
 import { useLibraryStore } from '../store/library'
 import { CREATIVE_LEVELS, THINKING_LEVELS, levelToTemp, tempToLevel } from '../ui/writingScale'
@@ -61,7 +62,7 @@ let offStatus: (() => void) | null = null
 onMounted(() => {
   offStatus = window.api.onUpdateStatus((s) => {
     if (s.status === 'checking') upd.state = 'checking'
-    else if (s.status === 'available') { upd.state = 'available'; upd.version = s.version || '' }
+    else if (s.status === 'available') { upd.state = 'available'; upd.version = s.version || ''; void fetchNotes() }
     else if (s.status === 'none') { upd.state = 'none'; upd.version = s.version || '' }
     else if (s.status === 'downloading') { upd.state = 'downloading'; upd.percent = s.percent || 0 }
     else if (s.status === 'downloaded') { upd.state = 'downloaded'; upd.version = s.version || '' }
@@ -87,6 +88,36 @@ function doInstall() {
 }
 function openReleasePage() {
   void window.api.updateOpenPage()
+}
+
+// ============ 更新日志：拉最新 Release 的 Markdown 说明、日期与安装包体积 ============
+const updNotes = ref('')
+const updNotesHtml = computed(() => renderMarkdown(updNotes.value))
+const updMeta = ref<{ tag: string; date: string; sizeBytes: number } | null>(null)
+const updNotesErr = ref('')
+const updNotesBusy = ref(false)
+
+async function fetchNotes() {
+  updNotesBusy.value = true
+  updNotesErr.value = ''
+  try {
+    const r = (await window.api.updateNotes()) as { ok: boolean; tag: string; notes: string; publishedAt: string; sizeBytes: number; message?: string }
+    if (r.ok) {
+      updNotes.value = r.notes || ''
+      updMeta.value = { tag: r.tag, date: r.publishedAt, sizeBytes: r.sizeBytes }
+      if (!r.notes) updNotesErr.value = '该 Release 没有写更新说明，可到 Releases 页查看。'
+    } else {
+      updNotesErr.value = r.message || '拉取更新日志失败'
+    }
+  } catch (e) {
+    updNotesErr.value = (e as Error).message
+  } finally {
+    updNotesBusy.value = false
+  }
+}
+
+function fmtBytes(n: number): string {
+  return n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`
 }
 
 // ============ 作者记忆（全局跨书 + 本书单书，条目式） ============
@@ -1490,6 +1521,7 @@ onUnmounted(() => {
 
         <div class="flex items-center gap-4 flex-wrap">
           <InkToggle v-model="cfg.backup.autoOnExit" label="退出应用时自动备份当前作品" @update:model-value="save" />
+          <InkToggle v-model="cfg.backup.backupOnUpdate" label="安装更新前自动备份当前作品" @update:model-value="save" />
         </div>
 
         <div class="flex gap-2 items-center flex-wrap">
@@ -1556,9 +1588,35 @@ onUnmounted(() => {
             <InkButton variant="ghost" @click="openReleasePage"><Github :size="13" /> 打开 Releases 页</InkButton>
           </div>
           <div v-if="upd.state === 'downloading'" class="text-xs" style="color: var(--accent)">下载中 {{ upd.percent }}%…</div>
-          <div v-if="upd.state === 'downloaded'" class="text-xs" style="color: var(--accent)">下载完成，点「重启安装」即升级（也可直接退出，下次启动前自动装）。</div>
+          <div v-if="upd.state === 'downloaded'" class="text-xs" style="color: var(--accent)">下载完成，点「重启安装」即升级（也可直接退出，下次启动前自动装；安装前会按下方开关自动备份当前作品）。</div>
           <div v-if="upd.state === 'none'" class="text-xs text-[var(--text-faint)]">已是最新版本（远端 v{{ upd.version }}）。</div>
           <div v-if="upd.state === 'error'" class="text-xs" style="color: #e08a7a">{{ upd.message }}</div>
+
+          <!-- 更新日志：发现新版本 / 已下载时展示最新 Release 说明 -->
+          <div
+            v-if="(upd.state === 'available' || upd.state === 'downloaded') && (updNotes || updNotesErr || updNotesBusy)"
+            class="rounded-lg border border-[var(--border)] bg-[var(--bg-soft)]/40 p-3.5"
+          >
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs tracking-wider" style="color: var(--accent)">更新日志</span>
+              <span v-if="updMeta" class="text-[11px] text-[var(--text-faint)]">
+                v{{ updMeta.tag || upd.version }}
+                <template v-if="updMeta.date"> · {{ new Date(updMeta.date).toLocaleDateString('zh-CN') }}</template>
+                <template v-if="updMeta.sizeBytes"> · 安装包 {{ fmtBytes(updMeta.sizeBytes) }}</template>
+              </span>
+              <div class="flex-1" />
+              <button
+                class="text-[11px] text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1"
+                :disabled="updNotesBusy"
+                @click="fetchNotes"
+              >
+                <LoaderCircle v-if="updNotesBusy" :size="11" class="animate-spin" />
+                <RefreshCw v-else :size="11" /> 刷新
+              </button>
+            </div>
+            <div v-if="updNotesErr" class="text-[11.5px]" style="color: #e08a7a">{{ updNotesErr }}</div>
+            <div v-else class="text-[12px] prose-peek max-h-64 overflow-y-auto" v-html="updNotesHtml" />
+          </div>
         </div>
       </div>
       </div>

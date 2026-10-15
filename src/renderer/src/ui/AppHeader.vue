@@ -4,7 +4,7 @@ import { useAppStore } from '../store/app'
 import { useLibraryStore } from '../store/library'
 import { headerActionsFor, dispatchHeaderAction } from './headerActions'
 import GlobalSearch from './GlobalSearch.vue'
-import { Menu, ArrowLeft, ArrowRight, CircleCheck, LoaderCircle, Minus, Square, Copy, X } from 'lucide-vue-next'
+import { Menu, ArrowLeft, ArrowRight, CircleCheck, LoaderCircle, Minus, Square, Copy, X, Sparkles } from 'lucide-vue-next'
 
 const app = useAppStore()
 const lib = useLibraryStore()
@@ -42,6 +42,13 @@ function winMaximizeToggle(): void {
 }
 function winClose(): void {
   void window.api.winClose()
+}
+
+/** 顶栏「新版本」轻提示：点击清掉提示并直达「关于」页看更新日志 */
+function goUpdate() {
+  app.updateVersion = ''
+  app.settingsTab = 'about'
+  app.go('settings')
 }
 </script>
 
@@ -98,6 +105,21 @@ function winClose(): void {
       <CircleCheck v-else :size="12" style="color: #7fae7a" />
       <span :class="app.saveBusy ? 'text-[var(--text-faint)]' : 'text-[var(--text-dim)]'">{{ app.saveText }}</span>
     </div>
+
+    <!-- 新版本轻提示：启动静默检查发现更新时出现，点击直达关于页 -->
+    <button
+      v-if="app.updateVersion && !showSave"
+      class="app-nodrag shrink-0 ink-ripple flex items-center gap-1.5 text-[11.5px] px-2.5 py-1 rounded-full cursor-pointer transition-colors whitespace-nowrap"
+      :style="{
+        border: '1px solid color-mix(in srgb, var(--accent) 55%, transparent)',
+        background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+        color: 'var(--accent)'
+      }"
+      title="发现新版本，点击查看更新日志与下载"
+      @click="goUpdate"
+    >
+      <Sparkles :size="12" /> 新版本 v{{ app.updateVersion }}
+    </button>
 
     <!-- 本页主操作 -->
     <div v-if="actions.length" class="shrink-0 flex items-center gap-2">

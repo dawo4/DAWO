@@ -73,6 +73,8 @@ interface State {
   bookshelfRequest: { action: 'new' | 'import'; nonce: number } | null
   /** 首页「添加面板」快捷入口：切到资料区后自动弹新建面板向导 */
   materialsAddOpen: boolean
+  /** 启动静默检查发现的新版本号（空 = 无；顶栏据此显示「新版本」轻提示，点击进「关于」页） */
+  updateVersion: string
 }
 
 export const useAppStore = defineStore('app', {
@@ -95,7 +97,8 @@ export const useAppStore = defineStore('app', {
     writingRightTab: 'ai',
     settingsTab: 'ai',
     bookshelfRequest: null,
-    materialsAddOpen: false
+    materialsAddOpen: false,
+    updateVersion: ''
   }),
   getters: {
     appearance: (s) =>

@@ -74,6 +74,8 @@ export interface AppConfig {
     dir: string
     /** 退出应用时自动备份当前作品 */
     autoOnExit: boolean
+    /** 安装更新前自动备份当前作品 */
+    backupOnUpdate: boolean
   }
   appearance: {
     theme: 'dark' | 'ink-blue' | 'ink-green' | 'ink-purple' | 'light' | 'sepia' | 'moon' | 'celadon'
@@ -138,7 +140,7 @@ export function defaultConfig(): AppConfig {
     agentWebSearch: {},
     agentOrchestrator: {},
     providerSearch: {},
-    backup: { dir: '', autoOnExit: false },
+    backup: { dir: '', autoOnExit: false, backupOnUpdate: true },
     appearance: {
       theme: 'dark',
       accent: '#c9a15f',
