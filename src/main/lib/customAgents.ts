@@ -25,6 +25,8 @@ export interface CustomAgent extends Omit<AgentDef, 'promptId'> {
   webSearch: boolean
   /** 分配模式：可作为主智能体把工作分配给其他智能体（每次调用需作者确认） */
   orchestrator: boolean
+  /** 语义检索：对话前自动检索全书文稿与资源库注入相关片段（需已配置向量化） */
+  vectorSearch: boolean
   /** 允许调用的结构化板块 key（STRUCT_BOARDS）；省略 = 全部允许（兼容旧数据） */
   structBoards?: string[]
   /** 允许读写的自定义面板名（list 原型）；省略 = 全部允许（兼容旧数据），空数组 = 全部禁止 */
@@ -79,6 +81,7 @@ export function saveCustomAgent(a: CustomAgent): { ok: boolean; message: string 
     libsWrite: !!a.libsWrite,
     webSearch: !!a.webSearch,
     orchestrator: !!a.orchestrator,
+    vectorSearch: !!a.vectorSearch,
     structBoards: Array.isArray(a.structBoards)
       ? a.structBoards.filter((k) => STRUCT_BOARDS.some((b) => b.key === k))
       : undefined,
@@ -124,6 +127,8 @@ export interface ResolvedAgent extends AgentDef {
   webSearch: boolean
   /** 分配模式：可调用 dispatch_agent 把工作分配给其他智能体 */
   orchestrator: boolean
+  /** 语义检索：对话前自动检索全书文稿与资源库注入相关片段（内置开关存 config.agentVectorSearch，自定义存在自身定义里） */
+  vectorSearch: boolean
   custom: boolean
 }
 
@@ -133,7 +138,8 @@ export function resolveAgent(id: string): ResolvedAgent {
   if (builtin) {
     const overrides = getConfig().agentWebSearch || {}
     const orch = getConfig().agentOrchestrator || {}
-    return { ...builtin, webSearch: !!overrides[id], orchestrator: !!orch[id], custom: false }
+    const vector = getConfig().agentVectorSearch || {}
+    return { ...builtin, webSearch: !!overrides[id], orchestrator: !!orch[id], vectorSearch: !!vector[id], custom: false }
   }
   const custom = load().find((a) => a.id === id)
   if (custom) {
@@ -152,12 +158,13 @@ export function resolveAgent(id: string): ResolvedAgent {
       panelBoards: custom.panelBoards,
       webSearch: custom.webSearch,
       orchestrator: custom.orchestrator,
+      vectorSearch: custom.vectorSearch === true,
       custom: true
     }
   }
   // 兜底：通用助手
   const fallback = AGENTS[0]
-  return { ...fallback, webSearch: false, orchestrator: false, custom: false }
+  return { ...fallback, webSearch: false, orchestrator: false, vectorSearch: false, custom: false }
 }
 
 /** 可被分配工作的成员名册（内置全部 + 已启用的自定义），供主智能体的系统提示词展示 */
@@ -290,6 +297,7 @@ function normalizeDraft(j: Record<string, unknown>, desc: string): CustomAgent {
     libsWrite: j.libsWrite === true,
     webSearch: j.webSearch === true,
     orchestrator: j.orchestrator === true,
+    vectorSearch: false,
     enabled: false,
     createdAt: new Date().toISOString()
   }

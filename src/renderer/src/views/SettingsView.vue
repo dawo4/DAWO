@@ -1090,7 +1090,7 @@ onUnmounted(() => {
         <div v-show="aiTab === 'vector'" class="space-y-1">
           <div class="text-sm text-[var(--text-dim)] mb-1">向量化检索（语义搜索）</div>
           <div class="text-[11px] text-[var(--text-faint)] leading-5 mb-3">
-            给全书文稿与资源库建立本地向量索引，驱动三处语义能力：逐章生文构思细纲前自动检索相关前文、妙笔对话自动注入相关片段、
+            给全书文稿与资源库建立本地向量索引，驱动三处语义能力：逐章生文构思细纲前自动检索相关前文、妙笔对话按智能体分配注入相关片段（智能体库逐个开启）、
             Ctrl+K 语义混合检索。需要服务商支持 <b>/embeddings</b> 接口（如硅基流动 BAAI/bge-m3、智谱 embedding-3、通义 text-embedding-v4、OpenAI、Ollama 本地）。
             <span style="color: var(--accent)">未配置服务商与模型时以上功能自动降级，不影响其他功能。</span>
           </div>
@@ -1210,9 +1210,9 @@ onUnmounted(() => {
               <span class="text-[11px] text-[var(--text-faint)]">构思细纲前检索全书相关前文，跨章伏笔与设定更一致</span>
             </div>
             <div class="flex items-center gap-3">
-              <InkToggle v-model="vo.injectAgent" label="妙笔对话 · 自动注入" />
-              <InkSelect v-model="vo.topKAgent" class="w-28 shrink-0" :options="TOPK_OPTS" :disabled="!vo.injectAgent" />
-              <span class="text-[11px] text-[var(--text-faint)]">按作者本轮的话检索，相关片段带来源进系统提示词</span>
+              <span class="w-40 text-sm shrink-0">妙笔对话 · 按智能体注入</span>
+              <InkSelect v-model="vo.topKAgent" class="w-28 shrink-0" :options="TOPK_OPTS" />
+              <span class="text-[11px] text-[var(--text-faint)]">默认全关——到「智能体库」给需要的智能体点『开启语义检索』后才生效（自定义智能体在编辑表单里勾选）</span>
             </div>
             <div class="flex items-center gap-3">
               <InkToggle v-model="vo.injectSearch" label="Ctrl+K · 语义混合检索" />

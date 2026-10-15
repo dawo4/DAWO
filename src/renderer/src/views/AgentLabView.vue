@@ -9,7 +9,7 @@ import InkModal from '../ui/InkModal.vue'
 import InkToggle from '../ui/InkToggle.vue'
 import { inkConfirm } from '../ui/inkPrompt'
 import type { CustomAgent, LibKind } from '../types'
-import { Bot, Plus, Pencil, Trash2, Globe, Sparkles, LoaderCircle, LibraryBig, Users } from 'lucide-vue-next'
+import { Bot, Plus, Pencil, Trash2, Globe, Sparkles, LoaderCircle, LibraryBig, Users, FileSearch } from 'lucide-vue-next'
 
 const app = useAppStore()
 const lib = useLibraryStore()
@@ -57,7 +57,8 @@ const form = reactive({
   structBoards: [...STRUCT_ITEMS.map((s) => s.key)] as string[],
   panelBoards: [] as string[],
   webSearch: false,
-  orchestrator: false
+  orchestrator: false,
+  vectorSearch: false
 })
 
 /** 本书自定义面板（list 原型）：结构化板块权限组动态追加 */
@@ -143,6 +144,7 @@ function fillForm(a: Partial<CustomAgent>) {
   })
   form.webSearch = !!a.webSearch
   form.orchestrator = !!a.orchestrator
+  form.vectorSearch = !!a.vectorSearch
 }
 
 /** 让 AI 按需求描述起草定义，成功后进入预览表单 */
@@ -183,6 +185,7 @@ async function saveForm() {
     panelBoards: [...form.panelBoards],
     webSearch: form.webSearch,
     orchestrator: form.orchestrator,
+    vectorSearch: form.vectorSearch,
     enabled: editingId.value ? customList.value.find((x) => x.id === editingId.value)?.enabled ?? false : false,
     createdAt: customList.value.find((x) => x.id === editingId.value)?.createdAt || new Date().toISOString()
   }
@@ -203,6 +206,11 @@ async function toggleEnabled(a: CustomAgent) {
 async function toggleBuiltinWeb(id: string) {
   const cur = app.config?.agentWebSearch?.[id] === true
   await app.updateConfig({ agentWebSearch: { ...(app.config?.agentWebSearch || {}), [id]: !cur } })
+}
+
+async function toggleBuiltinVector(id: string) {
+  const cur = app.config?.agentVectorSearch?.[id] === true
+  await app.updateConfig({ agentVectorSearch: { ...(app.config?.agentVectorSearch || {}), [id]: !cur } })
 }
 
 async function toggleBuiltinOrch(id: string) {
@@ -347,6 +355,16 @@ function scopeText(scope: string[]): string {
                 <Users :size="12" />
                 {{ app.config?.agentOrchestrator?.[a.id] ? '已开分配模式' : '开启分配模式' }}
               </button>
+              <button
+                class="inline-flex items-center gap-1.5 text-[11.5px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                :class="app.config?.agentVectorSearch?.[a.id] ? 'bg-[var(--panel-2)]' : 'bg-[var(--bg-soft)] text-[var(--text-dim)] hover:text-[var(--text)]'"
+                :style="app.config?.agentVectorSearch?.[a.id] ? { color: 'var(--accent)' } : {}"
+                :title="app.config?.agentVectorSearch?.[a.id] ? '语义检索已开启，点击关闭' : '开启语义检索：对话前自动检索全书文稿与资源库注入相关片段（需先在 设置→AI服务→向量化检索 配置嵌入服务）'"
+                @click="toggleBuiltinVector(a.id)"
+              >
+                <FileSearch :size="12" />
+                {{ app.config?.agentVectorSearch?.[a.id] ? '已开语义检索' : '开启语义检索' }}
+              </button>
             </div>
           </div>
         </div>
@@ -468,6 +486,10 @@ function scopeText(scope: string[]): string {
         <div class="space-y-1">
           <InkToggle v-model="form.orchestrator" label="分配模式（可把工作分配给其他智能体执行）" />
           <p class="text-[10.5px] text-[var(--text-faint)] leading-4">开启后它在妙笔里可作为主智能体指挥团队，每次分配都会先征求你同意。</p>
+        </div>
+        <div class="space-y-1">
+          <InkToggle v-model="form.vectorSearch" label="语义检索（对话前自动检索全书注入相关片段）" />
+          <p class="text-[10.5px] text-[var(--text-faint)] leading-4">需先在「设置 → AI 服务 → 向量化检索」配置嵌入服务；未配置时开启也不生效。</p>
         </div>
 
         <div>

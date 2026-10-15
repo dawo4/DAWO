@@ -564,11 +564,11 @@ export function vectorClear(book: string): void {
   }
 }
 
-/** 供智能体系统提示词注入：拿作者本轮的话检索全书 + 资源库，格式化成带来源的片段列表；关闭开关 / 无结果返回空串。
+/** 供智能体系统提示词注入：拿作者本轮的话检索全书 + 资源库，格式化成带来源的片段列表；无结果返回空串。
+ *  是否调用由智能体自己的 vectorSearch 开关决定（agent.ts 已判），这里不再做全局门槛。
  *  signal=妙笔运行的 AbortSignal：作者点「停止」时嵌入请求立即中断，不再拖住整个对话 */
 export async function semanticForPrompt(book: string, query: string, topK?: number, signal?: AbortSignal): Promise<string> {
   const opts = vecOpts()
-  if (!opts.injectAgent) return ''
   const r = await vectorSearch(book, query, topK ?? opts.topKAgent, { minScore: Math.max(0.35, opts.minScore) }, signal)
   return r.hits
     .map((h) => `· [${h.title}｜相似 ${(h.score * 100).toFixed(0)}%] ${h.text.replace(/\s+/g, ' ').slice(0, 400)}`)

@@ -113,7 +113,7 @@ function goSettings() {
       </div>
       <p class="text-[var(--text-dim)] leading-6">
         还没有配置「向量化」任务通道。配置后，逐章生文构思细纲前会自动检索全书相关前文、
-        妙笔对话自动注入相关片段、Ctrl+K 支持语义混合检索。
+        Ctrl+K 支持语义混合检索；妙笔智能体需在「智能体库」逐个开启『语义检索』才会自动注入相关片段。
       </p>
       <p class="text-[11px] text-[var(--text-faint)] leading-5">
         到「设置 → AI 服务 → 向量化检索」填入支持 /embeddings 接口的服务商与嵌入模型

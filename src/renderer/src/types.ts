@@ -47,6 +47,8 @@ export interface AppConfig {
   agentWebSearch: Record<string, boolean>
   /** 内置智能体分配模式开关（可指挥子智能体） */
   agentOrchestrator: Record<string, boolean>
+  /** 内置智能体语义检索开关（对话前自动检索全书注入；默认关闭，自定义的存在其自身定义里） */
+  agentVectorSearch?: Record<string, boolean>
   /** 服务商自带联网搜索开关 */
   providerSearch: Record<string, boolean>
   /** 软件更新检查 */
@@ -355,6 +357,8 @@ export interface CustomAgent {
   /** 允许调用的结构化板块 key（STRUCT_BOARDS）；省略 = 全部允许 */
   structBoards?: string[]
   webSearch: boolean
+  /** 语义检索：对话前自动检索全书文稿与资源库注入相关片段（需已配置向量化） */
+  vectorSearch?: boolean
   enabled: boolean
   createdAt: string
 }

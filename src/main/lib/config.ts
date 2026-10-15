@@ -66,6 +66,8 @@ export interface AppConfig {
   agentWebSearch: Record<string, boolean>
   /** 内置智能体的分配模式开关（可指挥子智能体；自定义的存在其自身定义里） */
   agentOrchestrator: Record<string, boolean>
+  /** 内置智能体的语义检索开关（对话前自动检索全书注入相关片段；默认关闭，自定义的存在其自身定义里） */
+  agentVectorSearch: Record<string, boolean>
   /** 服务商自带联网搜索开关（Kimi $web_search / 智谱 web_search / MiMo web_search / 通义 enable_search） */
   providerSearch: Record<string, boolean>
   /** 软件更新检查 */
@@ -146,6 +148,7 @@ export function defaultConfig(): AppConfig {
     search: { provider: 'auto', apiKey: '' },
     agentWebSearch: {},
     agentOrchestrator: {},
+    agentVectorSearch: {},
     providerSearch: {},
     update: { autoCheck: true, frequency: 'startup' },
     backup: { dir: '', autoOnExit: false, backupOnUpdate: true },
@@ -182,6 +185,7 @@ export function initConfig(): void {
         embeddingService: { ...d.embeddingService, ...(cfg.embeddingService || {}) },
         embeddingOpts: { ...d.embeddingOpts, ...(cfg.embeddingOpts || {}) },
         update: { ...d.update, ...(cfg.update || {}) },
+        agentVectorSearch: { ...(d.agentVectorSearch || {}), ...(cfg.agentVectorSearch || {}) },
         bindings: { ...(d.bindings || {}), ...(cfg.bindings || {}) },
         backup: { ...d.backup, ...(cfg.backup || {}) },
         appearance: { ...d.appearance, ...(cfg.appearance || {}) }
