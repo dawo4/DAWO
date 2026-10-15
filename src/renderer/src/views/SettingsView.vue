@@ -131,14 +131,6 @@ async function fetchNotes() {
 
 // fmtBytes 复用下方「AI 调用记录」区的同名函数（B/KB/MB 三档）
 
-/** 更新检查设置（旧配置缺对象时现场补默认值） */
-const updConf = (cfg.update ||= { autoCheck: true, frequency: 'startup' }) as NonNullable<AppConfig['update']>
-const CHECK_FREQ_OPTS = [
-  { label: '每次启动', value: 'startup' },
-  { label: '每天最多一次', value: 'daily' },
-  { label: '仅手动', value: 'manual' }
-]
-
 // ============ 作者记忆（全局跨书 + 本书单书，条目式） ============
 interface MemoryEntry {
   id: string
@@ -342,6 +334,13 @@ const WIN_OPTS = [800, 1000, 1500, 2000, 3000].map((n) => ({ label: `${n} 字`, 
 // 直接绑定全局配置对象（不再克隆快照）：设置页的编辑即时写入 store，
 // save() 只负责持久化——旧快照方案会把其他页面的并发修改（activeBook 等）覆盖回去
 const cfg = app.config as AppConfig
+/** 更新检查设置（旧配置缺对象时现场补默认值） */
+const updConf = (cfg.update ||= { autoCheck: true, frequency: 'startup' }) as NonNullable<AppConfig['update']>
+const CHECK_FREQ_OPTS = [
+  { label: '每次启动', value: 'startup' },
+  { label: '每天最多一次', value: 'daily' },
+  { label: '仅手动', value: 'manual' }
+]
 /** 向量化检索行为配置对象（嵌入服务独立在 embeddingService，不再绑服务商列表） */
 const vo = (cfg.embeddingOpts ||= {
   includeLib: true,
