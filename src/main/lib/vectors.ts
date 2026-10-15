@@ -172,7 +172,15 @@ function normalizeVec(v: number[]): number[] {
   return v.map((x) => Math.round((x / norm) * 1e5) / 1e5)
 }
 
-async function embedBatch(ep: EmbedEndpoint, texts: string[]): Promise<number[][]> {
+/** 嵌入请求的中断信号：调用方可传入运行中断 signal（如妙笔「停止」），与 60 秒兜底超时合并 */
+function embedSignal(signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(60000)
+  if (!signal) return timeout
+  const anyFn = (AbortSignal as unknown as { any?: (signals: AbortSignal[]) => AbortSignal }).any
+  return anyFn ? anyFn([signal, timeout]) : signal
+}
+
+async function embedBatch(ep: EmbedEndpoint, texts: string[], signal?: AbortSignal): Promise<number[][]> {
   const baseUrl = ep.baseUrl.replace(/\/+$/, '')
   const startedAt = Date.now()
   try {
@@ -181,7 +189,7 @@ async function embedBatch(ep: EmbedEndpoint, texts: string[]): Promise<number[][
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(ep.apiKey ? { Authorization: `Bearer ${ep.apiKey}` } : {}) },
       body: JSON.stringify({ model: ep.model, input: texts }),
-      signal: AbortSignal.timeout(60000)
+      signal: embedSignal(signal)
     })
     if (!res.ok) {
       const t = await res.text().catch(() => '')
@@ -365,7 +373,7 @@ function diffChunks(idx: VecIndex, sources: Source[]): { keep: VecChunk[]; chang
   return { keep, changed: sources.filter((s) => changedKeys.has(s.key)) }
 }
 
-async function chunksFor(ep: EmbedEndpoint, sources: Source[]): Promise<VecChunk[]> {
+async function chunksFor(ep: EmbedEndpoint, sources: Source[], signal?: AbortSignal): Promise<VecChunk[]> {
   const pieces: { key: string; src: 'book' | 'lib'; path: string; title: string; offset: number; text: string }[] = []
   for (const s of sources) {
     for (const c of chunkBody(s.text)) pieces.push({ key: s.key, src: s.src, path: s.path, title: s.title, offset: c.offset, text: c.text })
@@ -374,7 +382,7 @@ async function chunksFor(ep: EmbedEndpoint, sources: Source[]): Promise<VecChunk
   const BATCH = 16
   for (let i = 0; i < pieces.length; i += BATCH) {
     const batch = pieces.slice(i, i + BATCH)
-    const vecs = await embedBatch(ep, batch.map((p) => p.text))
+    const vecs = await embedBatch(ep, batch.map((p) => p.text), signal)
     batch.forEach((p, j) => {
       out.push({ id: `${p.key}:${p.offset}`, src: p.src, path: p.path, title: p.title, offset: p.offset, text: p.text, vec: vecs[j] })
     })
@@ -386,7 +394,7 @@ async function chunksFor(ep: EmbedEndpoint, sources: Source[]): Promise<VecChunk
  * 增量同步索引。换模型时返回 stale=true（向量空间不同，必须手动重建，防止混用两个模型的向量）。
  * 同一本书并发调用会合并成一次。
  */
-function syncIndex(book: string, opts: { force?: boolean } = {}): Promise<{ stale: boolean; error: string }> {
+function syncIndex(book: string, opts: { force?: boolean } = {}, signal?: AbortSignal): Promise<{ stale: boolean; error: string }> {
   const existing = syncing.get(book)
   if (existing && !opts.force) return existing
   const job = (async (): Promise<{ stale: boolean; error: string }> => {
@@ -397,7 +405,7 @@ function syncIndex(book: string, opts: { force?: boolean } = {}): Promise<{ stal
     if (!idx || opts.force) {
       // 全量构建：不带指纹缓存，读全部内容
       const sources = allSources(book)
-      const chunks = await chunksFor(ep, sources)
+      const chunks = await chunksFor(ep, sources, signal)
       idx = {
         version: 1,
         model,
@@ -415,7 +423,7 @@ function syncIndex(book: string, opts: { force?: boolean } = {}): Promise<{ stal
     const sources = allSources(book, idx.fps)
     const { keep, changed } = diffChunks(idx, sources)
     if (!changed.length) return { stale: false, error: '' }
-    const fresh = await chunksFor(ep, changed)
+    const fresh = await chunksFor(ep, changed, signal)
     idx.chunks = [...keep, ...fresh]
     idx.dim = idx.chunks[0]?.vec.length || idx.dim
     idx.updatedAt = new Date().toISOString()
@@ -453,17 +461,18 @@ export async function vectorSearch(
   book: string,
   query: string,
   topK = 5,
-  opts: { scope?: 'all' | 'book'; minScore?: number } = {}
+  opts: { scope?: 'all' | 'book'; minScore?: number } = {},
+  signal?: AbortSignal
 ): Promise<SearchResult> {
   if (!query.trim()) return { hits: [], reason: '空查询' }
   const ep = embedEndpoint()
   if (!ep) return { hits: [], reason: '未配置向量化' }
   try {
-    const st = await syncIndex(book)
+    const st = await syncIndex(book, {}, signal)
     if (st.stale) return { hits: [], reason: st.error }
     const idx = loadIndex(book)
     if (!idx || !idx.chunks.length) return { hits: [], reason: '索引为空（书里还没有内容）' }
-    const [qv] = await embedBatch(ep, [query.slice(0, 4000)])
+    const [qv] = await embedBatch(ep, [query.slice(0, 4000)], signal)
     const scope = opts.scope || 'all'
     const minScore = opts.minScore ?? vecOpts().minScore
     const pool = scope === 'book' ? idx.chunks.filter((c) => c.src === 'book') : idx.chunks
@@ -555,11 +564,12 @@ export function vectorClear(book: string): void {
   }
 }
 
-/** 供智能体系统提示词注入：拿作者本轮的话检索全书 + 资源库，格式化成带来源的片段列表；关闭开关 / 无结果返回空串 */
-export async function semanticForPrompt(book: string, query: string, topK?: number): Promise<string> {
+/** 供智能体系统提示词注入：拿作者本轮的话检索全书 + 资源库，格式化成带来源的片段列表；关闭开关 / 无结果返回空串。
+ *  signal=妙笔运行的 AbortSignal：作者点「停止」时嵌入请求立即中断，不再拖住整个对话 */
+export async function semanticForPrompt(book: string, query: string, topK?: number, signal?: AbortSignal): Promise<string> {
   const opts = vecOpts()
   if (!opts.injectAgent) return ''
-  const r = await vectorSearch(book, query, topK ?? opts.topKAgent, { minScore: Math.max(0.35, opts.minScore) })
+  const r = await vectorSearch(book, query, topK ?? opts.topKAgent, { minScore: Math.max(0.35, opts.minScore) }, signal)
   return r.hits
     .map((h) => `· [${h.title}｜相似 ${(h.score * 100).toFixed(0)}%] ${h.text.replace(/\s+/g, ' ').slice(0, 400)}`)
     .join('\n')

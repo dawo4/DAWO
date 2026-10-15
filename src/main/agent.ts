@@ -1244,12 +1244,17 @@ export async function runAgent(win: BrowserWindow, params: AgentRunParams): Prom
 
     const agent = resolveAgent(agentId)
     agentLabel = agent.name
-    // 语义检索注入：拿作者本轮的话去全书文稿与资源库里捞相关片段（未配置向量化 / 失败时静默跳过）
+    // 语义检索注入：拿作者本轮的话去全书文稿与资源库里捞相关片段（未配置向量化 / 失败时静默跳过）。
+    // ① 传入运行 AbortSignal：作者点「停止」时嵌入请求立即中断；② 10 秒兜底时限：首次建索引可能耗时较长，
+    // 超时先跳过注入继续对话（索引在后台继续建，下一条消息即可命中），绝不让检索拖住对话主流程
     let semanticCtx = ''
     try {
       const lastUser = [...(params.history || [])].reverse().find((m) => m.role === 'user')
       if (params.book && lastUser && lastUser.content.trim().length >= 6) {
-        semanticCtx = await semanticForPrompt(params.book, lastUser.content)
+        semanticCtx = await Promise.race([
+          semanticForPrompt(params.book, lastUser.content, undefined, controller.signal),
+          new Promise<string>((resolve) => setTimeout(() => resolve(''), 10000))
+        ])
       }
     } catch {
       /* 向量化未配置或检索失败：不影响对话 */
