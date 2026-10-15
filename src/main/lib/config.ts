@@ -68,6 +68,13 @@ export interface AppConfig {
   agentOrchestrator: Record<string, boolean>
   /** 服务商自带联网搜索开关（Kimi $web_search / 智谱 web_search / MiMo web_search / 通义 enable_search） */
   providerSearch: Record<string, boolean>
+  /** 软件更新检查 */
+  update: {
+    /** 自动检查更新（关掉后只能手动点「检查更新」） */
+    autoCheck: boolean
+    /** 自动检查频率：每次启动 / 每天最多一次 / 仅手动 */
+    frequency: 'startup' | 'daily' | 'manual'
+  }
   /** 保存与备份 */
   backup: {
     /** 备份目录；留空用默认（书架旁「DAWO 备份」） */
@@ -140,6 +147,7 @@ export function defaultConfig(): AppConfig {
     agentWebSearch: {},
     agentOrchestrator: {},
     providerSearch: {},
+    update: { autoCheck: true, frequency: 'startup' },
     backup: { dir: '', autoOnExit: false, backupOnUpdate: true },
     appearance: {
       theme: 'dark',
@@ -173,6 +181,7 @@ export function initConfig(): void {
         agentParams: { ...d.agentParams, ...(cfg.agentParams || {}) },
         embeddingService: { ...d.embeddingService, ...(cfg.embeddingService || {}) },
         embeddingOpts: { ...d.embeddingOpts, ...(cfg.embeddingOpts || {}) },
+        update: { ...d.update, ...(cfg.update || {}) },
         bindings: { ...(d.bindings || {}), ...(cfg.bindings || {}) },
         backup: { ...d.backup, ...(cfg.backup || {}) },
         appearance: { ...d.appearance, ...(cfg.appearance || {}) }

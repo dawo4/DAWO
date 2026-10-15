@@ -1,12 +1,50 @@
 // 自动更新：electron-updater 走 GitHub Releases（publish 配置在 electron-builder.yml）
 // 仓库当前私有：latest.yml 拉不到（404），错误统一转成人话并给 Releases 页兜底入口；转公开后全自动生效
 import { autoUpdater } from 'electron-updater'
-import { BrowserWindow, ipcMain, shell } from 'electron'
+import { BrowserWindow, ipcMain, app, shell } from 'electron'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { join } from 'path'
 import { getConfig } from './config'
 import { createBackup } from './backup'
 
 const RELEASES_URL = 'https://github.com/dawo4/DAWO/releases'
 const RELEASES_API = 'https://api.github.com/repos/dawo4/DAWO/releases/latest'
+
+// 自动检查频率的节流记录（userData/update-check.json，只存上次检查时间戳）
+const DAY_MS = 24 * 3600 * 1000
+
+function lastCheckAt(): number {
+  try {
+    const p = join(app.getPath('userData'), 'update-check.json')
+    if (existsSync(p)) return Number(JSON.parse(readFileSync(p, 'utf-8')).lastCheck) || 0
+  } catch {
+    /* 损坏按未检查过处理 */
+  }
+  return 0
+}
+
+function markChecked(): void {
+  try {
+    writeFileSync(join(app.getPath('userData'), 'update-check.json'), JSON.stringify({ lastCheck: Date.now() }), 'utf-8')
+  } catch {
+    /* 记不上就当每次都查 */
+  }
+}
+
+/** 按设置决定要不要静默自动检查：关了 / 仅手动不查；每天一次则距上次检查不足 24h 跳过 */
+function maybeAutoCheck(): void {
+  const u = getConfig().update
+  if (!u || u.autoCheck === false) return
+  const freq = u.frequency || 'startup'
+  if (freq === 'manual') return
+  if (freq === 'daily' && Date.now() - lastCheckAt() < DAY_MS) return
+  setTimeout(() => {
+    autoUpdater
+      .checkForUpdates()
+      .catch(() => {})
+      .finally(markChecked)
+  }, 15000)
+}
 
 function send(status: string, payload?: Record<string, unknown>): void {
   try {
@@ -32,18 +70,24 @@ export function initUpdater(): void {
   autoUpdater.on('checking-for-update', () => send('checking'))
   autoUpdater.on('update-available', (i) => send('available', { version: i.version }))
   autoUpdater.on('update-not-available', (i) => send('none', { version: i.version }))
-  autoUpdater.on('download-progress', (p) => send('downloading', { percent: Math.round(p.percent) }))
+  autoUpdater.on('download-progress', (p) =>
+    send('downloading', {
+      percent: Math.round(p.percent),
+      transferred: Math.round(p.transferred),
+      total: Math.round(p.total),
+      bps: Math.round(p.bytesPerSecond)
+    })
+  )
   autoUpdater.on('update-downloaded', (i) => send('downloaded', { version: i.version }))
   autoUpdater.on('error', (e) => send('error', { message: friendlyError(e as Error & { description?: string }) }))
 
-  // 启动 15 秒后静默查一次，不打扰
-  setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(() => {})
-  }, 15000)
+  // 启动 15 秒后按设置静默检查，不打扰
+  maybeAutoCheck()
 
   ipcMain.handle('update:check', async () => {
     try {
       const r = await autoUpdater.checkForUpdates()
+      markChecked()
       return { ok: true, version: r?.updateInfo?.version || '' }
     } catch (e) {
       return { ok: false, message: friendlyError(e as Error & { description?: string }) }

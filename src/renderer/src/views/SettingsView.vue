@@ -56,6 +56,12 @@ const upd = reactive({
   state: 'idle' as 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'downloaded' | 'error',
   version: '',
   percent: 0,
+  /** 下载明细：已下载 / 总量（字节）与速度（字节/秒） */
+  transferred: 0,
+  total: 0,
+  bps: 0,
+  /** 出错前最后一步动作（download = 下载中断，可一键重试下载） */
+  lastAction: '' as '' | 'download',
   message: ''
 })
 let offStatus: (() => void) | null = null
@@ -64,7 +70,13 @@ onMounted(() => {
     if (s.status === 'checking') upd.state = 'checking'
     else if (s.status === 'available') { upd.state = 'available'; upd.version = s.version || ''; void fetchNotes() }
     else if (s.status === 'none') { upd.state = 'none'; upd.version = s.version || '' }
-    else if (s.status === 'downloading') { upd.state = 'downloading'; upd.percent = s.percent || 0 }
+    else if (s.status === 'downloading') {
+      upd.state = 'downloading'
+      upd.percent = s.percent || 0
+      upd.transferred = s.transferred || 0
+      upd.total = s.total || 0
+      upd.bps = s.bps || 0
+    }
     else if (s.status === 'downloaded') { upd.state = 'downloaded'; upd.version = s.version || '' }
     else if (s.status === 'error') { upd.state = 'error'; upd.message = s.message || '未知错误' }
   })
@@ -81,6 +93,7 @@ async function checkUpdate() {
   // 成功路径由 update:status 事件驱动（available / none）
 }
 function doDownload() {
+  upd.lastAction = 'download'
   void window.api.updateDownload()
 }
 function doInstall() {
@@ -119,6 +132,14 @@ async function fetchNotes() {
 function fmtBytes(n: number): string {
   return n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`
 }
+
+/** 更新检查设置（旧配置缺对象时现场补默认值） */
+const updConf = (cfg.update ||= { autoCheck: true, frequency: 'startup' }) as NonNullable<AppConfig['update']>
+const CHECK_FREQ_OPTS = [
+  { label: '每次启动', value: 'startup' },
+  { label: '每天最多一次', value: 'daily' },
+  { label: '仅手动', value: 'manual' }
+]
 
 // ============ 作者记忆（全局跨书 + 本书单书，条目式） ============
 interface MemoryEntry {
@@ -1579,6 +1600,11 @@ onUnmounted(() => {
           <div class="text-xs text-[var(--text-faint)] leading-5">
             更新源是 GitHub Releases。检查到新版本后先下载，重启即完成安装；书稿与配置不受影响。仓库私有期间可能拉不到更新信息，可点「打开 Releases 页」手动下载。
           </div>
+          <div class="flex items-center gap-3 flex-wrap">
+            <InkToggle v-model="updConf.autoCheck" label="自动检查更新" @update:model-value="save" />
+            <InkSelect v-model="updConf.frequency" class="w-36" :options="CHECK_FREQ_OPTS" :disabled="!updConf.autoCheck" @update:model-value="save" />
+            <span class="text-[11px] text-[var(--text-faint)]">每天最多一次时，距上次检查不足 24 小时则本次启动跳过</span>
+          </div>
           <div class="flex gap-2 items-center flex-wrap">
             <InkButton :disabled="upd.state === 'checking' || upd.state === 'downloading'" @click="checkUpdate">
               <RefreshCw :size="13" /> {{ upd.state === 'checking' ? '正在检查…' : '检查更新' }}
@@ -1587,10 +1613,23 @@ onUnmounted(() => {
             <InkButton v-if="upd.state === 'downloaded'" @click="doInstall">重启安装 v{{ upd.version }}</InkButton>
             <InkButton variant="ghost" @click="openReleasePage"><Github :size="13" /> 打开 Releases 页</InkButton>
           </div>
-          <div v-if="upd.state === 'downloading'" class="text-xs" style="color: var(--accent)">下载中 {{ upd.percent }}%…</div>
+          <div v-if="upd.state === 'downloading'" class="space-y-1.5">
+            <div class="h-1.5 rounded-full overflow-hidden" style="background: var(--bg-soft)">
+              <div class="h-full rounded-full transition-all" :style="{ width: `${upd.percent}%`, background: 'var(--accent)' }" />
+            </div>
+            <div class="flex items-center justify-between text-xs" style="color: var(--accent)">
+              <span>下载中 {{ upd.percent }}%</span>
+              <span v-if="upd.total" class="text-[var(--text-faint)]">
+                {{ fmtBytes(upd.transferred) }} / {{ fmtBytes(upd.total) }}<template v-if="upd.bps"> · {{ fmtBytes(upd.bps) }}/s</template>
+              </span>
+            </div>
+          </div>
           <div v-if="upd.state === 'downloaded'" class="text-xs" style="color: var(--accent)">下载完成，点「重启安装」即升级（也可直接退出，下次启动前自动装；安装前会按下方开关自动备份当前作品）。</div>
           <div v-if="upd.state === 'none'" class="text-xs text-[var(--text-faint)]">已是最新版本（远端 v{{ upd.version }}）。</div>
-          <div v-if="upd.state === 'error'" class="text-xs" style="color: #e08a7a">{{ upd.message }}</div>
+          <div v-if="upd.state === 'error'" class="flex items-center gap-3 flex-wrap">
+            <span class="text-xs" style="color: #e08a7a">{{ upd.message }}</span>
+            <InkButton v-if="upd.lastAction === 'download'" variant="ghost" @click="doDownload"><RefreshCw :size="13" /> 重试下载</InkButton>
+          </div>
 
           <!-- 更新日志：发现新版本 / 已下载时展示最新 Release 说明 -->
           <div

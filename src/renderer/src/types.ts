@@ -49,6 +49,11 @@ export interface AppConfig {
   agentOrchestrator: Record<string, boolean>
   /** 服务商自带联网搜索开关 */
   providerSearch: Record<string, boolean>
+  /** 软件更新检查 */
+  update?: {
+    autoCheck: boolean
+    frequency: 'startup' | 'daily' | 'manual'
+  }
   appearance: {
     theme: 'dark' | 'ink-blue' | 'ink-green' | 'ink-purple' | 'light' | 'sepia' | 'moon' | 'celadon'
     accent: string
