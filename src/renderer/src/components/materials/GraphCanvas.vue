@@ -52,6 +52,16 @@ const flowEdges = ref<Edge[]>([])
 /** 由 props 同步到画布时记录 key，避免父组件回写相同数据再次重绘 */
 let lastKey = ''
 
+// ============ 连线形状：曲线（默认，贝塞尔）/ 直线（节点多时不缠绕，参考原版生产树图） ============
+const EDGE_TYPE_KEY = 'inkdesk.canvas.edgeType'
+const edgeType = ref<'curve' | 'straight'>(
+  localStorage.getItem(EDGE_TYPE_KEY) === 'straight' ? 'straight' : 'curve'
+)
+function toggleEdgeType(): void {
+  edgeType.value = edgeType.value === 'curve' ? 'straight' : 'curve'
+  localStorage.setItem(EDGE_TYPE_KEY, edgeType.value)
+}
+
 function styleFor(n: CanvasNode): Record<string, string> {
   const border = n.tone === 'main' ? 'var(--accent)' : n.tone === 'sub' ? 'var(--text-faint)' : 'var(--border)'
   return {
@@ -79,12 +89,18 @@ function sync(): void {
     id: e.id,
     source: e.source,
     target: e.target,
+    type: edgeType.value === 'straight' ? 'straight' : 'default',
     label: e.label || undefined,
     style: { stroke: e.color || 'var(--text-faint)' },
     labelStyle: { fill: 'var(--text-dim)', fontSize: 11 },
     labelBgStyle: { fill: 'var(--panel)' }
   }))
 }
+
+// 切换连线形状：只改现有连线类型，不动数据（lastKey 不含形状，因此父组件数据未变时也不会重绘节点）
+watch(edgeType, () => {
+  flowEdges.value = flowEdges.value.map((e) => ({ ...e, type: edgeType.value === 'straight' ? 'straight' : 'default' }))
+})
 
 watch(() => [props.nodes, props.edges], sync, { deep: true, immediate: true })
 
@@ -123,6 +139,20 @@ defineExpose({
       <Background :pattern-color="'var(--border)'" :gap="22" />
       <Controls position="bottom-right" />
     </VueFlow>
+    <!-- 连线形状切换：右上角，偏好存 localStorage 全局生效 -->
+    <button
+      class="absolute top-3 right-3 z-10 text-[11px] px-2.5 py-1 rounded-full cursor-pointer border transition-colors"
+      :class="edgeType === 'straight' ? 'font-medium' : 'text-[var(--text-dim)] hover:text-[var(--accent)]'"
+      :style="
+        edgeType === 'straight'
+          ? { borderColor: 'var(--accent)', color: 'var(--accent)', background: 'var(--panel)' }
+          : { borderColor: 'var(--border)', background: 'var(--panel)' }
+      "
+      :title="edgeType === 'straight' ? '当前：直线连线（节点多时更清晰），点击切回曲线' : '当前：曲线连线，点击切换为直线（节点多时更清晰）'"
+      @click="toggleEdgeType"
+    >
+      连线：{{ edgeType === 'straight' ? '直线' : '曲线' }}
+    </button>
     <div class="absolute bottom-3 left-3 text-[11px] text-[var(--text-faint)] z-10 pointer-events-none">
       拖动节点调整布局 · 从节点边缘拖线连接 · 双击空白处新建
     </div>
