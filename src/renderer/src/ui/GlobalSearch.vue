@@ -418,6 +418,8 @@ function onDocMousedown(e: MouseEvent) {
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') return close()
   if (!mergedHits.value.length) return
+  // 语义结果追加/清空会让列表长度变化，钳制 cursor 防止 Enter 取到 undefined
+  if (cursor.value >= mergedHits.value.length) cursor.value = 0
   if (e.key === 'ArrowDown') {
     e.preventDefault()
     cursor.value = (cursor.value + 1) % mergedHits.value.length
@@ -497,7 +499,7 @@ onUnmounted(() => {
       <div v-else class="max-h-80 overflow-y-auto">
         <button
           v-for="(h, i) in mergedHits"
-          :key="h.kind + (h.book || h.path || h.view || h.name || '') + (h.line || '')"
+          :key="h.kind + (h.book || h.path || h.view || (h.board ? h.board + '/' : '') + (h.group ? h.group + '/' : '') + (h.name || '')) + (h.line || '')"
           class="w-full text-left px-3.5 py-2 cursor-pointer border-b border-[var(--border)] last:border-b-0"
           :class="i === cursor ? 'bg-[var(--panel-2)]' : 'hover:bg-[var(--hover)]'"
           @mouseenter="cursor = i"

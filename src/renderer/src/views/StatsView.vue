@@ -9,6 +9,10 @@ import { CalendarDays, Coins, Info } from 'lucide-vue-next'
 const app = useAppStore()
 const lib = useLibraryStore()
 
+/** 日期 key 与写入口径对齐：stats.json（addStats）与 AI 调用记录的 at 都按 UTC 日期存，
+ *  这里若用本地日期，UTC+8 深夜 0-8 点的写作/调用会错位到前一天的格子 */
+const utcKey = (d: Date): string => d.toISOString().slice(0, 10)
+
 // ============ 写作热力图 ============
 const days = ref<Record<string, { hand: number; ai: number }>>({})
 const loading = ref(false)
@@ -27,6 +31,8 @@ async function loadWords() {
       }
     }
     days.value = agg
+  } catch {
+    /* 读取失败保持空数据，下次激活重试 */
   } finally {
     loading.value = false
   }
@@ -46,7 +52,7 @@ const cells = computed(() => {
   for (let i = 0; i <= total; i++) {
     const d = new Date(start)
     d.setDate(d.getDate() + i)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const key = utcKey(d)
     const v = days.value[key]
     out.push({ date: key, total: (v?.hand || 0) + (v?.ai || 0), col: Math.floor(i / 7), row: (d.getDay() + 6) % 7 })
   }
@@ -84,8 +90,12 @@ const newPrice = ref<Record<string, string>>({})
 
 async function loadCalls() {
   // 记录上限 2000 条，全量拉取后前端聚合
-  calls.value = (await window.api.aiLogQuery({})) as CallRecord[]
-  prices.value = { ...(app.config?.modelPrices || {}) }
+  try {
+    calls.value = (await window.api.aiLogQuery({})) as CallRecord[]
+    prices.value = { ...(app.config?.modelPrices || {}) }
+  } catch {
+    /* 拉取失败保持空数据 */
+  }
 }
 
 function priceOf(model: string): number {
@@ -118,7 +128,7 @@ const daily = computed(() => {
   for (let i = 29; i >= 0; i--) {
     const d = new Date()
     d.setDate(d.getDate() - i)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const key = utcKey(d)
     const w = days.value[key]
     out.push({ date: key, hand: w?.hand || 0, ai: w?.ai || 0, calls: 0, tokens: 0, cost: 0 })
   }

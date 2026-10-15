@@ -1,7 +1,7 @@
 // 自动更新：electron-updater 走 GitHub Releases（publish 配置在 electron-builder.yml）
 // 仓库当前私有：latest.yml 拉不到（404），错误统一转成人话并给 Releases 页兜底入口；转公开后全自动生效
 import { autoUpdater } from 'electron-updater'
-import { BrowserWindow, ipcMain, app, shell } from 'electron'
+import { BrowserWindow, ipcMain, app, shell, net } from 'electron'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { getConfig } from './config'
@@ -39,10 +39,12 @@ function maybeAutoCheck(): void {
   if (freq === 'manual') return
   if (freq === 'daily' && Date.now() - lastCheckAt() < DAY_MS) return
   setTimeout(() => {
-    autoUpdater
-      .checkForUpdates()
-      .catch(() => {})
-      .finally(markChecked)
+    withTimeout(autoUpdater.checkForUpdates(), 30000, '检查更新')
+      .then(() => markChecked())
+      .catch((e) => {
+        // 超时/失败必须显性发 error：否则设置页会一直卡在 send('checking') 置下的「正在检查…」且按钮禁用
+        send('error', { message: friendlyError(e as Error & { description?: string }) })
+      })
   }, 15000)
 }
 
@@ -122,7 +124,9 @@ export function initUpdater(devMode: boolean): void {
   // 更新日志：拉最新 Release 的说明（Markdown）、发布日期与安装包体积，供设置页展示
   ipcMain.handle('update:notes', async () => {
     try {
-      const res = await fetch(RELEASES_API, {
+      // 用 Electron net.fetch：跟随系统代理，与 electron-updater 的网络行为一致
+      // （Node 的全局 fetch 不走 Chromium 网络栈，开系统代理也直连，会导致「检查成功、日志失败」的矛盾）
+      const res = await net.fetch(RELEASES_API, {
         headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'DAWO-updater' },
         signal: AbortSignal.timeout(20000)
       })

@@ -3,6 +3,7 @@
 // 未配置「向量化」任务通道时所有语义功能优雅降级：调用方拿到空结果与原因说明。
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, renameSync, rmSync } from 'fs'
 import { join, normalize, sep } from 'path'
+import { net } from 'electron'
 import { getConfig, AppConfig } from './config'
 import { getLibraryRoot, readTextAuto } from './library'
 import { LIB_LABEL, LibKind, kindRootPath, listLibrary } from './materials'
@@ -175,7 +176,8 @@ async function embedBatch(ep: EmbedEndpoint, texts: string[]): Promise<number[][
   const baseUrl = ep.baseUrl.replace(/\/+$/, '')
   const startedAt = Date.now()
   try {
-    const res = await fetch(`${baseUrl}/embeddings`, {
+    // net.fetch 走 Electron 网络栈（跟随系统代理），与 Node 全局 fetch 行为不同
+    const res = await net.fetch(`${baseUrl}/embeddings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(ep.apiKey ? { Authorization: `Bearer ${ep.apiKey}` } : {}) },
       body: JSON.stringify({ model: ep.model, input: texts }),
@@ -422,7 +424,10 @@ function syncIndex(book: string, opts: { force?: boolean } = {}): Promise<{ stal
     for (const s of changed) idx.fps[s.key] = { len: s.len, mtime: s.mtime }
     saveIndex(book, idx)
     return { stale: false, error: '' }
-  })().finally(() => syncing.delete(book))
+  })().finally(() => {
+    // 仅当 Map 里仍是本任务时才清锁：force 新 job 覆盖 key 后，旧 job 的 finally 不能误删新 job 的锁
+    if (syncing.get(book) === job) syncing.delete(book)
+  })
   syncing.set(book, job)
   return job
 }
@@ -571,7 +576,7 @@ export async function testEmbedding(
   if (!base || !trimmed) return { ok: false, latencyMs: 0, model: trimmed, dim: 0, error: '请先填写接口地址与模型名' }
   const startedAt = Date.now()
   try {
-    const res = await fetch(`${base}/embeddings`, {
+    const res = await net.fetch(`${base}/embeddings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
       body: JSON.stringify({ model: trimmed, input: ['ping'] }),
