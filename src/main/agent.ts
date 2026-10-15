@@ -1232,6 +1232,8 @@ export async function runAgent(win: BrowserWindow, params: AgentRunParams): Prom
   const controller = new AbortController()
   runs.set(runId, controller)
   const agentStartedAt = Date.now()
+  // 连接看门狗触发标记（声明在 try 外，catch 里要用）
+  let connectTimedOut = false
   // recordAgentCall 定义在 try 块外，无法访问块内的 agent——把展示名单独提升到外层作用域
   let agentLabel = agentId
 
@@ -1303,19 +1305,31 @@ export async function runAgent(win: BrowserWindow, params: AgentRunParams): Prom
     if (provider.apiKey) headers.Authorization = `Bearer ${provider.apiKey}`
 
     for (let turn = 0; turn < 12; turn++) {
-      const res = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        signal: controller.signal,
-        headers,
-        body: JSON.stringify({
-          model: taskCfg.model,
-          temperature: taskCfg.temperature,
-          stream: true,
-          tools: allTools,
-          ...(searchPatch?.extra || {}),
-          messages
+      // 连接看门狗：60 秒内没拿到响应头（DNS/连接黑洞）就掐断并按错误结束，绝不无限转圈。
+      // 响应头到达后即解除——流式生成耗时多久都不受影响
+      connectTimedOut = false
+      const connectWatch = setTimeout(() => {
+        connectTimedOut = true
+        controller.abort()
+      }, 60000)
+      let res: Response
+      try {
+        res = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          signal: controller.signal,
+          headers,
+          body: JSON.stringify({
+            model: taskCfg.model,
+            temperature: taskCfg.temperature,
+            stream: true,
+            tools: allTools,
+            ...(searchPatch?.extra || {}),
+            messages
+          })
         })
-      })
+      } finally {
+        clearTimeout(connectWatch)
+      }
       if (!res.ok) {
         const text = await res.text().catch(() => '')
         const hint = res.status === 401 ? '（API Key 无效或未填）' : res.status === 404 ? '（接口地址或模型名可能有误）' : res.status === 400 ? '（可能该模型不支持工具调用或图片输入：纯文本模型请勿附图，可在设置里换用兼容模型）' : ''
@@ -1417,7 +1431,11 @@ export async function runAgent(win: BrowserWindow, params: AgentRunParams): Prom
     recordAgentCall('success', '')
   } catch (e) {
     const err = e as Error
-    if (err.name === 'AbortError') {
+    if (connectTimedOut) {
+      // 连接看门狗超时：按错误结束（而非「已中止」），提示直指网络/服务商
+      send(win, runId, 'error', '连接智能体模型超时（60 秒无响应）：请检查服务商地址是否可达、代理是否开启。')
+      recordAgentCall('failed', '连接智能体模型超时（60 秒无响应）')
+    } else if (err.name === 'AbortError') {
       send(win, runId, 'aborted')
       recordAgentCall('aborted', '')
     } else {
