@@ -308,13 +308,41 @@ const vo = (cfg.embeddingOpts ||= {
 /** 嵌入服务：独立的接口地址 / Key / 模型，与对话模型的服务商列表互不影响 */
 const es = (cfg.embeddingService ||= { baseUrl: '', apiKey: '', model: '' }) as NonNullable<AppConfig['embeddingService']>
 
+/** 嵌入服务预设：baseUrl + 该家当前主流向量化模型（2026-10 核对：Qwen3-Embedding 系列 / qwen3.7-text-embedding / embedding-3(-pro) / bge-m3） */
 const EMBED_PRESETS = [
-  { name: '硅基流动', baseUrl: 'https://api.siliconflow.cn/v1' },
-  { name: '智谱', baseUrl: 'https://open.bigmodel.cn/api/paas/v4' },
-  { name: '通义千问', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
-  { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
-  { name: 'Ollama 本地', baseUrl: 'http://127.0.0.1:11434/v1' }
+  {
+    name: '硅基流动',
+    baseUrl: 'https://api.siliconflow.cn/v1',
+    models: ['BAAI/bge-m3', 'Qwen/Qwen3-Embedding-8B', 'Qwen/Qwen3-Embedding-4B', 'Qwen/Qwen3-Embedding-0.6B']
+  },
+  {
+    name: '通义千问',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    models: ['qwen3.7-text-embedding', 'text-embedding-v4']
+  },
+  {
+    name: '智谱',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    models: ['embedding-3', 'embedding-3-pro']
+  },
+  {
+    name: 'OpenAI',
+    baseUrl: 'https://api.openai.com/v1',
+    models: ['text-embedding-3-large', 'text-embedding-3-small']
+  },
+  {
+    name: 'Ollama 本地',
+    baseUrl: 'http://127.0.0.1:11434/v1',
+    models: ['bge-m3', 'qwen3-embedding', 'nomic-embed-text']
+  }
 ]
+/** 当前接口地址匹配到的预设（有则显示「推荐模型」快捷 chips） */
+const embPreset = computed(() => EMBED_PRESETS.find((p) => p.baseUrl === es.baseUrl))
+/** 点预设：填地址；模型名为空时顺带带上该家第一个推荐模型（不覆盖已填的自定义模型） */
+function pickEmbPreset(p: (typeof EMBED_PRESETS)[number]) {
+  es.baseUrl = p.baseUrl
+  if (!es.model.trim()) es.model = p.models[0]
+}
 const embModels = ref<string[]>([])
 const embErr = ref('')
 const embFetching = ref(false)
@@ -996,7 +1024,8 @@ onUnmounted(() => {
                 class="text-[11px] px-2 py-0.5 rounded-full cursor-pointer border border-[var(--border)] transition-colors"
                 :class="es.baseUrl === p.baseUrl ? 'text-[var(--accent)]' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)] hover:bg-[var(--hover)]'"
                 :style="es.baseUrl === p.baseUrl ? { borderColor: 'var(--accent)' } : {}"
-                @click="es.baseUrl = p.baseUrl"
+                :title="`填入 ${p.name} 接口地址${p.models.length ? '，推荐模型：' + p.models.join(' / ') : ''}`"
+                @click="pickEmbPreset(p)"
               >
                 {{ p.name }}
               </button>
@@ -1024,6 +1053,19 @@ onUnmounted(() => {
                 @click="testEmb"
               >
                 <LoaderCircle v-if="embTesting" :size="12" class="animate-spin" /> 测试连接
+              </button>
+            </div>
+            <div v-if="embPreset" class="flex flex-wrap items-center gap-1.5 pl-[88px] -mt-1">
+              <span class="text-[11px] text-[var(--text-faint)] shrink-0">推荐模型</span>
+              <button
+                v-for="m in embPreset.models"
+                :key="m"
+                class="text-[11px] px-2 py-0.5 rounded-full cursor-pointer border transition-colors max-w-[240px] truncate"
+                :class="es.model === m ? 'text-[var(--accent)]' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)] hover:bg-[var(--hover)]'"
+                :style="es.model === m ? { borderColor: 'var(--accent)' } : { borderColor: 'var(--border)' }"
+                @click="es.model = m"
+              >
+                {{ m }}
               </button>
             </div>
             <div v-if="embErr" class="text-[11.5px]" style="color: #e08a7a">{{ embErr }}</div>
