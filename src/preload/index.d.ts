@@ -50,6 +50,7 @@ declare global {
       vectorUpdate: (book: string) => Promise<{ ok: boolean; count: number; error: string }>
       vectorRebuild: (book: string) => Promise<{ ok: boolean; count: number; tokens: number; error: string }>
       vectorClear: (book: string) => Promise<void>
+      vectorTest: (baseUrl: string, apiKey: string, model: string) => Promise<{ ok: boolean; latencyMs: number; model: string; dim: number; error: string }>
       treeList: (book: string) => Promise<unknown[]>
       statsGet: (book: string) => Promise<{ days: Record<string, { handwritten: number; ai: number }>; prevCounts: Record<string, number> }>
       statsAdd: (book: string, hand: number, ai: number) => Promise<unknown>

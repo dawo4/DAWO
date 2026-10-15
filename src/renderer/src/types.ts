@@ -6,6 +6,12 @@ export interface AppConfig {
     thinkingLevel: 'off' | 'low' | 'medium' | 'high'
     temperature: number
   }
+  /** 向量化嵌入服务（独立于对话模型的服务商列表） */
+  embeddingService?: {
+    baseUrl: string
+    apiKey: string
+    model: string
+  }
   /** 向量化检索（语义搜索）行为配置；通道本身存在 tasks.embedding */
   embeddingOpts?: {
     /** 索引是否纳入资源库（技能/素材/便签） */

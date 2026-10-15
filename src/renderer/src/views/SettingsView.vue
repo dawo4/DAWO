@@ -238,13 +238,11 @@ const tasksIncomplete = computed(
   () => Object.entries(cfg.tasks).some(([k, t]) => k !== EMBEDDING_KEY && (!t.providerId || !t.model))
 )
 
-/** 某服务商被哪些任务使用（卡片上显示占用徽标；删除时提醒），向量化通道一并计入 */
+/** 某服务商被哪些任务使用（卡片上显示占用徽标；删除时提醒）。向量化已独立成 embeddingService，与服务商列表无关 */
 function providerUsage(id: string): string[] {
-  const out = Object.entries(TASK_LABELS)
+  return Object.entries(TASK_LABELS)
     .filter(([k]) => cfg.tasks[k]?.providerId === id)
     .map(([, label]) => label)
-  if (cfg.tasks[EMBEDDING_KEY]?.providerId === id) out.push('向量化检索')
-  return out
 }
 
 /** 删除服务商：在用则确认，确认后清空引用它的任务配置（防残留死引用导致「尚未配置 AI 服务」） */
@@ -263,10 +261,6 @@ async function deleteProvider(id: string) {
         cfg.tasks[k].model = ''
       }
     }
-    if (cfg.tasks[EMBEDDING_KEY]?.providerId === id) {
-      cfg.tasks[EMBEDDING_KEY].providerId = ''
-      cfg.tasks[EMBEDDING_KEY].model = ''
-    }
   } else if (p?.name) {
     const ok = await inkConfirm(`删除服务商「${p.name}」？`, { confirmText: '删除', danger: true })
     if (!ok) return
@@ -274,9 +268,8 @@ async function deleteProvider(id: string) {
   cfg.providers = cfg.providers.filter((x: { id: string }) => x.id !== id)
 }
 
-/** 把某一行任务的服务商 + 模型一键应用到全部任务（配好一个就不用挨个选）；向量化要专用的嵌入模型，不跟着抄 */
+/** 把某一行任务的服务商 + 模型一键应用到全部任务（配好一个就不用挨个选） */
 function applyToAllTasks(key: string) {
-  if (key === EMBEDDING_KEY) return
   const src = cfg.tasks[key]
   for (const k of Object.keys(TASK_LABELS)) {
     cfg.tasks[k].providerId = src.providerId
@@ -299,7 +292,7 @@ const WIN_OPTS = [800, 1000, 1500, 2000, 3000].map((n) => ({ label: `${n} 字`, 
 // 直接绑定全局配置对象（不再克隆快照）：设置页的编辑即时写入 store，
 // save() 只负责持久化——旧快照方案会把其他页面的并发修改（activeBook 等）覆盖回去
 const cfg = app.config as AppConfig
-/** 向量化检索行为配置对象（通道本身在 cfg.tasks[EMBEDDING_KEY]）；极老配置缺对象时现场补默认值 */
+/** 向量化检索行为配置对象（嵌入服务独立在 embeddingService，不再绑服务商列表） */
 const vo = (cfg.embeddingOpts ||= {
   includeLib: true,
   chunkFull: 3000,
@@ -312,6 +305,54 @@ const vo = (cfg.embeddingOpts ||= {
   injectSearch: true,
   topKSearch: 6
 }) as NonNullable<AppConfig['embeddingOpts']>
+/** 嵌入服务：独立的接口地址 / Key / 模型，与对话模型的服务商列表互不影响 */
+const es = (cfg.embeddingService ||= { baseUrl: '', apiKey: '', model: '' }) as NonNullable<AppConfig['embeddingService']>
+
+const EMBED_PRESETS = [
+  { name: '硅基流动', baseUrl: 'https://api.siliconflow.cn/v1' },
+  { name: '智谱', baseUrl: 'https://open.bigmodel.cn/api/paas/v4' },
+  { name: '通义千问', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+  { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
+  { name: 'Ollama 本地', baseUrl: 'http://127.0.0.1:11434/v1' }
+]
+const embModels = ref<string[]>([])
+const embErr = ref('')
+const embFetching = ref(false)
+const embTesting = ref(false)
+const embTest = ref<{ ok: boolean; latencyMs: number; dim: number; error: string } | null>(null)
+
+/** 拉取嵌入服务的可用模型列表（/models），供模型名自动补全 */
+async function fetchEmbModels() {
+  embErr.value = ''
+  if (!es.baseUrl.trim()) {
+    embErr.value = '请先填写接口地址'
+    return
+  }
+  embFetching.value = true
+  try {
+    const list = (await window.api.aiFetchModels({ id: '', name: '', baseUrl: es.baseUrl, apiKey: es.apiKey })) as { id: string }[]
+    embModels.value = list.map((m) => m.id).filter(Boolean)
+    if (!embModels.value.length) embErr.value = '该接口地址没有返回任何模型'
+  } catch (e) {
+    embErr.value = `获取模型失败：${(e as Error).message}`
+  } finally {
+    embFetching.value = false
+  }
+}
+
+/** 端到端测试嵌入服务：发一条最小 /embeddings 请求，验证地址 / Key / 模型并显示向量维度 */
+async function testEmb() {
+  embErr.value = ''
+  embTest.value = null
+  embTesting.value = true
+  try {
+    embTest.value = await window.api.vectorTest(es.baseUrl, es.apiKey, es.model)
+  } catch (e) {
+    embTest.value = { ok: false, latencyMs: 0, dim: 0, error: (e as Error).message }
+  } finally {
+    embTesting.value = false
+  }
+}
 // 旧版本配置缺新字段时兜底补齐
 if (cfg.modelContexts === undefined) cfg.modelContexts = {}
 if (cfg.search === undefined) cfg.search = { provider: 'auto', apiKey: '' }
@@ -941,23 +982,58 @@ onUnmounted(() => {
             <span style="color: var(--accent)">未配置服务商与模型时以上功能自动降级，不影响其他功能。</span>
           </div>
 
-          <!-- 通道配置 -->
-          <div class="flex items-center gap-2 mb-2.5">
-            <span class="w-40 text-sm shrink-0">嵌入模型</span>
-            <InkSelect
-              v-model="cfg.tasks[EMBEDDING_KEY].providerId"
-              class="w-40 shrink-0"
-              :options="[{ label: '选择服务商', value: '' }, ...cfg.providers.map((p) => ({ label: p.name, value: p.id }))]"
-            />
-            <input
-              v-model="cfg.tasks[EMBEDDING_KEY].model"
-              class="ink-input flex-1"
-              :list="'models-' + cfg.tasks[EMBEDDING_KEY].providerId"
-              placeholder="嵌入模型名，如 BAAI/bge-m3"
-            />
-          </div>
-          <div class="text-[11px] text-[var(--text-faint)] leading-5 mb-4">
-            与对话模型不同：嵌入模型只负责把文字转成向量，不能用来聊天。换模型后已有索引不兼容，需要到写作台「检索」面板重建。
+          <!-- 嵌入服务（独立面板，与服务商列表互不影响） -->
+          <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3.5 mb-4 space-y-3">
+            <div class="text-xs text-[var(--text-dim)] tracking-wider">嵌入服务（独立于上方服务商列表，删除 / 修改对话模型服务商不影响这里）</div>
+            <div class="flex items-center gap-2">
+              <span class="w-20 text-sm shrink-0">接口地址</span>
+              <input v-model="es.baseUrl" class="ink-input flex-1" placeholder="https://api.siliconflow.cn/v1" />
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5 pl-[88px] -mt-1">
+              <button
+                v-for="p in EMBED_PRESETS"
+                :key="p.name"
+                class="text-[11px] px-2 py-0.5 rounded-full cursor-pointer border border-[var(--border)] transition-colors"
+                :class="es.baseUrl === p.baseUrl ? 'text-[var(--accent)]' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)] hover:bg-[var(--hover)]'"
+                :style="es.baseUrl === p.baseUrl ? { borderColor: 'var(--accent)' } : {}"
+                @click="es.baseUrl = p.baseUrl"
+              >
+                {{ p.name }}
+              </button>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-20 text-sm shrink-0">API Key</span>
+              <input v-model="es.apiKey" class="ink-input flex-1" placeholder="sk-…（Ollama 本地可留空）" autocomplete="off" />
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-20 text-sm shrink-0">模型名</span>
+              <input v-model="es.model" class="ink-input flex-1" :list="'emb-models'" placeholder="嵌入模型名，如 BAAI/bge-m3" />
+              <datalist id="emb-models">
+                <option v-for="m in embModels" :key="m" :value="m" />
+              </datalist>
+              <button
+                class="text-[11.5px] px-2.5 py-1.5 rounded-lg cursor-pointer border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] transition-colors shrink-0 disabled:opacity-50 flex items-center gap-1"
+                :disabled="embFetching"
+                @click="fetchEmbModels"
+              >
+                <LoaderCircle v-if="embFetching" :size="12" class="animate-spin" /> 获取模型
+              </button>
+              <button
+                class="text-[11.5px] px-2.5 py-1.5 rounded-lg cursor-pointer border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] transition-colors shrink-0 disabled:opacity-50 flex items-center gap-1"
+                :disabled="embTesting"
+                @click="testEmb"
+              >
+                <LoaderCircle v-if="embTesting" :size="12" class="animate-spin" /> 测试连接
+              </button>
+            </div>
+            <div v-if="embErr" class="text-[11.5px]" style="color: #e08a7a">{{ embErr }}</div>
+            <div v-else-if="embTest" class="text-[11.5px]" :style="{ color: embTest.ok ? 'var(--accent)' : '#e08a7a' }">
+              {{ embTest.ok ? `连接成功 · ${embTest.latencyMs}ms · 向量维度 ${embTest.dim}` : `连接失败：${embTest.error}` }}
+            </div>
+            <div class="text-[11px] text-[var(--text-faint)] leading-5">
+              嵌入模型只负责把文字转成向量，不能用来聊天，与对话模型互不通用；常用如硅基流动 BAAI/bge-m3、智谱 embedding-3、通义 text-embedding-v4。
+              换模型后已有索引不兼容，需要到写作台「检索」面板重建。
+            </div>
           </div>
 
           <!-- 索引范围与切块 -->

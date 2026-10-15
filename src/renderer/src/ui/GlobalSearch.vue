@@ -347,7 +347,10 @@ async function runSemantic() {
   const book = lib.current?.title || ''
   const vo = app.config?.embeddingOpts
   if (!kw || !book || vo?.injectSearch === false) return
-  if (!app.config?.tasks?.embedding?.providerId || !app.config?.tasks?.embedding?.model) return
+  // 新版独立嵌入服务 / 未迁移完的老版服务商绑定，两者任一可用即可
+  const es = app.config?.embeddingService
+  const legacy = app.config?.tasks?.embedding
+  if (!(es?.baseUrl && es?.model) && !(legacy?.providerId && legacy?.model)) return
   semLoading.value = true
   try {
     const r = (await window.api.vectorSearch(book, kw, vo?.topKSearch || 6)) as {

@@ -40,6 +40,7 @@ const api = {
   vectorUpdate: (book: string) => ipcRenderer.invoke('vector:update', book),
   vectorRebuild: (book: string) => ipcRenderer.invoke('vector:rebuild', book),
   vectorClear: (book: string) => ipcRenderer.invoke('vector:clear', book),
+  vectorTest: (baseUrl: string, apiKey: string, model: string) => ipcRenderer.invoke('vector:test', baseUrl, apiKey, model),
 
   treeList: (book: string) => ipcRenderer.invoke('tree:list', book),
 

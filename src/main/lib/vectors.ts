@@ -3,7 +3,7 @@
 // 未配置「向量化」任务通道时所有语义功能优雅降级：调用方拿到空结果与原因说明。
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, renameSync, rmSync } from 'fs'
 import { join, normalize, sep } from 'path'
-import { getConfig, Provider, TaskCfg, AppConfig } from './config'
+import { getConfig, AppConfig } from './config'
 import { getLibraryRoot, readTextAuto } from './library'
 import { LIB_LABEL, LibKind, kindRootPath, listLibrary } from './materials'
 import { estimateTokens, recordCall } from './ailog'
@@ -134,19 +134,33 @@ function saveIndex(book: string, idx: VecIndex): void {
   renameSync(tmp, p)
 }
 
-// ============ 嵌入调用（OpenAI 兼容 /embeddings） ============
+// ============ 嵌入服务（独立于对话模型的服务商列表） ============
 
-function embedTask(): { provider: Provider; cfg: TaskCfg } | null {
+interface EmbedEndpoint {
+  /** 展示名（AI 调用记录里的「服务商」） */
+  name: string
+  baseUrl: string
+  apiKey: string
+  model: string
+}
+
+function embedEndpoint(): EmbedEndpoint | null {
   const config = getConfig()
-  const cfg: TaskCfg | undefined = config.tasks?.embedding
-  if (!cfg?.providerId || !cfg?.model) return null
-  const provider = config.providers.find((p) => p.id === cfg.providerId)
-  if (!provider) return null
-  return { provider, cfg }
+  const es = config.embeddingService
+  if (es?.baseUrl && es?.model) {
+    return { name: '向量化服务', baseUrl: es.baseUrl, apiKey: es.apiKey || '', model: es.model }
+  }
+  // 兼容：未迁移完成的老配置仍绑在服务商列表上
+  const old = config.tasks?.embedding
+  if (old?.providerId && old?.model) {
+    const provider = config.providers.find((p) => p.id === old.providerId)
+    if (provider) return { name: provider.name, baseUrl: provider.baseUrl, apiKey: provider.apiKey || '', model: old.model }
+  }
+  return null
 }
 
 export function embeddingConfigured(): boolean {
-  return !!embedTask()
+  return !!embedEndpoint()
 }
 
 function normalizeVec(v: number[]): number[] {
@@ -157,14 +171,14 @@ function normalizeVec(v: number[]): number[] {
   return v.map((x) => Math.round((x / norm) * 1e5) / 1e5)
 }
 
-async function embedBatch(provider: Provider, model: string, texts: string[]): Promise<number[][]> {
-  const baseUrl = provider.baseUrl.replace(/\/+$/, '')
+async function embedBatch(ep: EmbedEndpoint, texts: string[]): Promise<number[][]> {
+  const baseUrl = ep.baseUrl.replace(/\/+$/, '')
   const startedAt = Date.now()
   try {
     const res = await fetch(`${baseUrl}/embeddings`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {}) },
-      body: JSON.stringify({ model, input: texts }),
+      headers: { 'Content-Type': 'application/json', ...(ep.apiKey ? { Authorization: `Bearer ${ep.apiKey}` } : {}) },
+      body: JSON.stringify({ model: ep.model, input: texts }),
       signal: AbortSignal.timeout(60000)
     })
     if (!res.ok) {
@@ -181,8 +195,8 @@ async function embedBatch(provider: Provider, model: string, texts: string[]): P
       kind: 'text',
       feature: 'embedding',
       featureLabel: '向量化检索',
-      provider: provider.name,
-      model,
+      provider: ep.name,
+      model: ep.model,
       ok: true,
       status: 'success',
       durationMs: Date.now() - startedAt,
@@ -196,8 +210,8 @@ async function embedBatch(provider: Provider, model: string, texts: string[]): P
       kind: 'text',
       feature: 'embedding',
       featureLabel: '向量化检索',
-      provider: provider.name,
-      model,
+      provider: ep.name,
+      model: ep.model,
       ok: false,
       status: 'failed',
       durationMs: Date.now() - startedAt,
@@ -349,7 +363,7 @@ function diffChunks(idx: VecIndex, sources: Source[]): { keep: VecChunk[]; chang
   return { keep, changed: sources.filter((s) => changedKeys.has(s.key)) }
 }
 
-async function chunksFor(task: { provider: Provider; cfg: TaskCfg }, sources: Source[]): Promise<VecChunk[]> {
+async function chunksFor(ep: EmbedEndpoint, sources: Source[]): Promise<VecChunk[]> {
   const pieces: { key: string; src: 'book' | 'lib'; path: string; title: string; offset: number; text: string }[] = []
   for (const s of sources) {
     for (const c of chunkBody(s.text)) pieces.push({ key: s.key, src: s.src, path: s.path, title: s.title, offset: c.offset, text: c.text })
@@ -358,7 +372,7 @@ async function chunksFor(task: { provider: Provider; cfg: TaskCfg }, sources: So
   const BATCH = 16
   for (let i = 0; i < pieces.length; i += BATCH) {
     const batch = pieces.slice(i, i + BATCH)
-    const vecs = await embedBatch(task.provider, task.cfg.model, batch.map((p) => p.text))
+    const vecs = await embedBatch(ep, batch.map((p) => p.text))
     batch.forEach((p, j) => {
       out.push({ id: `${p.key}:${p.offset}`, src: p.src, path: p.path, title: p.title, offset: p.offset, text: p.text, vec: vecs[j] })
     })
@@ -374,14 +388,14 @@ function syncIndex(book: string, opts: { force?: boolean } = {}): Promise<{ stal
   const existing = syncing.get(book)
   if (existing && !opts.force) return existing
   const job = (async (): Promise<{ stale: boolean; error: string }> => {
-    const task = embedTask()
-    if (!task) return { stale: false, error: '未配置向量化' }
-    const model = task.cfg.model
+    const ep = embedEndpoint()
+    if (!ep) return { stale: false, error: '未配置向量化' }
+    const model = ep.model
     let idx = loadIndex(book)
     if (!idx || opts.force) {
       // 全量构建：不带指纹缓存，读全部内容
       const sources = allSources(book)
-      const chunks = await chunksFor(task, sources)
+      const chunks = await chunksFor(ep, sources)
       idx = {
         version: 1,
         model,
@@ -399,7 +413,7 @@ function syncIndex(book: string, opts: { force?: boolean } = {}): Promise<{ stal
     const sources = allSources(book, idx.fps)
     const { keep, changed } = diffChunks(idx, sources)
     if (!changed.length) return { stale: false, error: '' }
-    const fresh = await chunksFor(task, changed)
+    const fresh = await chunksFor(ep, changed)
     idx.chunks = [...keep, ...fresh]
     idx.dim = idx.chunks[0]?.vec.length || idx.dim
     idx.updatedAt = new Date().toISOString()
@@ -437,14 +451,14 @@ export async function vectorSearch(
   opts: { scope?: 'all' | 'book'; minScore?: number } = {}
 ): Promise<SearchResult> {
   if (!query.trim()) return { hits: [], reason: '空查询' }
-  const task = embedTask()
-  if (!task) return { hits: [], reason: '未配置向量化' }
+  const ep = embedEndpoint()
+  if (!ep) return { hits: [], reason: '未配置向量化' }
   try {
     const st = await syncIndex(book)
     if (st.stale) return { hits: [], reason: st.error }
     const idx = loadIndex(book)
     if (!idx || !idx.chunks.length) return { hits: [], reason: '索引为空（书里还没有内容）' }
-    const [qv] = await embedBatch(task.provider, task.cfg.model, [query.slice(0, 4000)])
+    const [qv] = await embedBatch(ep, [query.slice(0, 4000)])
     const scope = opts.scope || 'all'
     const minScore = opts.minScore ?? vecOpts().minScore
     const pool = scope === 'book' ? idx.chunks.filter((c) => c.src === 'book') : idx.chunks
@@ -476,11 +490,11 @@ export function vectorStatus(book: string): {
   updatedAt: string
   stale: boolean
 } {
-  const task = embedTask()
+  const ep = embedEndpoint()
   const idx = loadIndex(book)
   let chars = idx ? idx.chunks.reduce((n, c) => n + c.text.length, 0) : 0
   // 还没建过索引（或换模型待重建）时，现场枚举来源估算体量，让「重建成本」有个靠谱的数
-  if ((!idx || (task && idx.model !== task.cfg.model)) && task) {
+  if (ep && (!idx || idx.model !== ep.model)) {
     try {
       chars = allSources(book).reduce((n, s) => n + s.len, 0)
     } catch {
@@ -488,8 +502,8 @@ export function vectorStatus(book: string): {
     }
   }
   return {
-    configured: !!task,
-    model: task?.cfg.model || '',
+    configured: !!ep,
+    model: ep?.model || '',
     hasIndex: !!idx,
     count: idx?.chunks.length || 0,
     bookChunks: idx ? idx.chunks.filter((c) => c.src === 'book').length : 0,
@@ -499,7 +513,7 @@ export function vectorStatus(book: string): {
     estTokens: estimateTokens(chars),
     builtAt: idx?.builtAt || '',
     updatedAt: idx?.updatedAt || '',
-    stale: !!task && !!idx && idx.model !== task.cfg.model
+    stale: !!ep && !!idx && idx.model !== ep.model
   }
 }
 
@@ -544,4 +558,49 @@ export async function semanticForPrompt(book: string, query: string, topK?: numb
   return r.hits
     .map((h) => `· [${h.title}｜相似 ${(h.score * 100).toFixed(0)}%] ${h.text.replace(/\s+/g, ' ').slice(0, 400)}`)
     .join('\n')
+}
+
+/** 测试嵌入服务连通性：发一条最小 /embeddings 请求，端到端验证地址 / Key / 模型，顺带拿到向量维度 */
+export async function testEmbedding(
+  baseUrl: string,
+  apiKey: string,
+  model: string
+): Promise<{ ok: boolean; latencyMs: number; model: string; dim: number; error: string }> {
+  const trimmed = model.trim()
+  const base = (baseUrl || '').replace(/\/+$/, '')
+  if (!base || !trimmed) return { ok: false, latencyMs: 0, model: trimmed, dim: 0, error: '请先填写接口地址与模型名' }
+  const startedAt = Date.now()
+  try {
+    const res = await fetch(`${base}/embeddings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
+      body: JSON.stringify({ model: trimmed, input: ['ping'] }),
+      signal: AbortSignal.timeout(30000)
+    })
+    const latencyMs = Date.now() - startedAt
+    if (!res.ok) {
+      const t = await res.text().catch(() => '')
+      const hint = res.status === 401 ? '（API Key 无效或未填）' : res.status === 404 ? '（接口地址不支持 /embeddings 或模型名有误）' : ''
+      return { ok: false, latencyMs, model: trimmed, dim: 0, error: `接口返回 ${res.status}${hint}：${t.slice(0, 160)}` }
+    }
+    const json = (await res.json()) as { data?: { embedding?: number[] }[] }
+    const dim = json.data?.[0]?.embedding?.length || 0
+    if (!dim) return { ok: false, latencyMs, model: trimmed, dim: 0, error: '接口通了，但返回数据里没有向量' }
+    recordCall({
+      kind: 'text',
+      feature: 'embedding',
+      featureLabel: '向量化检索',
+      provider: '向量化服务',
+      model: trimmed,
+      ok: true,
+      status: 'success',
+      durationMs: latencyMs,
+      tokens: estimateTokens(4),
+      tokensEstimated: true,
+      error: ''
+    })
+    return { ok: true, latencyMs, model: trimmed, dim, error: '' }
+  } catch (e) {
+    return { ok: false, latencyMs: Date.now() - startedAt, model: trimmed, dim: 0, error: (e as Error).message }
+  }
 }

@@ -16,7 +16,7 @@ import { runAi, abortRun, fetchModels, testProvider, AiRunParams } from './ai'
 import { providerSearchSupported } from './lib/websearch'
 import { historyDiff } from './lib/library'
 import { startBatchRevise, batchAbort, BatchParams } from './lib/batch'
-import { vectorSearch, vectorStatus, vectorRebuild, vectorUpdate, vectorClear } from './lib/vectors'
+import { vectorSearch, vectorStatus, vectorRebuild, vectorUpdate, vectorClear, testEmbedding } from './lib/vectors'
 import { runAgent, abortAgentRun, applyProposal, rejectProposal, getProposal, allProposals, bookFileList, applyLibProposal, rejectLibProposal, AgentRunParams, decideSubagent } from './agent'
 import * as customAgents from './lib/customAgents'
 
@@ -124,6 +124,7 @@ export function registerIpc(): void {
   ipcMain.handle('vector:update', (_e, book: string) => vectorUpdate(book))
   ipcMain.handle('vector:rebuild', (_e, book: string) => vectorRebuild(book))
   ipcMain.handle('vector:clear', (_e, book: string) => vectorClear(book))
+  ipcMain.handle('vector:test', (_e, baseUrl: string, apiKey: string, model: string) => testEmbedding(baseUrl, apiKey, model))
 
   // ============ 智能体 ============
   ipcMain.handle('agent:run', (e, params: AgentRunParams) => {

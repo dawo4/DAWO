@@ -25,6 +25,12 @@ export interface AppConfig {
     thinkingLevel: 'off' | 'low' | 'medium' | 'high'
     temperature: number
   }
+  /** 向量化嵌入服务（独立于对话模型的服务商列表）：接口地址 / Key / 嵌入模型 */
+  embeddingService: {
+    baseUrl: string
+    apiKey: string
+    model: string
+  }
   /** 向量化检索（语义搜索）行为配置；通道本身存在 tasks.embedding */
   embeddingOpts: {
     /** 索引是否纳入资源库（技能/素材/便签）；关闭后增量同步会自动清掉已嵌的库块 */
@@ -111,6 +117,7 @@ export function defaultConfig(): AppConfig {
       embedding: { providerId: '', model: '', temperature: 0 }
     },
     agentParams: { thinkingLevel: 'medium', temperature: 0.7 },
+    embeddingService: { baseUrl: '', apiKey: '', model: '' },
     embeddingOpts: {
       includeLib: true,
       chunkFull: 3000,
@@ -162,6 +169,7 @@ export function initConfig(): void {
         ...cfg,
         tasks: { ...d.tasks, ...(cfg.tasks || {}) },
         agentParams: { ...d.agentParams, ...(cfg.agentParams || {}) },
+        embeddingService: { ...d.embeddingService, ...(cfg.embeddingService || {}) },
         embeddingOpts: { ...d.embeddingOpts, ...(cfg.embeddingOpts || {}) },
         bindings: { ...(d.bindings || {}), ...(cfg.bindings || {}) },
         backup: { ...d.backup, ...(cfg.backup || {}) },
@@ -171,6 +179,18 @@ export function initConfig(): void {
       for (const k of ['draft', 'structure', 'chapter'] as const) {
         const w = cfg.tasks.workflow
         if (w && cfg.tasks[k] && !cfg.tasks[k].providerId && !cfg.tasks[k].model) cfg.tasks[k] = { ...w }
+      }
+      // 向量化独立服务：老版本绑定在服务商列表上的通道自动迁移一次（服务商卡片删除/改名不再影响向量化）
+      const es = cfg.embeddingService
+      const oldEmb = cfg.tasks?.embedding
+      if (es && !es.baseUrl && !es.model && oldEmb?.providerId && oldEmb?.model) {
+        const p = (cfg.providers || []).find((x) => x.id === oldEmb.providerId)
+        if (p) {
+          cfg.embeddingService = { baseUrl: p.baseUrl, apiKey: p.apiKey, model: oldEmb.model }
+          // 清空旧通道引用，避免用户清空面板后下次启动又被迁移回来
+          cfg.tasks.embedding = { providerId: '', model: '', temperature: 0 }
+          saveConfig()
+        }
       }
       return
     }
