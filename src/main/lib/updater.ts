@@ -81,28 +81,12 @@ function friendlyError(e: Error & { description?: string }): string {
   return raw.slice(0, 200) || '未知错误'
 }
 
-export function initUpdater(): void {
-  autoUpdater.autoDownload = false // 用户点了才下载
-  autoUpdater.autoInstallOnAppQuit = true
-
-  autoUpdater.on('checking-for-update', () => send('checking'))
-  autoUpdater.on('update-available', (i) => send('available', { version: i.version }))
-  autoUpdater.on('update-not-available', (i) => send('none', { version: i.version }))
-  autoUpdater.on('download-progress', (p) =>
-    send('downloading', {
-      percent: Math.round(p.percent),
-      transferred: Math.round(p.transferred),
-      total: Math.round(p.total),
-      bps: Math.round(p.bytesPerSecond)
-    })
-  )
-  autoUpdater.on('update-downloaded', (i) => send('downloaded', { version: i.version }))
-  autoUpdater.on('error', (e) => send('error', { message: friendlyError(e as Error & { description?: string }) }))
-
-  // 启动 15 秒后按设置静默检查，不打扰
-  maybeAutoCheck()
+export function initUpdater(devMode: boolean): void {
+  // IPC handler 永远注册：dev 下点「检查更新」要给出明确提示，而不是「No handler registered」
+  // electron-updater 的初始化与自动检查只在打包模式启用（dev 下无更新源，checkForUpdates 会直接报错）
 
   ipcMain.handle('update:check', async () => {
+    if (devMode) return { ok: false, message: '开发模式没有更新源，请用打包版检查更新。' }
     try {
       // 30 秒兜底超时：electron-updater 的请求没有自带超时，网络不通（如需要代理而没开）时会无限挂起，
       // 表现为渲染层永远停在「正在检查…」
@@ -114,10 +98,11 @@ export function initUpdater(): void {
     }
   })
   ipcMain.handle('update:download', () => {
-    autoUpdater.downloadUpdate().catch(() => {})
+    if (!devMode) autoUpdater.downloadUpdate().catch(() => {})
     return { ok: true }
   })
   ipcMain.handle('update:install', async () => {
+    if (devMode) return { ok: true }
     // 安装前自动备份当前作品（可在「保存与备份」里关）：更新有风险，稿子先行
     try {
       const cfg = getConfig()
@@ -165,4 +150,27 @@ export function initUpdater(): void {
       return { ok: false, message: friendlyError(e as Error) }
     }
   })
+
+  // 打包模式：初始化 electron-updater 并按设置自动检查。
+  // 放在所有 handler 注册之后——前面任何一步同步抛错都不会再连累 handler 注册不上
+  if (devMode) return
+  autoUpdater.autoDownload = false // 用户点了才下载
+  autoUpdater.autoInstallOnAppQuit = true
+
+  autoUpdater.on('checking-for-update', () => send('checking'))
+  autoUpdater.on('update-available', (i) => send('available', { version: i.version }))
+  autoUpdater.on('update-not-available', (i) => send('none', { version: i.version }))
+  autoUpdater.on('download-progress', (p) =>
+    send('downloading', {
+      percent: Math.round(p.percent),
+      transferred: Math.round(p.transferred),
+      total: Math.round(p.total),
+      bps: Math.round(p.bytesPerSecond)
+    })
+  )
+  autoUpdater.on('update-downloaded', (i) => send('downloaded', { version: i.version }))
+  autoUpdater.on('error', (e) => send('error', { message: friendlyError(e as Error & { description?: string }) }))
+
+  // 启动 15 秒后按设置静默检查，不打扰
+  maybeAutoCheck()
 }

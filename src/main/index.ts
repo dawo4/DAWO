@@ -90,10 +90,9 @@ app.whenReady().then(async () => {
     }
   }
   createWindow()
-  // 自动更新（GitHub Releases 源）：失败静默，设置→关于里可手动查；dev 模式不启
-  if (!isDev) {
-    initUpdater()
-  }
+  // 自动更新（GitHub Releases 源）：IPC handler 必须始终注册（否则 dev 下点「检查更新」报 No handler registered），
+  // 仅打包模式才真正启用 electron-updater；失败静默，设置→关于里可手动查
+  initUpdater(isDev)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
