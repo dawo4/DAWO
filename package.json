@@ -1,6 +1,6 @@
 {
   "name": "inkdesk",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "DAWO — AI 小说写作工作台",
   "main": "out/main/index.js",
   "author": "DAWO",
