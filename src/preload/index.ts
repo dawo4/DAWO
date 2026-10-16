@@ -65,6 +65,7 @@ const api = {
   aiFetchModels: (provider: Record<string, string>) => ipcRenderer.invoke('ai:fetchModels', provider),
   aiTestProvider: (provider: Record<string, string>, model: string) => ipcRenderer.invoke('ai:testProvider', provider, model),
   aiProviderSearchSupported: (baseUrl: string) => ipcRenderer.invoke('ai:providerSearchSupported', baseUrl),
+  localScan: (apiKey?: string) => ipcRenderer.invoke('local:scan', apiKey),
   aiOnEvent: (cb: (evt: { runId: string; type: string; payload?: unknown }) => void) => {
     const handler = (_e: IpcRendererEvent, evt: { runId: string; type: string; payload?: unknown }) => cb(evt)
     ipcRenderer.on('ai:event', handler)

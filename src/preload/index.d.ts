@@ -70,6 +70,7 @@ declare global {
       aiFetchModels: (provider: Record<string, string>) => Promise<{ id: string; contextLength?: number }[]>
       aiTestProvider: (provider: Record<string, string>, model: string) => Promise<{ ok: boolean; latencyMs: number; model: string; error: string }>
       aiProviderSearchSupported: (baseUrl: string) => Promise<boolean>
+      localScan: (apiKey?: string) => Promise<{ port: number; kind: 'workbuddy' | 'ollama' | 'openai'; name: string; baseUrl: string; models: string[] }[]>
       aiOnEvent: (cb: (evt: { runId: string; type: string; payload?: unknown }) => void) => () => void
 
       // 智能体

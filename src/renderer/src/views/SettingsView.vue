@@ -13,7 +13,7 @@ import { renderMarkdown } from '../ui/markdown'
 import { aiRun } from '../ai'
 import { useLibraryStore } from '../store/library'
 import { CREATIVE_LEVELS, THINKING_LEVELS, levelToTemp, tempToLevel } from '../ui/writingScale'
-import { Plus, Trash2, FolderOpen, RefreshCw, Search, Palette, Database, Bot, FileText, History, HardDrive, ArchiveRestore, CloudUpload, ShieldCheck, LoaderCircle, CircleCheck, CircleX, ImagePlus, Globe, Eye, Brain, Github } from 'lucide-vue-next'
+import { Plus, Trash2, FolderOpen, RefreshCw, Search, Palette, Database, Bot, FileText, History, HardDrive, ArchiveRestore, CloudUpload, ShieldCheck, LoaderCircle, CircleCheck, CircleX, ImagePlus, Globe, Eye, Brain, Github, Radar } from 'lucide-vue-next'
 import dawoLogo from '../assets/dawo-logo.png'
 
 const logoUrl = dawoLogo
@@ -542,6 +542,47 @@ function addProvider(preset?: { name: string; baseUrl: string }) {
   })
 }
 
+// ===== 本地服务检测（一键接入本机 OpenAI 兼容服务） =====
+interface LocalHit {
+  port: number
+  kind: 'workbuddy' | 'ollama' | 'openai'
+  name: string
+  baseUrl: string
+  models: string[]
+}
+const scanningLocal = ref(false)
+const localFound = ref<LocalHit[]>([])
+const localScanTip = ref('')
+
+async function scanLocal() {
+  scanningLocal.value = true
+  localScanTip.value = ''
+  try {
+    localFound.value = (await window.api.localScan()) || []
+    localScanTip.value = localFound.value.length
+      ? `发现 ${localFound.value.length} 个本地服务，点「接入」一键添加`
+      : '未发现本地 AI 服务（支持 WorkBuddy 网关 / Ollama / LM Studio 等常见端口）'
+  } catch (e) {
+    localScanTip.value = `检测失败：${(e as Error).message}`
+  } finally {
+    scanningLocal.value = false
+  }
+}
+
+function adoptLocal(s: LocalHit) {
+  if (cfg.providers.some((p) => p.baseUrl === s.baseUrl)) {
+    localScanTip.value = `「${s.name}」已在服务商列表中，无需重复接入`
+    return
+  }
+  const id = `p${Date.now()}`
+  cfg.providers.push({ id, name: s.name, baseUrl: s.baseUrl, apiKey: '' })
+  if (s.models.length) providerModels[id] = [...s.models]
+  localFound.value = localFound.value.filter((x) => x.baseUrl !== s.baseUrl)
+  localScanTip.value = s.models.length
+    ? `已接入「${s.name}」——到「任务模型」标签选用模型（模型列表已就绪）`
+    : `已接入「${s.name}」——如有 Key 请填写后点「获取模型」，再到「任务模型」标签选用`
+}
+
 async function fetchModels(id: string) {
   modelErr.value = ''
   const p = cfg.providers.find((x) => x.id === id)
@@ -969,7 +1010,33 @@ onUnmounted(() => {
               <button class="text-xs px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors" @click="addProvider()">
                 + 自定义
               </button>
+              <button
+                class="text-xs px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors inline-flex items-center gap-1"
+                :disabled="scanningLocal"
+                title="扫描本机常见端口（WorkBuddy 网关 / Ollama / LM Studio 等），发现后一键接入"
+                @click="scanLocal"
+              >
+                <LoaderCircle v-if="scanningLocal" :size="12" class="animate-spin" />
+                <Radar v-else :size="12" />
+                {{ scanningLocal ? '检测中…' : '检测本地服务' }}
+              </button>
             </div>
+          </div>
+          <!-- 本地服务扫描结果 -->
+          <div v-if="localFound.length || localScanTip" class="mb-3 rounded-lg border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-2.5 space-y-2">
+            <div v-for="s in localFound" :key="s.baseUrl" class="flex items-center gap-2 text-[12.5px]">
+              <span class="font-medium" style="color: var(--accent)">{{ s.name }}</span>
+              <span class="text-[var(--text-faint)] truncate">{{ s.baseUrl }}</span>
+              <span v-if="s.models.length" class="text-[11px] text-[var(--text-faint)] shrink-0">{{ s.models.length }} 个模型</span>
+              <button
+                class="ml-auto shrink-0 text-[11.5px] px-2.5 py-1 rounded-full cursor-pointer transition-colors"
+                style="background: var(--panel-2); color: var(--accent)"
+                @click="adoptLocal(s)"
+              >
+                接入
+              </button>
+            </div>
+            <div v-if="localScanTip" class="text-[11.5px] text-[var(--text-faint)]">{{ localScanTip }}</div>
           </div>
           <div v-if="cfg.providers.length === 0" class="text-sm text-[var(--text-faint)] py-6 text-center rounded-lg border border-dashed border-[var(--border)]">
             尚未添加服务商，点击上方预设快速添加

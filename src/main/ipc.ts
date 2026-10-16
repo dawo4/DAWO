@@ -14,6 +14,7 @@ import * as ailog from './lib/ailog'
 import * as backup from './lib/backup'
 import { runAi, abortRun, fetchModels, testProvider, AiRunParams } from './ai'
 import { providerSearchSupported } from './lib/websearch'
+import { scanLocalServices } from './lib/localscan'
 import { historyDiff } from './lib/library'
 import { startBatchRevise, batchAbort, BatchParams } from './lib/batch'
 import { vectorSearch, vectorStatus, vectorRebuild, vectorUpdate, vectorClear, testEmbedding } from './lib/vectors'
@@ -107,6 +108,7 @@ export function registerIpc(): void {
   })
   ipcMain.handle('ai:testProvider', (_e, provider: { baseUrl: string; apiKey: string }, model: string) => testProvider(provider, model))
   ipcMain.handle('ai:providerSearchSupported', (_e, baseUrl: string) => providerSearchSupported(baseUrl))
+  ipcMain.handle('local:scan', (_e, apiKey?: string) => scanLocalServices(apiKey))
 
   // ============ 历史快照 / 批量修订 ============
   ipcMain.handle('history:diff', (_e, book: string, rel: string, file: string) => historyDiff(book, rel, file))
