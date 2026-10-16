@@ -55,7 +55,7 @@ function show(): void {
   active.value = idx >= 0 ? idx : 0
   nextTick(place)
   window.addEventListener('pointerdown', onOutside, true)
-  window.addEventListener('scroll', close, true)
+  window.addEventListener('scroll', onScroll, true)
   window.addEventListener('resize', close)
 }
 
@@ -63,13 +63,19 @@ function close(): void {
   if (!open.value) return
   open.value = false
   window.removeEventListener('pointerdown', onOutside, true)
-  window.removeEventListener('scroll', close, true)
+  window.removeEventListener('scroll', onScroll, true)
   window.removeEventListener('resize', close)
 }
 
 function onOutside(e: PointerEvent): void {
   const t = e.target as Node
   if (panelRef.value?.contains(t) || wrapRef.value?.contains(t)) return
+  close()
+}
+
+/** 页面滚动时关闭面板；面板自身内部的滚动不算（否则滚轮一滑面板就消失） */
+function onScroll(e: Event): void {
+  if (panelRef.value?.contains(e.target as Node)) return
   close()
 }
 
