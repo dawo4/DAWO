@@ -4,6 +4,7 @@ import { useAppStore } from '../store/app'
 import { bgDataUrl } from '../store/app'
 import InkButton from '../ui/InkButton.vue'
 import InkSelect from '../ui/InkSelect.vue'
+import InkCombo from '../ui/InkCombo.vue'
 import InkToggle from '../ui/InkToggle.vue'
 import InkSegmented from '../ui/InkSegmented.vue'
 import { onHeaderAction } from '../ui/headerActions'
@@ -1044,9 +1045,6 @@ onUnmounted(() => {
               </button>
               <span class="text-[10.5px] text-[var(--text-faint)]">由厂商平台执行搜索，按厂商定价计费；MiMo 需先在其控制台开通联网服务插件</span>
             </div>
-            <datalist :id="'models-' + p.id">
-              <option v-for="m in providerModels[p.id] || []" :key="m" :value="m" />
-            </datalist>
           </div>
           <div v-if="modelErr" class="text-sm text-[#e08a7a]">{{ modelErr }}</div>
         </div>
@@ -1063,10 +1061,10 @@ onUnmounted(() => {
               class="w-40 shrink-0"
               :options="[{ label: '选择服务商', value: '' }, ...cfg.providers.map((p) => ({ label: p.name, value: p.id }))]"
             />
-            <input
+            <InkCombo
               v-model="cfg.tasks[key].model"
-              class="ink-input flex-1"
-              :list="'models-' + cfg.tasks[key].providerId"
+              class="flex-1 min-w-0"
+              :options="providerModels[cfg.tasks[key].providerId] || []"
               placeholder="模型名，如 deepseek-chat"
             />
             <input
@@ -1132,10 +1130,7 @@ onUnmounted(() => {
             </div>
             <div class="flex items-center gap-2">
               <span class="w-20 text-sm shrink-0">模型名</span>
-              <input v-model="es.model" class="ink-input flex-1" :list="'emb-models'" placeholder="嵌入模型名，如 BAAI/bge-m3" />
-              <datalist id="emb-models">
-                <option v-for="m in embModels" :key="m" :value="m" />
-              </datalist>
+              <InkCombo v-model="es.model" class="flex-1 min-w-0" :options="embModels" placeholder="嵌入模型名，如 BAAI/bge-m3" />
               <button
                 class="text-[11.5px] px-2.5 py-1.5 rounded-lg cursor-pointer border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] transition-colors shrink-0 disabled:opacity-50 flex items-center gap-1"
                 :disabled="embFetching"
