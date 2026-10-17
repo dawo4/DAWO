@@ -405,6 +405,10 @@ async function runSubAgent(
 ): Promise<string> {
   const cfg = getConfig()
   const taskCfg: TaskCfg = { ...(cfg.tasks?.agent || ({} as TaskCfg)) }
+  // 子智能体同样尊重智能体级模型分配（在智能体库里单独指定过的用指定模型）
+  const subModel = cfg.agentModels?.[sub.id]
+  if (subModel?.providerId) taskCfg.providerId = subModel.providerId
+  if (subModel?.model) taskCfg.model = subModel.model
   const provider = cfg.providers.find((p) => p.id === taskCfg.providerId)
   if (!provider || !taskCfg.model) throw new Error('未配置智能体模型，无法执行子任务')
   const subParams: AgentRunParams = {
@@ -1228,6 +1232,10 @@ export async function runAgent(win: BrowserWindow, params: AgentRunParams): Prom
   if (params.taskOverride?.providerId) taskCfg.providerId = params.taskOverride.providerId
   if (params.taskOverride?.model) taskCfg.model = params.taskOverride.model
   if (typeof params.taskOverride?.temperature === 'number') taskCfg.temperature = params.taskOverride.temperature
+  // 智能体级模型分配（智能体库逐个指定）：覆盖全局「智能体对话」配置；未指定的智能体保持跟随设置
+  const agentModel = cfg.agentModels?.[agentId]
+  if (agentModel?.providerId) taskCfg.providerId = agentModel.providerId
+  if (agentModel?.model) taskCfg.model = agentModel.model
 
   const controller = new AbortController()
   runs.set(runId, controller)

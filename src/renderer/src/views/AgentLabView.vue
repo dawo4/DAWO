@@ -7,6 +7,8 @@ import { useConversationStore, AGENTS } from '../store/conversation'
 import InkButton from '../ui/InkButton.vue'
 import InkModal from '../ui/InkModal.vue'
 import InkToggle from '../ui/InkToggle.vue'
+import InkSelect from '../ui/InkSelect.vue'
+import InkCombo from '../ui/InkCombo.vue'
 import { inkConfirm } from '../ui/inkPrompt'
 import type { CustomAgent, LibKind } from '../types'
 import { Bot, Plus, Pencil, Trash2, Globe, Sparkles, LoaderCircle, LibraryBig, Users, FileSearch } from 'lucide-vue-next'
@@ -218,6 +220,40 @@ async function toggleBuiltinOrch(id: string) {
   await app.updateConfig({ agentOrchestrator: { ...(app.config?.agentOrchestrator || {}), [id]: !cur } })
 }
 
+// ============ 智能体级模型分配（未指定的智能体跟随 设置→AI服务→智能体对话） ============
+interface AgentModelCfg { providerId?: string; model?: string }
+function agentModelOf(id: string): AgentModelCfg {
+  return ((app.config?.agentModels || {}) as Record<string, AgentModelCfg>)[id] || { providerId: '', model: '' }
+}
+const providerOptions = computed(() => [
+  { label: '跟随设置', value: '' },
+  ...(app.config?.providers || []).map((p) => ({ label: p.name, value: p.id }))
+])
+/** 该服务商下已知模型（设置页「获取模型」拉取过会记录在 modelContexts），也允许手填 */
+function modelsOf(pid: string): string[] {
+  if (!pid) return []
+  const out = new Set<string>()
+  for (const k of Object.keys(app.config?.modelContexts || {})) {
+    const i = k.indexOf('/')
+    if (i > 0 && k.slice(0, i) === pid) out.add(k.slice(i + 1))
+  }
+  return [...out]
+}
+async function setAgentProvider(id: string, pid: string | number) {
+  const next = { ...agentModelOf(id), providerId: String(pid) }
+  const map = { ...((app.config?.agentModels || {}) as Record<string, AgentModelCfg>) }
+  if (!next.providerId && !next.model) delete map[id]
+  else map[id] = next
+  await app.updateConfig({ agentModels: map })
+}
+async function setAgentModelName(id: string, model: string | number) {
+  const next = { ...agentModelOf(id), model: String(model || '') }
+  const map = { ...((app.config?.agentModels || {}) as Record<string, AgentModelCfg>) }
+  if (!next.providerId && !next.model) delete map[id]
+  else map[id] = next
+  await app.updateConfig({ agentModels: map })
+}
+
 async function removeCustom(a: CustomAgent) {
   const ok = await inkConfirm(`确定删除自定义智能体「${a.name}」？`, {
     detail: '删除后不可恢复；它在妙笔里的历史会话仍保留，但无法继续使用该智能体。',
@@ -294,6 +330,13 @@ function scopeText(scope: string[]): string {
             </div>
             <div class="text-[12px] text-[var(--text-dim)] mb-2">{{ a.desc }}</div>
             <div class="text-[11px] text-[var(--text-faint)] mb-3">可读：{{ scopeText(a.readScope) }}{{ a.libsWrite ? ' · 可写入资源库' : '' }}</div>
+            <div class="mt-2 pt-2 border-t border-[var(--border)]">
+              <div class="text-[10.5px] text-[var(--text-faint)] mb-1">模型分配（不选则跟随 设置 → AI 服务 → 智能体对话）</div>
+              <div class="flex items-center gap-1.5">
+                <InkSelect class="w-28 shrink-0" :model-value="agentModelOf(a.id).providerId" :options="providerOptions" @update:model-value="(v: string | number) => setAgentProvider(a.id, v)" />
+                <InkCombo class="flex-1 min-w-0" :model-value="agentModelOf(a.id).model" :options="modelsOf(agentModelOf(a.id).providerId)" placeholder="模型名，留空跟随设置" @update:model-value="(v: string | number) => setAgentModelName(a.id, v)" />
+              </div>
+            </div>
             <div class="flex items-center justify-between">
               <span class="text-[11px]" :style="a.enabled ? { color: 'var(--accent)' } : { color: 'var(--text-faint)' }">
                 {{ a.enabled ? '已在妙笔启用' : '未启用' }}
@@ -365,6 +408,13 @@ function scopeText(scope: string[]): string {
                 <FileSearch :size="12" />
                 {{ app.config?.agentVectorSearch?.[a.id] ? '已开语义检索' : '开启语义检索' }}
               </button>
+            </div>
+            <div class="mt-2 pt-2 border-t border-[var(--border)]">
+              <div class="text-[10.5px] text-[var(--text-faint)] mb-1">模型分配（不选则跟随 设置 → AI 服务 → 智能体对话）</div>
+              <div class="flex items-center gap-1.5">
+                <InkSelect class="w-28 shrink-0" :model-value="agentModelOf(a.id).providerId" :options="providerOptions" @update:model-value="(v: string | number) => setAgentProvider(a.id, v)" />
+                <InkCombo class="flex-1 min-w-0" :model-value="agentModelOf(a.id).model" :options="modelsOf(agentModelOf(a.id).providerId)" placeholder="模型名，留空跟随设置" @update:model-value="(v: string | number) => setAgentModelName(a.id, v)" />
+              </div>
             </div>
           </div>
         </div>
