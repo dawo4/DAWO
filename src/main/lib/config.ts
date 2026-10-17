@@ -221,6 +221,8 @@ export function initConfig(): void {
 }
 
 export function getConfig(): AppConfig {
+  // 自愈防御：任何路径漏调 initConfig（或模块图异常）时自动初始化，绝不让 cfg 保持 undefined
+  if (!cfg) initConfig()
   return cfg
 }
 
