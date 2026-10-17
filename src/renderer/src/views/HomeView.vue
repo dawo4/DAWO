@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useAppStore } from '../store/app'
 import { useLibraryStore } from '../store/library'
+import InkButton from '../ui/InkButton.vue'
 import { BookOpen, Brain, Check, ChevronRight, Feather, FileSearch, House, LayoutGrid, Lightbulb, Plus, SquarePen, UserRound, Wand2, Workflow, BarChart3, TrendingUp } from 'lucide-vue-next'
 
 const app = useAppStore()
@@ -185,253 +186,408 @@ onMounted(() => void load())
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto">
-    <div class="relative max-w-[1120px] mx-auto px-8 py-6">
-      <!-- 背景装饰：淡金「墨」字水印（纯装饰，不可交互） -->
-      <div aria-hidden="true" class="pointer-events-none absolute -top-8 right-0 font-serif-ink text-[220px] leading-none select-none" style="color: var(--accent); opacity: 0.04">墨</div>
+  <div class="page relative h-full overflow-y-auto">
+    <!-- 背景装饰：淡金「墨」字水印（纯装饰，不可交互） -->
+    <div aria-hidden="true" class="pointer-events-none absolute -top-10 right-0 font-serif-ink text-[13.75rem] leading-none select-none" style="color: var(--accent); opacity: 0.04">墨</div>
 
-      <!-- 问候区：眉线 + 大宋体 + 引文，右侧作品入口胶囊 -->
-      <div class="rise-in relative mb-6 flex items-end justify-between gap-4">
-        <div>
-          <div class="flex items-center gap-2.5 mb-2">
-            <span class="h-px w-7" style="background: var(--accent)" />
-            <span class="text-[10.5px] tracking-[0.22em] text-[var(--text-faint)]">{{ today }}</span>
-          </div>
-          <h1 class="font-serif-ink text-[26px] leading-tight mb-1.5">{{ greeting }}</h1>
-          <p class="text-[12px] text-[var(--text-faint)]">
-            <span style="color: var(--accent)">「</span> {{ quote }}
-            <span style="color: var(--accent)">」</span>
-          </p>
+    <!-- 问候区：眉线 + 大宋体 + 引文，右侧作品入口 -->
+    <div class="rise-in relative page-head items-end">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2.5 mb-2">
+          <span class="h-px w-7" style="background: var(--accent)" />
+          <span class="section-title tracking-[0.14em]">{{ today }}</span>
         </div>
-        <button
-          class="shrink-0 mb-1 inline-flex items-center gap-1.5 text-[12px] px-4 py-1.5 rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent)] cursor-pointer transition-colors"
-          @click="app.go('bookshelf')"
-        >
-          全部作品 <ChevronRight :size="12" />
+        <h1 class="font-serif-ink text-display leading-tight mb-1.5">{{ greeting }}</h1>
+        <p class="text-label text-[var(--text-faint)]">
+          <span style="color: var(--accent)">「</span> {{ quote }}
+          <span style="color: var(--accent)">」</span>
+        </p>
+      </div>
+      <button class="home-link" @click="app.go('bookshelf')">
+        全部作品 <ChevronRight :size="12" />
+      </button>
+    </div>
+
+    <!-- 卡片组：不对称三栏，灵感卡下沉半格打破齐平 -->
+    <div class="grid grid-cols-1 lg:grid-cols-[1.35fr_1fr_0.85fr] gap-3.5 items-start">
+      <!-- 我的书架：封面为主，信息压到右下角 -->
+      <div class="rise-in ink-card p-4" style="box-shadow: var(--sh-1); animation-delay: 60ms">
+        <div class="card-head">
+          <BookOpen :size="13" class="text-[var(--accent)]" />
+          <span class="card-head-title">我的书架</span>
+          <span class="card-head-line" />
+          <span class="card-head-meta">最近 {{ recentBooks.length }} 本</span>
+        </div>
+
+        <!-- 高度上限：书架随书数增长会把首页撑出视口，超过两本在卡内滚动（滚动条悬停浮现） -->
+        <div v-if="recentBooks.length" class="panel-rail-scroll space-y-1 max-h-[152px] overflow-y-auto">
+          <div
+            v-for="b in recentBooks"
+            :key="b.title"
+            class="group flex items-stretch gap-3 p-2 rounded-[var(--r-sm)] cursor-pointer border border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-soft)] transition-colors"
+            @click="openBook(b.title)"
+          >
+            <!-- 书封：竖排宋体书名 + 金色书脊 -->
+            <div class="home-cover">
+              <span class="font-serif-ink" style="writing-mode: vertical-rl">{{ b.title.slice(0, 6) }}</span>
+            </div>
+            <div class="flex-1 min-w-0 flex flex-col">
+              <div class="text-label truncate transition-colors group-hover:text-[var(--accent)]">{{ b.title }}</div>
+              <div class="mt-auto flex items-end gap-2">
+                <span class="text-meta text-[var(--text-faint)] truncate min-w-0">
+                  {{ b.genre }}<template v-if="b.audience"> · {{ b.audience }}</template>
+                </span>
+                <span class="ml-auto text-meta text-[var(--text-dim)] tnum shrink-0">{{ fmtWords(b.words) }}</span>
+              </div>
+              <div class="text-micro text-[var(--text-faint)] truncate mt-0.5">
+                {{ b.idea ? b.idea.replace(/\s+/g, ' ').slice(0, 24) : '上次编辑 ' + relTime(b.updatedAt) }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="home-empty">还没有作品，从下面开始你的第一部</div>
+
+        <button class="home-dashed mt-3" @click="app.requestBookshelf('new')">
+          <Plus :size="13" /> 创建新作品
         </button>
       </div>
 
-      <!-- 卡片组：不对称三栏，灵感卡下沉半格打破齐平 -->
-      <div class="grid grid-cols-1 lg:grid-cols-[1.35fr_1fr_0.85fr] gap-3.5 mb-6 items-start">
-        <!-- 我的书架 -->
-        <div class="rise-in rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4" style="box-shadow: var(--shadow); animation-delay: 60ms">
-          <div class="flex items-center gap-1.5 mb-3.5">
-            <BookOpen :size="13" :style="{ color: 'var(--accent)' }" />
-            <span class="text-[13px] font-medium tracking-wide">我的书架</span>
-            <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
-            <span class="text-[10.5px] text-[var(--text-faint)]">最近 {{ recentBooks.length }} 本</span>
-          </div>
+      <!-- 码字进度：大号宋体数字，主按钮压轴 -->
+      <div class="rise-in ink-card p-4 flex flex-col" style="box-shadow: var(--sh-1); animation-delay: 140ms">
+        <div class="card-head">
+          <Feather :size="13" class="text-[var(--accent)]" />
+          <span class="card-head-title">码字进度</span>
+          <span class="card-head-line" />
+          <span class="card-head-meta">目标 {{ goal }}</span>
+        </div>
 
-          <!-- 高度上限：书架随书数增长会把首页撑出视口，超过两本在卡内滚动（滚动条悬停浮现） -->
-          <div v-if="recentBooks.length" class="panel-rail-scroll space-y-1 max-h-[152px] overflow-y-auto">
-            <div
-              v-for="b in recentBooks"
-              :key="b.title"
-              class="group flex items-center gap-3 p-2 rounded-lg cursor-pointer border border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-soft)] transition-colors"
-              @click="openBook(b.title)"
-            >
-              <!-- 书封：竖排宋体书名 + 金色书脊 -->
+        <div class="space-y-3.5 flex-1">
+          <div>
+            <div class="flex items-baseline gap-1.5">
+              <span class="font-serif-ink text-display leading-none text-[var(--accent)] tnum">{{ todayHand }}</span>
+              <span class="text-meta text-[var(--text-faint)]">字 · 手写</span>
+              <span class="ml-auto text-meta text-[var(--text-dim)] tnum">{{ handPct }}%</span>
+            </div>
+            <div class="home-bar mt-2">
               <div
-                class="shrink-0 w-10 h-[56px] rounded-md flex items-center justify-center overflow-hidden border transition-transform duration-200 group-hover:scale-[1.03]"
-                style="background: linear-gradient(165deg, var(--panel-2), var(--bg-soft)); border-color: var(--border); box-shadow: inset 2px 0 0 var(--accent)"
-              >
-                <span class="font-serif-ink text-[10px] leading-tight text-center px-0.5" style="writing-mode: vertical-rl; color: var(--accent); max-height: 46px; overflow: hidden">
-                  {{ b.title.slice(0, 6) }}
-                </span>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="text-[13px] truncate transition-colors group-hover:text-[var(--accent)]">{{ b.title }}</div>
-                <div class="text-[11px] text-[var(--text-faint)] truncate mt-0.5">
-                  {{ b.genre }}<template v-if="b.audience"> · {{ b.audience }}</template> · {{ fmtWords(b.words) }}
-                </div>
-                <div class="text-[10.5px] text-[var(--text-faint)] truncate mt-0.5">
-                  {{ b.idea ? b.idea.replace(/\s+/g, ' ').slice(0, 24) : '上次编辑：' + relTime(b.updatedAt) }}
-                </div>
-              </div>
+                class="home-bar-fill"
+                :style="{
+                  transform: `scaleX(${barReady ? handPct / 100 : 0})`,
+                  background: 'linear-gradient(to right, color-mix(in srgb, var(--accent) 55%, transparent), var(--accent))'
+                }"
+              />
             </div>
           </div>
-          <div v-else class="py-7 text-center rounded-lg border border-dashed border-[var(--border)] text-[12px] text-[var(--text-faint)]">
-            还没有作品，从下面开始你的第一部
+          <div>
+            <div class="flex items-baseline gap-1.5">
+              <span class="font-serif-ink text-display leading-none text-[var(--accent)] tnum opacity-60">{{ todayAi }}</span>
+              <span class="text-meta text-[var(--text-faint)]">字 · AI 辅助</span>
+              <span class="ml-auto text-meta text-[var(--text-dim)] tnum">{{ aiPct }}%</span>
+            </div>
+            <div class="home-bar mt-2">
+              <div
+                class="home-bar-fill"
+                :style="{
+                  transform: `scaleX(${barReady ? aiPct / 100 : 0})`,
+                  background:
+                    'linear-gradient(to right, color-mix(in srgb, var(--accent) 30%, transparent), color-mix(in srgb, var(--accent) 62%, transparent))'
+                }"
+              />
+            </div>
           </div>
-
-          <button
-            class="mt-3 w-full flex items-center justify-center gap-1.5 text-[12px] py-2 rounded-lg border border-dashed border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent)] cursor-pointer transition-colors"
-            @click="app.requestBookshelf('new')"
-          >
-            <Plus :size="13" /> 创建新作品
-          </button>
+          <div v-if="streak > 0" class="ok-pulse ink-chip ink-chip-accent self-start">
+            <Check :size="11" /> 连续创作 {{ streak }} 天
+          </div>
         </div>
 
-        <!-- 码字进度：大号宋体数字，主按钮压轴 -->
-        <div class="rise-in rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4 flex flex-col" style="box-shadow: var(--shadow); animation-delay: 140ms">
-          <div class="flex items-center gap-1.5 mb-3">
-            <Feather :size="13" :style="{ color: 'var(--accent)' }" />
-            <span class="text-[13px] font-medium tracking-wide">码字进度</span>
-            <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
-            <span class="text-[10.5px] text-[var(--text-faint)]">目标 {{ goal }}</span>
-          </div>
-
-          <div class="space-y-3.5 flex-1">
-            <div>
-              <div class="flex items-baseline gap-1.5">
-                <span class="font-serif-ink text-[27px] leading-none" :style="{ color: 'var(--accent)' }">{{ todayHand }}</span>
-                <span class="text-[11px] text-[var(--text-faint)]">字 · 手写</span>
-                <span class="ml-auto text-[10.5px] text-[var(--text-dim)] tabular-nums">{{ handPct }}%</span>
-              </div>
-              <div class="h-[5px] rounded-full mt-2 overflow-hidden" style="background: var(--bg-soft)">
-                <div
-                  class="h-full rounded-full transition-[width] duration-700"
-                  style="transition-timing-function: var(--ease-out-quart); background: linear-gradient(to right, color-mix(in srgb, var(--accent) 55%, transparent), var(--accent))"
-                  :style="{ width: barReady ? handPct + '%' : '0%' }"
-                />
-              </div>
-            </div>
-            <div>
-              <div class="flex items-baseline gap-1.5">
-                <span class="font-serif-ink text-[27px] leading-none" :style="{ color: 'var(--accent)', opacity: 0.62 }">{{ todayAi }}</span>
-                <span class="text-[11px] text-[var(--text-faint)]">字 · AI 辅助</span>
-                <span class="ml-auto text-[10.5px] text-[var(--text-dim)] tabular-nums">{{ aiPct }}%</span>
-              </div>
-              <div class="h-[5px] rounded-full mt-2 overflow-hidden" style="background: var(--bg-soft)">
-                <div
-                  class="h-full rounded-full transition-[width] duration-700"
-                  style="transition-timing-function: var(--ease-out-quart); background: linear-gradient(to right, color-mix(in srgb, var(--accent) 30%, transparent), color-mix(in srgb, var(--accent) 62%, transparent))"
-                  :style="{ width: barReady ? aiPct + '%' : '0%' }"
-                />
-              </div>
-            </div>
-            <div
-              v-if="streak > 0"
-              class="ok-pulse inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full self-start"
-              style="background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent)"
-            >
-              <Check :size="11" /> 连续创作 {{ streak }} 天
-            </div>
-          </div>
-
-          <button
-            class="mt-3.5 w-full flex items-center justify-center gap-1.5 text-[13px] py-2.5 rounded-lg cursor-pointer font-medium text-[#1b1712] transition-[filter,box-shadow] hover:brightness-110"
-            style="background: var(--accent); box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 22%, transparent)"
-            @click="enterWriting"
-          >
-            <SquarePen :size="14" /> 进入写作模式
-          </button>
-        </div>
-
-        <!-- 灵感速记：下沉半格，打破三卡齐平 -->
-        <div
-          class="rise-in rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4 flex flex-col lg:mt-5"
-          style="box-shadow: var(--shadow); animation-delay: 220ms"
-        >
-          <div class="flex items-center gap-1.5 mb-3">
-            <Lightbulb :size="13" :style="{ color: 'var(--accent)' }" />
-            <span class="text-[13px] font-medium tracking-wide">灵感速记</span>
-            <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
-            <button class="text-[11.5px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer transition-colors" title="打开灵感便签库" @click="openNotes">
-              便签库
-            </button>
-          </div>
-          <textarea v-model="note" class="ink-textarea flex-1 text-[12.5px] resize-none min-h-[96px]" placeholder="点击记录灵感…自动存进灵感便签" />
-          <button
-            class="mt-2.5 w-full flex items-center justify-center gap-1.5 text-[12px] py-2 rounded-lg border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent)] cursor-pointer transition-colors disabled:opacity-40"
-            :disabled="!note.trim()"
-            @click="saveNote"
-          >
-            <Check v-if="noteSaved" :size="13" style="color: var(--accent)" class="ok-pulse" />
-            {{ noteSaved ? '已存入灵感便签' : '记下来' }}
-          </button>
-        </div>
+        <InkButton class="mt-3.5" variant="primary" block @click="enterWriting">
+          <SquarePen :size="14" /> 进入写作模式
+        </InkButton>
       </div>
 
-      <!-- 创作看板：最近 14 天趋势 + 作品字数排行 -->
-      <div class="rise-in grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-3.5 mb-6" style="animation-delay: 240ms">
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4" style="box-shadow: var(--shadow)">
-          <div class="flex items-center gap-1.5 mb-3">
-            <TrendingUp :size="13" :style="{ color: 'var(--accent)' }" />
-            <span class="text-[13px] font-medium tracking-wide">最近 14 天</span>
-            <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
-            <span class="text-[10.5px] text-[var(--text-faint)]">合计 <span class="font-serif-ink text-[12px]" style="color: var(--accent)">{{ fmtWords(trend14Total) }}</span></span>
-          </div>
-          <div class="flex items-end gap-[3px] h-[68px]">
+      <!-- 灵感速记：下沉半格，打破三卡齐平 -->
+      <div class="rise-in ink-card p-4 flex flex-col lg:mt-5" style="box-shadow: var(--sh-1); animation-delay: 220ms">
+        <div class="card-head">
+          <Lightbulb :size="13" class="text-[var(--accent)]" />
+          <span class="card-head-title">灵感速记</span>
+          <span class="card-head-line" />
+          <button class="card-head-meta cursor-pointer transition-colors hover:text-[var(--accent)]" title="打开灵感便签库" @click="openNotes">
+            便签库
+          </button>
+        </div>
+        <textarea v-model="note" class="ink-textarea flex-1 text-label resize-none min-h-[96px]" placeholder="点击记录灵感…自动存进灵感便签" />
+        <InkButton class="mt-2.5" variant="ghost" block :disabled="!note.trim()" @click="saveNote">
+          <Check v-if="noteSaved" :size="13" class="ok-pulse text-[var(--accent)]" />
+          {{ noteSaved ? '已存入灵感便签' : '记下来' }}
+        </InkButton>
+      </div>
+      </div>
+
+    <!-- 创作看板：最近 14 天趋势 + 作品字数排行 -->
+    <div class="rise-in grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-3.5" style="animation-delay: 240ms">
+      <div class="ink-card p-4" style="box-shadow: var(--sh-1)">
+        <div class="card-head">
+          <TrendingUp :size="13" class="text-[var(--accent)]" />
+          <span class="card-head-title">最近 14 天</span>
+          <span class="card-head-line" />
+          <span class="card-head-meta">
+            合计 <span class="font-serif-ink text-meta text-[var(--accent)] tnum">{{ fmtWords(trend14Total) }}</span>
+          </span>
+        </div>
+        <!-- 柱高用 scaleY 而非 height：只动 transform，不触发布局重排 -->
+        <div class="flex items-end gap-[3px] h-[68px]">
+          <div
+            v-for="t in trend14"
+            :key="t.date"
+            class="group relative flex-1 h-full flex items-end cursor-default"
+            :title="`${t.label}：${t.total} 字`"
+          >
             <div
-              v-for="t in trend14"
-              :key="t.date"
-              class="flex-1 rounded-t-[3px] transition-all duration-500 relative group cursor-default hover:brightness-125"
+              class="home-col"
               :style="{
-                height: barReady ? Math.max(3, (t.total / trendMax) * 100) + '%' : '3%',
-                background: t.total > 0 ? 'linear-gradient(to top, color-mix(in srgb, var(--accent) 32%, transparent), var(--accent))' : 'var(--bg-soft)',
+                transform: `scaleY(${barReady ? Math.max(0.045, t.total / trendMax) : 0.045})`,
+                background:
+                  t.total > 0 ? 'linear-gradient(to top, color-mix(in srgb, var(--accent) 32%, transparent), var(--accent))' : 'var(--bg-soft)',
                 opacity: t.total > 0 ? (t.date === trend14[trend14.length - 1]?.date ? 1 : 0.55) : 1
               }"
-              :title="`${t.label}：${t.total} 字`"
-            >
-              <span class="absolute -top-5 left-1/2 -translate-x-1/2 text-[9.5px] text-[var(--text-dim)] opacity-0 group-hover:opacity-100 whitespace-nowrap tabular-nums">{{ t.total }} 字</span>
-            </div>
-          </div>
-          <div class="flex justify-between mt-2 text-[9.5px] text-[var(--text-faint)]">
-            <span>{{ trend14[0]?.label }}</span>
-            <span>{{ trend14[6]?.label }}</span>
-            <span style="color: var(--accent)">今天</span>
+            />
+            <span class="home-col-tip tnum">{{ t.total }} 字</span>
           </div>
         </div>
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4" style="box-shadow: var(--shadow)">
-          <div class="flex items-center gap-1.5 mb-3">
-            <BarChart3 :size="13" :style="{ color: 'var(--accent)' }" />
-            <span class="text-[13px] font-medium tracking-wide">作品字数排行</span>
-            <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
-          </div>
-          <p v-if="!bookRanking.length" class="text-[11.5px] text-[var(--text-faint)]">还没有作品数据。</p>
-          <div v-else class="space-y-2.5">
-            <div v-for="(b, idx) in bookRanking" :key="b.title" class="cursor-pointer group" @click="openBook(b.title)">
-              <div class="flex items-baseline gap-2 text-[12px]">
-                <span class="font-serif-ink text-[13px] w-5 shrink-0" :style="{ color: idx === 0 ? 'var(--accent)' : 'var(--text-faint)' }">{{ String(idx + 1).padStart(2, '0') }}</span>
-                <span class="truncate max-w-[50%] group-hover:text-[var(--accent)] transition-colors">{{ b.title }}</span>
-                <span class="text-[10px] text-[var(--text-faint)] truncate">{{ b.genre }}</span>
-                <span class="ml-auto text-[10.5px] text-[var(--text-dim)] tabular-nums">{{ fmtWords(b.words) }}</span>
-              </div>
-              <div class="h-[4px] rounded-full mt-1.5 ml-7 overflow-hidden" style="background: var(--bg-soft)">
-                <div
-                  class="h-full rounded-full transition-all duration-700"
-                  :style="{ background: 'var(--accent)', opacity: idx === 0 ? 0.95 : 0.55, width: barReady ? (b.words / rankMax) * 100 + '%' : '0%' }"
-                />
-              </div>
+        <div class="flex justify-between mt-2 text-micro text-[var(--text-faint)]">
+          <span>{{ trend14[0]?.label }}</span>
+          <span>{{ trend14[6]?.label }}</span>
+          <span class="text-[var(--accent)]">今天</span>
+        </div>
+      </div>
+      <div class="ink-card p-4" style="box-shadow: var(--sh-1)">
+        <div class="card-head">
+          <BarChart3 :size="13" class="text-[var(--accent)]" />
+          <span class="card-head-title">作品字数排行</span>
+          <span class="card-head-line" />
+        </div>
+        <p v-if="!bookRanking.length" class="text-label text-[var(--text-faint)]">还没有作品数据。</p>
+        <div v-else class="space-y-2.5">
+          <div v-for="(b, idx) in bookRanking" :key="b.title" class="group cursor-pointer" @click="openBook(b.title)">
+            <div class="flex items-baseline gap-2 text-label">
+              <span
+                class="font-serif-ink w-5 shrink-0 tnum"
+                :class="idx === 0 ? 'text-[var(--accent)]' : 'text-[var(--text-faint)]'"
+              >
+                {{ String(idx + 1).padStart(2, '0') }}
+              </span>
+              <span class="truncate max-w-[50%] transition-colors group-hover:text-[var(--accent)]">{{ b.title }}</span>
+              <span class="text-micro text-[var(--text-faint)] truncate">{{ b.genre }}</span>
+              <span class="ml-auto text-meta text-[var(--text-dim)] tnum">{{ fmtWords(b.words) }}</span>
+            </div>
+            <div class="home-bar mt-1.5 ml-7">
+              <div
+                class="home-bar-fill"
+                :style="{
+                  background: 'var(--accent)',
+                  opacity: idx === 0 ? 0.95 : 0.55,
+                  transform: `scaleX(${barReady ? b.words / rankMax : 0})`
+                }"
+              />
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- 常用工具：不做等分卡；首项主推（accent 填充），其余轻量条目，悬停浮起 -->
-      <div class="rise-in" style="animation-delay: 300ms">
-        <div class="flex items-center gap-1.5 mb-3">
-          <House :size="13" :style="{ color: 'var(--accent)' }" />
-          <span class="text-[13px] font-medium tracking-wide">常用工具</span>
-          <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
-        </div>
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <button
-            v-for="(t, i) in TOOLS"
-            :key="t.key"
-            class="group flex items-center gap-3 p-3 rounded-xl text-left cursor-pointer transition-all duration-200 border hover:-translate-y-[2px]"
-            :class="
-              i === 0
-                ? 'text-[#1b1712] font-medium border-transparent hover:brightness-110'
-                : 'border-[var(--border)] bg-[var(--panel)] hover:border-[var(--accent)] hover:bg-[var(--bg-soft)] hover:shadow-[var(--shadow)]'
-            "
-            :style="i === 0 ? { background: 'var(--accent)', boxShadow: '0 4px 16px color-mix(in srgb, var(--accent) 22%, transparent)' } : {}"
-            @click="t.run()"
-          >
-            <span
-              class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105"
-              :style="i === 0 ? { background: 'rgba(0,0,0,0.14)' } : { background: 'var(--bg-soft)' }"
-            >
-              <component :is="t.icon" :size="16" :style="i === 0 ? {} : { color: 'var(--accent)' }" />
-            </span>
-            <span class="min-w-0">
-              <span class="block text-[13px]">{{ t.title }}</span>
-              <span class="block text-[11px] mt-0.5" :class="i === 0 ? 'text-[#1b1712]/70' : 'text-[var(--text-faint)]'">{{ t.desc }}</span>
-            </span>
-          </button>
-        </div>
+    <!-- 常用工具：安静的图标格，全部同权重，悬停抬起 -->
+    <div class="rise-in" style="animation-delay: 300ms">
+      <div class="card-head">
+        <House :size="13" class="text-[var(--accent)]" />
+        <span class="card-head-title">常用工具</span>
+        <span class="card-head-line" />
+      </div>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <button v-for="t in TOOLS" :key="t.key" class="home-tool" @click="t.run()">
+          <span class="home-tool-icon">
+            <component :is="t.icon" :size="16" />
+          </span>
+          <span class="min-w-0">
+            <span class="block text-label">{{ t.title }}</span>
+            <span class="block text-micro text-[var(--text-faint)] mt-0.5 truncate">{{ t.desc }}</span>
+          </span>
+        </button>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 卡片头：图标 + 标题 + 渐隐 hairline + 右侧元信息，首页五张卡与区块共用 */
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0.875rem;
+}
+.card-head-title {
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.card-head-line {
+  flex: 1;
+  height: 1px;
+  margin-left: 6px;
+  background: linear-gradient(to right, var(--border), transparent);
+}
+.card-head-meta {
+  font-size: var(--text-micro);
+  color: var(--text-faint);
+}
+
+/* 右上「全部作品」入口：次态用文字按钮，hover 才显底 */
+.home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  margin-bottom: 0.25rem;
+  border-radius: var(--r-sm);
+  font-size: var(--text-label);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background-color var(--dur-2), color var(--dur-2);
+}
+.home-link:hover {
+  color: var(--accent);
+  background: var(--hover);
+}
+
+/* 书封：竖排宋体书名 + 金色书脊 */
+.home-cover {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  background: linear-gradient(165deg, var(--panel-2), var(--bg-soft));
+  box-shadow: inset 2px 0 0 var(--accent);
+  transition: transform var(--dur-2) var(--ease-out);
+}
+.home-cover > span {
+  font-size: var(--text-micro);
+  line-height: 1.15;
+  text-align: center;
+  padding: 0 2px;
+  max-height: 2.875rem;
+  overflow: hidden;
+  color: var(--accent);
+}
+.group:hover .home-cover {
+  transform: scale(1.03);
+}
+
+/* 空态与虚线占位按钮 */
+.home-empty {
+  padding: 1.75rem 0;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-sm);
+  font-size: var(--text-label);
+  color: var(--text-faint);
+}
+.home-dashed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0.5rem 0;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-sm);
+  font-size: var(--text-label);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: border-color var(--dur-2), color var(--dur-2);
+}
+.home-dashed:hover {
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+
+/* 进度条：填充用 scaleX —— 只动 transform，不做 width 动画 */
+.home-bar {
+  height: 5px;
+  border-radius: var(--r-pill);
+  overflow: hidden;
+  background: var(--bg-soft);
+}
+.home-bar-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: var(--r-pill);
+  transform-origin: left center;
+  transition: transform 700ms var(--ease-out-quart);
+}
+
+/* 趋势柱：容器满高，用 scaleY 表现数值（不做 height 动画） */
+.home-col {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--r-xs) var(--r-xs) 0 0;
+  transform-origin: bottom center;
+  transition: transform 500ms var(--ease-out-quart);
+}
+.home-col-tip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: var(--text-micro);
+  color: var(--text-dim);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 0 6px;
+  transition: opacity var(--dur-2);
+}
+.group:hover .home-col-tip {
+  opacity: 1;
+}
+
+/* 工具格：安静的图标格，悬停抬起 2px */
+.home-tool {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  box-shadow: var(--sh-1);
+  transition: transform var(--dur-2) var(--ease-out), border-color var(--dur-2), box-shadow var(--dur-2);
+}
+.home-tool:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--sh-2);
+}
+.home-tool-icon {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+</style>
