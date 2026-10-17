@@ -11,7 +11,7 @@ import InkSelect from '../ui/InkSelect.vue'
 import InkCombo from '../ui/InkCombo.vue'
 import { inkConfirm } from '../ui/inkPrompt'
 import type { CustomAgent, LibKind } from '../types'
-import { Bot, Plus, Pencil, Trash2, Globe, Sparkles, LoaderCircle, LibraryBig, Users, FileSearch } from 'lucide-vue-next'
+import { Bot, Plus, Pencil, Trash2, Globe, Sparkles, LoaderCircle, LibraryBig, Users, FileSearch, Cpu } from 'lucide-vue-next'
 
 const app = useAppStore()
 const lib = useLibraryStore()
@@ -254,6 +254,18 @@ async function setAgentModelName(id: string, model: string | number) {
   await app.updateConfig({ agentModels: map })
 }
 
+/** 模型分配编辑态：每卡默认收起，点摘要行展开（卡片保持紧凑） */
+const modelEditingId = ref('')
+function toggleModelEdit(id: string) {
+  modelEditingId.value = modelEditingId.value === id ? '' : id
+}
+function modelSummaryOf(id: string): string {
+  const m = agentModelOf(id)
+  if (!m.providerId && !m.model) return '跟随设置'
+  const pn = (app.config?.providers || []).find((p) => p.id === m.providerId)?.name || '（服务商已删除）'
+  return m.model ? `${pn} · ${m.model}` : `${pn} · 未填模型名`
+}
+
 async function removeCustom(a: CustomAgent) {
   const ok = await inkConfirm(`确定删除自定义智能体「${a.name}」？`, {
     detail: '删除后不可恢复；它在妙笔里的历史会话仍保留，但无法继续使用该智能体。',
@@ -331,10 +343,22 @@ function scopeText(scope: string[]): string {
             <div class="text-[12px] text-[var(--text-dim)] mb-2">{{ a.desc }}</div>
             <div class="text-[11px] text-[var(--text-faint)] mb-3">可读：{{ scopeText(a.readScope) }}{{ a.libsWrite ? ' · 可写入资源库' : '' }}</div>
             <div class="mt-2 pt-2 border-t border-[var(--border)]">
-              <div class="text-[10.5px] text-[var(--text-faint)] mb-1">模型分配（不选则跟随 设置 → AI 服务 → 智能体对话）</div>
-              <div class="flex items-center gap-1.5">
-                <InkSelect class="w-28 shrink-0" :model-value="agentModelOf(a.id).providerId" :options="providerOptions" @update:model-value="(v: string | number) => setAgentProvider(a.id, v)" />
-                <InkCombo class="flex-1 min-w-0" :model-value="agentModelOf(a.id).model" :options="modelsOf(agentModelOf(a.id).providerId)" placeholder="模型名，留空跟随设置" @update:model-value="(v: string | number) => setAgentModelName(a.id, v)" />
+              <button class="w-full flex items-center gap-1.5 text-left group cursor-pointer" title="点击展开：为这个智能体单独指定模型（不指定则跟随 设置 → AI 服务 → 智能体对话）" @click="toggleModelEdit(a.id)">
+                <Cpu :size="11" class="shrink-0" :style="{ color: (agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? 'var(--accent)' : 'var(--text-faint)' }" />
+                <span class="text-[10.5px] text-[var(--text-faint)] shrink-0">模型</span>
+                <span
+                  class="text-[11px] truncate flex-1 transition-colors"
+                  :class="(agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? '' : 'text-[var(--text-faint)]'"
+                  :style="(agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? { color: 'var(--accent)' } : {}"
+                >{{ modelSummaryOf(a.id) }}</span>
+                <Pencil v-if="modelEditingId !== a.id" :size="10" class="shrink-0 opacity-0 group-hover:opacity-70 transition-opacity" style="color: var(--text-faint)" />
+              </button>
+              <div v-if="modelEditingId === a.id" class="mt-2 space-y-1.5">
+                <InkSelect class="w-full" :model-value="agentModelOf(a.id).providerId" :options="providerOptions" @update:model-value="(v: string | number) => setAgentProvider(a.id, v)" />
+                <InkCombo class="w-full" :model-value="agentModelOf(a.id).model" :options="modelsOf(agentModelOf(a.id).providerId)" placeholder="模型名（设置页「获取模型」后可下拉选择，也可手填）" @update:model-value="(v: string | number) => setAgentModelName(a.id, v)" />
+                <div class="flex justify-end">
+                  <button class="text-[10.5px] px-2 py-0.5 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors" @click="toggleModelEdit(a.id)">收起</button>
+                </div>
               </div>
             </div>
             <div class="flex items-center justify-between">
@@ -410,10 +434,22 @@ function scopeText(scope: string[]): string {
               </button>
             </div>
             <div class="mt-2 pt-2 border-t border-[var(--border)]">
-              <div class="text-[10.5px] text-[var(--text-faint)] mb-1">模型分配（不选则跟随 设置 → AI 服务 → 智能体对话）</div>
-              <div class="flex items-center gap-1.5">
-                <InkSelect class="w-28 shrink-0" :model-value="agentModelOf(a.id).providerId" :options="providerOptions" @update:model-value="(v: string | number) => setAgentProvider(a.id, v)" />
-                <InkCombo class="flex-1 min-w-0" :model-value="agentModelOf(a.id).model" :options="modelsOf(agentModelOf(a.id).providerId)" placeholder="模型名，留空跟随设置" @update:model-value="(v: string | number) => setAgentModelName(a.id, v)" />
+              <button class="w-full flex items-center gap-1.5 text-left group cursor-pointer" title="点击展开：为这个智能体单独指定模型（不指定则跟随 设置 → AI 服务 → 智能体对话）" @click="toggleModelEdit(a.id)">
+                <Cpu :size="11" class="shrink-0" :style="{ color: (agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? 'var(--accent)' : 'var(--text-faint)' }" />
+                <span class="text-[10.5px] text-[var(--text-faint)] shrink-0">模型</span>
+                <span
+                  class="text-[11px] truncate flex-1 transition-colors"
+                  :class="(agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? '' : 'text-[var(--text-faint)]'"
+                  :style="(agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? { color: 'var(--accent)' } : {}"
+                >{{ modelSummaryOf(a.id) }}</span>
+                <Pencil v-if="modelEditingId !== a.id" :size="10" class="shrink-0 opacity-0 group-hover:opacity-70 transition-opacity" style="color: var(--text-faint)" />
+              </button>
+              <div v-if="modelEditingId === a.id" class="mt-2 space-y-1.5">
+                <InkSelect class="w-full" :model-value="agentModelOf(a.id).providerId" :options="providerOptions" @update:model-value="(v: string | number) => setAgentProvider(a.id, v)" />
+                <InkCombo class="w-full" :model-value="agentModelOf(a.id).model" :options="modelsOf(agentModelOf(a.id).providerId)" placeholder="模型名（设置页「获取模型」后可下拉选择，也可手填）" @update:model-value="(v: string | number) => setAgentModelName(a.id, v)" />
+                <div class="flex justify-end">
+                  <button class="text-[10.5px] px-2 py-0.5 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors" @click="toggleModelEdit(a.id)">收起</button>
+                </div>
               </div>
             </div>
           </div>
