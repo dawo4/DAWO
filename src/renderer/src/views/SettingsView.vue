@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onActivated, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import type { Component } from 'vue'
 import { useAppStore } from '../store/app'
 import { bgDataUrl } from '../store/app'
 import InkButton from '../ui/InkButton.vue'
@@ -13,7 +14,7 @@ import { renderMarkdown } from '../ui/markdown'
 import { aiRun } from '../ai'
 import { useLibraryStore } from '../store/library'
 import { CREATIVE_LEVELS, THINKING_LEVELS, levelToTemp, tempToLevel } from '../ui/writingScale'
-import { Plus, Trash2, FolderOpen, RefreshCw, Search, Palette, Database, Bot, FileText, History, HardDrive, ArchiveRestore, CloudUpload, ShieldCheck, LoaderCircle, CircleCheck, CircleX, ImagePlus, Globe, Eye, Brain, Github, Radar } from 'lucide-vue-next'
+import { Plus, Trash2, FolderOpen, RefreshCw, Search, Palette, Database, Bot, FileText, History, HardDrive, ArchiveRestore, CloudUpload, ShieldCheck, LoaderCircle, CircleCheck, CircleX, ImagePlus, Globe, Eye, Brain, Github, Radar, Info } from 'lucide-vue-next'
 import dawoLogo from '../assets/dawo-logo.png'
 
 const logoUrl = dawoLogo
@@ -47,6 +48,18 @@ const GROUPS = [
     items: [{ key: 'backup', label: '保存与备份' }]
   }
 ]
+/** 分组导航图标：按 key 取，避免模板里一长串 v-if 链 */
+const NAV_ICONS: Record<string, Component> = {
+  appearance: Palette,
+  data: Database,
+  sensitive: ShieldCheck,
+  ai: Bot,
+  memory: Brain,
+  prompts: FileText,
+  ailog: History,
+  backup: HardDrive,
+  about: Info
+}
 const tab = computed<string>({
   get: () => app.settingsTab || 'ai',
   set: (v: string) => (app.settingsTab = v)
@@ -945,73 +958,56 @@ onUnmounted(() => {
 
 <template>
   <div class="h-full flex">
-    <!-- 左侧组内分组导航 -->
-    <aside class="w-52 shrink-0 border-r border-[var(--border)] overflow-y-auto py-4 px-3 space-y-5">
-      <div v-for="g in GROUPS" :key="g.label">
-        <div class="text-[11px] text-[var(--text-faint)] tracking-widest mb-1.5 px-2">{{ g.label }}</div>
+    <!-- 左侧分组导航（窄列） -->
+    <aside class="settings-nav">
+      <div v-for="g in GROUPS" :key="g.label" class="settings-nav-group">
+        <div class="section-title settings-nav-group-title">{{ g.label }}</div>
         <button
           v-for="item in g.items"
           :key="item.key"
-          class="w-full text-left text-sm px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors flex items-center gap-2"
-          :class="tab === item.key ? 'bg-[var(--hover)] text-[var(--accent)]' : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--hover)]'"
+          type="button"
+          class="settings-nav-item"
+          :class="{ 'is-active': tab === item.key }"
           @click="tab = item.key"
         >
-          <Palette v-if="item.key === 'appearance'" :size="14" />
-          <Database v-else-if="item.key === 'data'" :size="14" />
-          <ShieldCheck v-else-if="item.key === 'sensitive'" :size="14" />
-          <Bot v-else-if="item.key === 'ai'" :size="14" />
-          <Brain v-else-if="item.key === 'memory'" :size="14" />
-          <FileText v-else-if="item.key === 'prompts'" :size="14" />
-          <History v-else-if="item.key === 'ailog'" :size="14" />
-          <HardDrive v-else-if="item.key === 'backup'" :size="14" />
-          {{ item.label }}
+          <component :is="NAV_ICONS[item.key]" :size="14" class="settings-nav-icon" />
+          <span class="settings-nav-label">{{ item.label }}</span>
         </button>
       </div>
     </aside>
 
-    <div class="flex-1 min-w-0 overflow-y-auto">
-      <div class="prose-ink" style="max-width: 860px">
-        <!-- AI 服务 -->
-        <div v-if="tab === 'ai'" class="space-y-6">
-        <!-- 内部标签页：服务商 / 任务模型 / 联网搜索 / 智能体行为 -->
-        <div class="inline-flex items-center gap-0.5 p-1 rounded-full bg-[var(--bg-soft)] sticky top-0 z-10">
-          <button
-            v-for="t in AI_TABS"
-            :key="t.key"
-            class="px-3.5 py-1.5 rounded-full text-[12.5px] cursor-pointer transition-colors relative"
-            :class="aiTab === t.key ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-            :style="aiTab === t.key ? { color: 'var(--accent)' } : {}"
-            @click="aiTab = t.key"
-          >
-            {{ t.label }}
-            <span
-              v-if="t.key === 'tasks' && tasksIncomplete"
-              class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
-              style="background: #e0a87a"
-              title="有任务还没配好服务商或模型"
-            />
-          </button>
-        </div>
+    <div class="settings-body">
+      <div class="settings-column" style="--field-w: 160px">
+        <!-- ============ AI 服务 ============ -->
+        <div v-if="tab === 'ai'" class="settings-stack">
+          <!-- 内部标签页：细标签条 -->
+          <div class="settings-tabs">
+            <button
+              v-for="t in AI_TABS"
+              :key="t.key"
+              type="button"
+              class="settings-tab"
+              :class="{ 'is-active': aiTab === t.key }"
+              @click="aiTab = t.key"
+            >
+              {{ t.label }}
+              <span v-if="t.key === 'tasks' && tasksIncomplete" class="settings-tab-dot" title="有任务还没配好服务商或模型" />
+            </button>
+          </div>
 
-        <!-- 服务商 -->
-        <div v-show="aiTab === 'providers'" class="space-y-4">
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <div class="text-sm text-[var(--text-dim)]">服务商（OpenAI 兼容接口，Key 仅保存在本机）</div>
-            <div class="flex gap-1.5 flex-wrap justify-end">
+          <!-- 服务商 -->
+          <div v-show="aiTab === 'providers'" class="settings-stack">
+            <div class="settings-head">
+              <span class="settings-head-title">服务商</span>
+              <span class="settings-head-line" />
+              <span class="settings-head-meta">OpenAI 兼容接口 · Key 仅保存在本机</span>
+            </div>
+            <div class="settings-chips">
+              <button v-for="p in PRESETS" :key="p.name" type="button" class="set-chip" @click="addProvider(p)">+ {{ p.name }}</button>
+              <button type="button" class="set-chip" @click="addProvider()">+ 自定义</button>
               <button
-                v-for="p in PRESETS"
-                :key="p.name"
-                class="text-xs px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors"
-                @click="addProvider(p)"
-              >
-                + {{ p.name }}
-              </button>
-              <button class="text-xs px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors" @click="addProvider()">
-                + 自定义
-              </button>
-              <button
-                class="text-xs px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors inline-flex items-center gap-1"
+                type="button"
+                class="set-chip"
                 :disabled="scanningLocal"
                 title="扫描本机常见端口（WorkBuddy 网关 / Ollama / LM Studio 等），发现后一键接入"
                 @click="scanLocal"
@@ -1021,750 +1017,1244 @@ onUnmounted(() => {
                 {{ scanningLocal ? '检测中…' : '检测本地服务' }}
               </button>
             </div>
+
+            <!-- 本地服务扫描结果 -->
+            <div v-if="localFound.length || localScanTip" class="settings-inline-box settings-stack-sm">
+              <div v-for="s in localFound" :key="s.baseUrl" class="settings-row">
+                <span class="settings-strong shrink-0">{{ s.name }}</span>
+                <span class="settings-hint truncate">{{ s.baseUrl }}</span>
+                <span v-if="s.models.length" class="settings-hint shrink-0">{{ s.models.length }} 个模型</span>
+                <button type="button" class="set-chip ml-auto shrink-0" @click="adoptLocal(s)">接入</button>
+              </div>
+              <div v-if="localScanTip" class="settings-hint">{{ localScanTip }}</div>
+            </div>
+
+            <p v-if="cfg.providers.length === 0" class="settings-empty">尚未添加服务商，点击上方预设快速添加</p>
+
+            <div v-for="p in cfg.providers" :key="p.id" class="ink-card p-4 settings-stack-sm">
+              <div class="settings-row">
+                <input v-model="p.name" class="ink-input w-36 shrink-0" placeholder="名称" />
+                <input v-model="p.baseUrl" class="ink-input flex-1 min-w-0" placeholder="接口地址，如 https://api.deepseek.com/v1" />
+                <button type="button" class="settings-icon-btn" title="删除服务商" @click="deleteProvider(p.id)">
+                  <Trash2 :size="15" />
+                </button>
+              </div>
+
+              <div v-if="providerUsage(p.id).length" class="settings-row">
+                <span class="settings-hint shrink-0">正在服务：</span>
+                <span v-for="u in providerUsage(p.id)" :key="u" class="ink-chip ink-chip-accent">{{ u }}</span>
+              </div>
+
+              <div class="settings-row">
+                <input v-model="p.apiKey" class="ink-input flex-1 min-w-0" type="password" placeholder="API Key（Ollama 等本地服务留空）" />
+                <InkButton variant="ghost" :disabled="fetchingId === p.id" @click="fetchModels(p.id)">
+                  <LoaderCircle v-if="fetchingId === p.id" :size="13" class="animate-spin" />
+                  <RefreshCw v-else :size="13" :class="{ 'text-[var(--accent)]': providerModels[p.id]?.length }" />
+                  {{ fetchingId === p.id ? '获取中…' : providerModels[p.id]?.length ? `已获取 ${providerModels[p.id].length} 个` : '获取模型' }}
+                </InkButton>
+                <InkButton variant="ghost" :disabled="testingId === p.id" @click="testProvider(p.id)">
+                  <LoaderCircle v-if="testingId === p.id" :size="13" class="animate-spin" />
+                  {{ testingId === p.id ? '测试中…' : '测试连接' }}
+                </InkButton>
+              </div>
+
+              <div
+                v-if="testResult[p.id]"
+                class="settings-hint settings-row"
+                :style="{ color: testResult[p.id].ok ? 'var(--accent)' : 'var(--danger)' }"
+              >
+                <CircleCheck v-if="testResult[p.id].ok" :size="12" class="shrink-0" />
+                <CircleX v-else :size="12" class="shrink-0" />
+                <span>
+                  {{
+                    testResult[p.id].ok
+                      ? `连接正常 · 延迟 ${testResult[p.id].latencyMs}ms${testResult[p.id].model ? ` · 模型 ${testResult[p.id].model}` : ''}`
+                      : `连接失败：${testResult[p.id].error || (testResult[p.id].model ? '' : '没有可用模型——先「获取模型」或在任务分配里绑定')}`
+                  }}
+                </span>
+              </div>
+              <div v-if="fetchTip[p.id]" class="settings-hint ok-pulse settings-row" style="color: var(--accent)">
+                <CircleCheck :size="12" class="shrink-0" /> {{ fetchTip[p.id] }}
+              </div>
+
+              <!-- 多模态：图片理解开关 -->
+              <div class="settings-row">
+                <button
+                  type="button"
+                  class="set-toggle-chip"
+                  :class="{ 'is-on': p.vision }"
+                  :title="p.vision ? '已开启：聊天可附图给该服务商的模型（如 GPT-4o / Gemini / GLM-4V）' : '开启后聊天输入框可附图，仅多模态模型可用'"
+                  @click="toggleVision(p)"
+                >
+                  <Eye :size="12" />
+                  {{ p.vision ? '已支持图片理解' : '不支持图片理解' }}
+                </button>
+                <span class="settings-hint flex-1 min-w-0">多模态模型（能看图的）请开启；纯文本模型请保持关闭，否则附图会报错</span>
+              </div>
+
+              <!-- 服务商自带联网搜索（Kimi / 智谱 / MiMo / 通义支持） -->
+              <div v-if="searchSupported[p.id]" class="settings-row">
+                <button
+                  type="button"
+                  class="set-toggle-chip"
+                  :class="{ 'is-on': cfg.providerSearch[p.id] }"
+                  :title="cfg.providerSearch[p.id] ? '已启用：智能体对话时由服务商平台执行联网搜索，点击关闭' : '启用后智能体对话可使用该厂商平台侧的联网搜索（如 Kimi $web_search，按次计费）'"
+                  @click="toggleProviderSearch(p.id)"
+                >
+                  <Globe :size="12" />
+                  {{ cfg.providerSearch[p.id] ? '已启用自带联网搜索' : '启用自带联网搜索' }}
+                </button>
+                <span class="settings-hint flex-1 min-w-0">由厂商平台执行搜索，按厂商定价计费；MiMo 需先在其控制台开通联网服务插件</span>
+              </div>
+            </div>
+
+            <div v-if="modelErr" class="settings-hint ink-text-danger">{{ modelErr }}</div>
           </div>
-          <!-- 本地服务扫描结果 -->
-          <div v-if="localFound.length || localScanTip" class="mb-3 rounded-lg border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-2.5 space-y-2">
-            <div v-for="s in localFound" :key="s.baseUrl" class="flex items-center gap-2 text-[12.5px]">
-              <span class="font-medium" style="color: var(--accent)">{{ s.name }}</span>
-              <span class="text-[var(--text-faint)] truncate">{{ s.baseUrl }}</span>
-              <span v-if="s.models.length" class="text-[11px] text-[var(--text-faint)] shrink-0">{{ s.models.length }} 个模型</span>
+
+          <!-- 任务模型 -->
+          <div v-show="aiTab === 'tasks'" class="settings-stack">
+            <div class="settings-head">
+              <span class="settings-head-title">任务模型分配</span>
+              <span class="settings-head-line" />
+              <span class="settings-head-meta">不同任务可用不同模型</span>
+            </div>
+            <p class="settings-hint">
+              「上下文窗口」填模型 token 上限，用于妙笔会话自动压缩；获取模型时能识别的会自动填。配好一行后可「应用到全部」。
+            </p>
+            <div v-for="(label, key) in TASK_LABELS" :key="key" class="ink-field">
+              <span class="ink-field-label">{{ label }}</span>
+              <div class="settings-row">
+                <InkSelect
+                  v-model="cfg.tasks[key].providerId"
+                  class="w-40 shrink-0"
+                  :options="[{ label: '选择服务商', value: '' }, ...cfg.providers.map((p) => ({ label: p.name, value: p.id }))]"
+                />
+                <InkCombo
+                  v-model="cfg.tasks[key].model"
+                  class="flex-1 min-w-0"
+                  :options="providerModels[cfg.tasks[key].providerId] || []"
+                  placeholder="模型名，如 deepseek-chat"
+                />
+                <input
+                  :value="ctxFor(cfg.tasks[key].providerId, cfg.tasks[key].model)"
+                  class="ink-input w-36 shrink-0"
+                  placeholder="上下文窗口，如 65536"
+                  title="模型上下文窗口（token 数）。点上方「获取模型」会自动识别填入；识别不到的可手动填。妙笔会话占用到窗口 80% 时自动压缩早期对话"
+                  @input="setCtx(cfg.tasks[key].providerId, cfg.tasks[key].model, ($event.target as HTMLInputElement).value)"
+                />
+                <button
+                  type="button"
+                  class="set-text-btn shrink-0"
+                  title="把这一行的服务商和模型应用到全部任务"
+                  @click="applyToAllTasks(String(key))"
+                >
+                  应用到全部
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 向量化检索 -->
+          <div v-show="aiTab === 'vector'" class="settings-stack">
+            <div class="settings-head">
+              <span class="settings-head-title">向量化检索</span>
+              <span class="settings-head-line" />
+              <span class="settings-head-meta">语义搜索</span>
+            </div>
+            <p class="settings-hint">
+              给全书文稿与资源库建立本地向量索引，驱动三处语义能力：逐章生文构思细纲前自动检索相关前文、妙笔对话按智能体分配注入相关片段（智能体库逐个开启）、
+              Ctrl+K 语义混合检索。需要服务商支持 <b>/embeddings</b> 接口（如硅基流动 BAAI/bge-m3、智谱 embedding-3、通义 text-embedding-v4、OpenAI、Ollama 本地）。
+              <span style="color: var(--accent)">未配置服务商与模型时以上功能自动降级，不影响其他功能。</span>
+            </p>
+
+            <!-- 嵌入服务（独立面板，与服务商列表互不影响） -->
+            <div class="ink-card p-4 settings-stack-sm">
+              <div class="settings-head">
+                <span class="settings-head-title-sm">嵌入服务</span>
+                <span class="settings-head-line" />
+                <button
+                  v-if="es.baseUrl || es.model || cfg.tasks[EMBEDDING_KEY]?.providerId"
+                  type="button"
+                  class="set-chip shrink-0 ink-text-danger"
+                  title="清空嵌入服务配置与旧版通道引用，所有语义检索立即停用（索引文件保留）"
+                  @click="clearEmbedding"
+                >
+                  停用向量化
+                </button>
+              </div>
+              <div class="ink-field">
+                <span class="ink-field-label">接口地址</span>
+                <input v-model="es.baseUrl" class="ink-input" placeholder="https://api.siliconflow.cn/v1" />
+              </div>
+              <div class="settings-chips settings-indent">
+                <button
+                  v-for="p in EMBED_PRESETS"
+                  :key="p.name"
+                  type="button"
+                  class="set-chip"
+                  :class="{ 'is-on': es.baseUrl === p.baseUrl }"
+                  :title="`填入 ${p.name} 接口地址${p.models.length ? '，推荐模型：' + p.models.join(' / ') : ''}`"
+                  @click="pickEmbPreset(p)"
+                >
+                  {{ p.name }}
+                </button>
+              </div>
+              <div class="ink-field">
+                <span class="ink-field-label">API Key</span>
+                <input v-model="es.apiKey" class="ink-input" placeholder="sk-…（Ollama 本地可留空）" autocomplete="off" />
+              </div>
+              <div class="ink-field">
+                <span class="ink-field-label">模型名</span>
+                <div class="settings-row">
+                  <InkCombo v-model="es.model" class="flex-1 min-w-0" :options="embModels" placeholder="嵌入模型名，如 BAAI/bge-m3" />
+                  <InkButton variant="ghost" :disabled="embFetching" @click="fetchEmbModels">
+                    <LoaderCircle v-if="embFetching" :size="12" class="animate-spin" /> 获取模型
+                  </InkButton>
+                  <InkButton variant="ghost" :disabled="embTesting" @click="testEmb">
+                    <LoaderCircle v-if="embTesting" :size="12" class="animate-spin" /> 测试连接
+                  </InkButton>
+                </div>
+              </div>
+              <div v-if="embPreset" class="ink-field">
+                <span class="ink-field-label">推荐模型</span>
+                <div class="settings-chips">
+                  <button
+                    v-for="m in embPreset.models"
+                    :key="m"
+                    type="button"
+                    class="set-chip max-w-[240px]"
+                    :class="{ 'is-on': es.model === m }"
+                    @click="es.model = m"
+                  >
+                    {{ m }}
+                  </button>
+                </div>
+              </div>
+              <div v-if="embErr" class="settings-hint ink-text-danger">{{ embErr }}</div>
+              <div v-else-if="embTest" class="settings-hint" :style="{ color: embTest.ok ? 'var(--accent)' : 'var(--danger)' }">
+                {{ embTest.ok ? `连接成功 · ${embTest.latencyMs}ms · 向量维度 ${embTest.dim}` : `连接失败：${embTest.error}` }}
+              </div>
+              <p class="settings-hint">
+                嵌入模型只负责把文字转成向量，不能用来聊天，与对话模型互不通用；常用如硅基流动 BAAI/bge-m3、智谱 embedding-3、通义 text-embedding-v4。
+                换模型后已有索引不兼容，需要到写作台「检索」面板重建。
+              </p>
+            </div>
+
+            <!-- 索引范围与切块 -->
+            <div class="section-title">索引范围与切块</div>
+            <div class="settings-stack-sm">
+              <div class="ink-field">
+                <span class="ink-field-label">索引资源库</span>
+                <div class="settings-row">
+                  <InkToggle v-model="vo.includeLib" />
+                  <span class="settings-hint flex-1 min-w-0">技能库 / 素材库 / 灵感便签也纳入语义检索；关闭后增量同步自动清掉已嵌的库块</span>
+                </div>
+              </div>
+              <div class="ink-field">
+                <span class="ink-field-label">整章一块上限</span>
+                <div class="settings-row">
+                  <InkSelect v-model="vo.chunkFull" class="w-40 shrink-0" :options="CHUNK_FULL_OPTS" />
+                  <span class="settings-hint flex-1 min-w-0">不超过该字数的文件整篇作为一块，检索粒度最完整</span>
+                </div>
+              </div>
+              <div class="ink-field">
+                <span class="ink-field-label">滑窗大小</span>
+                <div class="settings-row">
+                  <InkSelect v-model="vo.winSize" class="w-40 shrink-0" :options="WIN_OPTS" />
+                  <span class="settings-hint flex-1 min-w-0">超过整章上限的长文按此窗口切块（自动带 15% 重叠、贴齐段落边界）</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 检索行为 -->
+            <div class="section-title">检索行为</div>
+            <div class="ink-field">
+              <span class="ink-field-label">相似度阈值</span>
+              <div class="settings-row">
+                <InkSelect v-model="vo.minScore" class="w-40 shrink-0" :options="MIN_SCORE_OPTS" />
+                <span class="settings-hint flex-1 min-w-0">低于阈值的检索结果直接丢弃</span>
+              </div>
+            </div>
+
+            <!-- 三个注入点 -->
+            <div class="section-title">三个注入点（可单独开关）</div>
+            <div class="settings-stack-sm">
+              <div class="ink-field">
+                <span class="ink-field-label">逐章生文 · 细纲前注入</span>
+                <div class="settings-row">
+                  <InkToggle v-model="vo.injectBeat" />
+                  <InkSelect v-model="vo.topKBeat" class="w-24 shrink-0" :options="TOPK_OPTS" :disabled="!vo.injectBeat" />
+                  <span class="settings-hint flex-1 min-w-0">构思细纲前检索全书相关前文，跨章伏笔与设定更一致</span>
+                </div>
+              </div>
+              <div class="ink-field">
+                <span class="ink-field-label">妙笔对话 · 按智能体注入</span>
+                <div class="settings-row">
+                  <InkSelect v-model="vo.topKAgent" class="w-24 shrink-0" :options="TOPK_OPTS" />
+                  <span class="settings-hint flex-1 min-w-0">默认全关——到「智能体库」给需要的智能体点『开启语义检索』后才生效（自定义智能体在编辑表单里勾选）</span>
+                </div>
+              </div>
+              <div class="ink-field">
+                <span class="ink-field-label">Ctrl+K · 语义混合检索</span>
+                <div class="settings-row">
+                  <InkToggle v-model="vo.injectSearch" />
+                  <InkSelect v-model="vo.topKSearch" class="w-24 shrink-0" :options="TOPK_OPTS" :disabled="!vo.injectSearch" />
+                  <span class="settings-hint flex-1 min-w-0">关键词命中之外补充语义相关结果（带「语义」徽标）</span>
+                </div>
+              </div>
+            </div>
+
+            <p class="settings-hint">
+              索引与维护入口在写作台右栏「检索」标签：状态一览、增量更新、重建（含 token 成本确认）。
+              <span style="color: var(--accent)">配置好嵌入服务后，第一次使用语义功能会自动建立全书索引</span>（一次性嵌入成本，体量见「检索」面板的估算）；之后增删章节与资源库条目无需手动维护——每次检索自动增量同步。
+              改动切块参数后需重建索引才对已有块生效。每次向量化调用都会记入「数据」页的 AI 成本统计。
+            </p>
+          </div>
+
+          <!-- 联网搜索 -->
+          <div v-show="aiTab === 'search'" class="settings-stack">
+            <div class="settings-head">
+              <span class="settings-head-title">联网搜索</span>
+              <span class="settings-head-line" />
+            </div>
+            <p class="settings-hint">
+              智能体有两种联网方式：<b>① 服务商自带搜索</b>——在各服务商卡片上启用，由厂商平台执行（Kimi / 智谱 / MiMo / 通义）；<b>② DAWO 自带搜索工具</b>——在智能体库给智能体安装，走下面的搜索源。
+              <span style="color: var(--accent)">两种同时可用时优先用服务商自带搜索</span>，此时不会触发 DAWO 的搜索工具。
+            </p>
+            <div class="settings-row flex-wrap">
+              <span class="settings-hint shrink-0">已启用自带搜索：</span>
+              <template v-if="searchEnabledProviders.length">
+                <button
+                  v-for="p in searchEnabledProviders"
+                  :key="p.id"
+                  type="button"
+                  class="ink-chip ink-chip-accent"
+                  :title="`${p.name}：${p.baseUrl}（点此关闭）`"
+                  @click="toggleProviderSearch(p.id)"
+                >
+                  {{ p.name }} ✕
+                </button>
+              </template>
+              <span v-else class="settings-hint">暂无——到上方服务商卡片启用</span>
+            </div>
+            <div class="ink-field">
+              <span class="ink-field-label">搜索源</span>
+              <div class="settings-row">
+                <InkSegmented
+                  v-model="cfg.search.provider"
+                  :options="[
+                    { value: 'auto', label: '免费源' },
+                    { value: 'bocha', label: '博查' },
+                    { value: 'tavily', label: 'Tavily' }
+                  ]"
+                />
+                <input
+                  v-if="cfg.search.provider !== 'auto'"
+                  v-model="cfg.search.apiKey"
+                  class="ink-input flex-1 min-w-0"
+                  :placeholder="cfg.search.provider === 'bocha' ? '博查 API Key（bochaai.com 申请）' : 'Tavily API Key（tavily.com 申请）'"
+                />
+                <span class="settings-hint shrink-0">仅用于 DAWO 自带的 web_search 工具</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 智能体行为 -->
+          <div v-show="aiTab === 'behavior'" class="settings-stack">
+            <div class="settings-head">
+              <span class="settings-head-title">智能体行为</span>
+              <span class="settings-head-line" />
+            </div>
+            <div class="ink-field">
+              <span class="ink-field-label">修改怎么算数</span>
+              <InkSegmented v-model="cfg.approvalMode" :options="APPROVAL_OPTIONS" />
+            </div>
+            <div class="ink-field">
+              <span class="ink-field-label">思考程度</span>
+              <InkSegmented v-model="thinkingLevel" :options="THINKING_LEVELS" />
+            </div>
+            <div class="ink-field">
+              <span class="ink-field-label">创意程度</span>
+              <InkSegmented v-model="creativeLevel" :options="CREATIVE_LEVELS" />
+            </div>
+            <p class="settings-hint">技能与素材的默认引用可在「资源库 → 智能体默认引用」中按智能体分别配置。</p>
+          </div>
+        </div>
+
+        <!-- ============ 外观 ============ -->
+        <div v-if="tab === 'appearance'" class="settings-stack">
+          <div class="settings-head">
+            <span class="settings-head-title">外观</span>
+            <span class="settings-head-line" />
+            <span class="settings-head-meta">改动即时生效并自动保存</span>
+          </div>
+
+          <div class="ink-card p-4 settings-stack-sm">
+            <div class="section-title">主题（切换即时生效）</div>
+            <div class="settings-theme-grid">
               <button
-                class="ml-auto shrink-0 text-[11.5px] px-2.5 py-1 rounded-full cursor-pointer transition-colors"
-                style="background: var(--panel-2); color: var(--accent)"
-                @click="adoptLocal(s)"
+                v-for="t in THEME_OPTIONS"
+                :key="t.value"
+                type="button"
+                class="set-theme"
+                :class="{ 'is-on': themeValue === t.value }"
+                @click="themeValue = t.value"
               >
-                接入
+                <span class="set-theme-label">{{ t.label }}</span>
+                <CircleCheck v-if="themeValue === t.value" :size="13" class="ml-auto shrink-0" />
               </button>
             </div>
-            <div v-if="localScanTip" class="text-[11.5px] text-[var(--text-faint)]">{{ localScanTip }}</div>
           </div>
-          <div v-if="cfg.providers.length === 0" class="text-sm text-[var(--text-faint)] py-6 text-center rounded-lg border border-dashed border-[var(--border)]">
-            尚未添加服务商，点击上方预设快速添加
-          </div>
-          <div v-for="p in cfg.providers" :key="p.id" class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4 mb-3 space-y-2.5">
-            <div class="flex gap-2">
-              <input v-model="p.name" class="ink-input w-36" placeholder="名称" />
-              <input v-model="p.baseUrl" class="ink-input flex-1" placeholder="接口地址，如 https://api.deepseek.com/v1" />
-              <button class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer px-1" title="删除服务商" @click="deleteProvider(p.id)">
-                <Trash2 :size="15" />
-              </button>
-            </div>
-            <div v-if="providerUsage(p.id).length" class="flex items-center gap-1.5 flex-wrap">
-              <span class="text-[10.5px] text-[var(--text-faint)]">正在服务：</span>
-              <span
-                v-for="u in providerUsage(p.id)"
-                :key="u"
-                class="text-[10.5px] px-2 py-0.5 rounded-full"
-                :style="{ background: 'var(--panel-2)', color: 'var(--accent)' }"
-              >
-                {{ u }}
-              </span>
-            </div>
-            <div class="flex gap-2 items-center">
-              <input v-model="p.apiKey" class="ink-input flex-1" type="password" placeholder="API Key（Ollama 等本地服务留空）" />
-              <InkButton variant="ghost" :disabled="fetchingId === p.id" @click="fetchModels(p.id)">
-                <LoaderCircle v-if="fetchingId === p.id" :size="13" class="animate-spin" />
-                <RefreshCw v-else :size="13" :class="{ 'text-[var(--accent)]': providerModels[p.id]?.length }" />
-                {{ fetchingId === p.id ? '获取中…' : providerModels[p.id]?.length ? `已获取 ${providerModels[p.id].length} 个` : '获取模型' }}
-              </InkButton>
-              <InkButton variant="ghost" :disabled="testingId === p.id" @click="testProvider(p.id)">
-                <LoaderCircle v-if="testingId === p.id" :size="13" class="animate-spin" />
-                {{ testingId === p.id ? '测试中…' : '测试连接' }}
-              </InkButton>
-            </div>
-            <div v-if="testResult[p.id]" class="text-[11.5px] inline-flex items-center gap-1" :style="{ color: testResult[p.id].ok ? 'var(--accent)' : '#e08a7a' }">
-              <CircleCheck v-if="testResult[p.id].ok" :size="12" />
-              <CircleX v-else :size="12" />
-              {{
-                testResult[p.id].ok
-                  ? `连接正常 · 延迟 ${testResult[p.id].latencyMs}ms${testResult[p.id].model ? ` · 模型 ${testResult[p.id].model}` : ''}`
-                  : `连接失败：${testResult[p.id].error || (testResult[p.id].model ? '' : '没有可用模型——先「获取模型」或在任务分配里绑定')}`
-              }}
-            </div>
-            <div v-if="fetchTip[p.id]" class="ok-pulse text-[11.5px] inline-flex items-center gap-1" style="color: var(--accent)">
-              <CircleCheck :size="12" /> {{ fetchTip[p.id] }}
-            </div>
-            <!-- 多模态：图片理解开关 -->
-            <div class="flex items-center gap-2">
-              <button
-                class="inline-flex items-center gap-1.5 text-[11.5px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-                :class="p.vision ? 'bg-[var(--panel-2)]' : 'bg-[var(--bg-soft)] text-[var(--text-dim)] hover:text-[var(--text)]'"
-                :style="p.vision ? { color: 'var(--accent)' } : {}"
-                :title="p.vision ? '已开启：聊天可附图给该服务商的模型（如 GPT-4o / Gemini / GLM-4V）' : '开启后聊天输入框可附图，仅多模态模型可用'"
-                @click="toggleVision(p)"
-              >
-                <Eye :size="12" />
-                {{ p.vision ? '已支持图片理解' : '不支持图片理解' }}
-              </button>
-              <span class="text-[10.5px] text-[var(--text-faint)]">多模态模型（能看图的）请开启；纯文本模型请保持关闭，否则附图会报错</span>
-            </div>
-            <!-- 服务商自带联网搜索（Kimi / 智谱 / MiMo / 通义支持） -->
-            <div v-if="searchSupported[p.id]" class="flex items-center gap-2">
-              <button
-                class="inline-flex items-center gap-1.5 text-[11.5px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-                :class="cfg.providerSearch[p.id] ? 'bg-[var(--panel-2)]' : 'bg-[var(--bg-soft)] text-[var(--text-dim)] hover:text-[var(--text)]'"
-                :style="cfg.providerSearch[p.id] ? { color: 'var(--accent)' } : {}"
-                :title="cfg.providerSearch[p.id] ? '已启用：智能体对话时由服务商平台执行联网搜索，点击关闭' : '启用后智能体对话可使用该厂商平台侧的联网搜索（如 Kimi $web_search，按次计费）'"
-                @click="toggleProviderSearch(p.id)"
-              >
-                <Globe :size="12" />
-                {{ cfg.providerSearch[p.id] ? '已启用自带联网搜索' : '启用自带联网搜索' }}
-              </button>
-              <span class="text-[10.5px] text-[var(--text-faint)]">由厂商平台执行搜索，按厂商定价计费；MiMo 需先在其控制台开通联网服务插件</span>
-            </div>
-          </div>
-          <div v-if="modelErr" class="text-sm text-[#e08a7a]">{{ modelErr }}</div>
-        </div>
-        </div>
 
-        <!-- 任务模型 -->
-        <div v-show="aiTab === 'tasks'" class="space-y-1">
-          <div class="text-sm text-[var(--text-dim)] mb-1">任务模型分配（不同任务可用不同模型）</div>
-          <div class="text-[11px] text-[var(--text-faint)] mb-3">「上下文窗口」填模型 token 上限，用于妙笔会话自动压缩；获取模型时能识别的会自动填。配好一行后可「应用到全部」。</div>
-          <div v-for="(label, key) in TASK_LABELS" :key="key" class="flex items-center gap-2 mb-2.5">
-            <span class="w-40 text-sm shrink-0">{{ label }}</span>
-            <InkSelect
-              v-model="cfg.tasks[key].providerId"
-              class="w-40 shrink-0"
-              :options="[{ label: '选择服务商', value: '' }, ...cfg.providers.map((p) => ({ label: p.name, value: p.id }))]"
-            />
-            <InkCombo
-              v-model="cfg.tasks[key].model"
-              class="flex-1 min-w-0"
-              :options="providerModels[cfg.tasks[key].providerId] || []"
-              placeholder="模型名，如 deepseek-chat"
-            />
-            <input
-              :value="ctxFor(cfg.tasks[key].providerId, cfg.tasks[key].model)"
-              class="ink-input w-36 shrink-0"
-              placeholder="上下文窗口，如 65536"
-              title="模型上下文窗口（token 数）。点上方「获取模型」会自动识别填入；识别不到的可手动填。妙笔会话占用到窗口 80% 时自动压缩早期对话"
-              @input="setCtx(cfg.tasks[key].providerId, cfg.tasks[key].model, ($event.target as HTMLInputElement).value)"
-            />
-            <button
-              class="text-[11px] px-2 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors shrink-0"
-              title="把这一行的服务商和模型应用到全部任务"
-              @click="applyToAllTasks(String(key))"
-            >
-              应用到全部
-            </button>
+          <div class="ink-card p-4 settings-stack-sm">
+            <div class="section-title">排版与背景</div>
+            <div class="ink-field">
+              <span class="ink-field-label">强调色</span>
+              <div class="settings-row">
+                <input v-model="cfg.appearance.accent" type="color" class="settings-color" />
+                <span class="settings-hint tnum">{{ cfg.appearance.accent }}</span>
+                <button type="button" class="set-text-btn" title="恢复书墨金默认强调色" @click="cfg.appearance.accent = '#c9a15f'">恢复默认</button>
+              </div>
+            </div>
+            <div class="ink-field">
+              <span class="ink-field-label">界面圆角</span>
+              <InkSegmented v-model="radiusValue" :options="RADIUS_OPTIONS" />
+            </div>
+            <div class="ink-field">
+              <span class="ink-field-label">界面字号</span>
+              <InkSegmented v-model="fontScaleValue" :options="FONT_SCALE_OPTIONS" />
+            </div>
+            <div class="ink-field">
+              <span class="ink-field-label">背景图片</span>
+              <div class="settings-row">
+                <div
+                  v-if="cfg.appearance.backgroundImage"
+                  class="settings-bg-preview"
+                  :style="bgPreviewStyle"
+                  :title="cfg.appearance.backgroundImage"
+                />
+                <InkButton variant="ghost" @click="pickBg"><ImagePlus :size="14" /> 选择图片</InkButton>
+                <InkButton v-if="cfg.appearance.backgroundImage" variant="ghost" @click="cfg.appearance.backgroundImage = ''">清除</InkButton>
+              </div>
+            </div>
+            <div class="ink-field">
+              <span class="ink-field-label">背景浓度</span>
+              <div class="settings-row">
+                <input
+                  v-model.number="cfg.appearance.bgOpacity"
+                  type="range"
+                  min="0.05"
+                  max="0.8"
+                  step="0.05"
+                  class="w-48 shrink-0"
+                  :style="{ '--fill': `${Math.round(((cfg.appearance.bgOpacity - 0.05) / 0.75) * 100)}%` }"
+                />
+                <span class="settings-hint w-10 tnum">{{ Math.round(cfg.appearance.bgOpacity * 100) }}%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ink-card p-4 settings-stack-sm">
+            <div class="section-title">环境动效</div>
+            <div class="settings-toggles">
+              <InkToggle v-model="cfg.appearance.glow" label="鼠标跟随光晕" />
+              <InkToggle v-model="cfg.appearance.orbs" label="背景浮动球体" />
+              <InkToggle v-model="cfg.appearance.particles" label="光标粒子（简约）" />
+            </div>
+          </div>
+
+          <div class="ink-card p-4 settings-stack-sm">
+            <div class="section-title">交互动效</div>
+            <div class="settings-toggles">
+              <InkToggle v-model="cfg.appearance.press" label="按钮按压反馈" />
+              <InkToggle v-model="cfg.appearance.pageFade" label="页面切换过渡" />
+              <InkToggle v-model="cfg.appearance.cardRise" label="卡片入场动画" />
+            </div>
+            <p class="settings-hint">按压反馈：所有按钮点下轻微下沉弹回；页面过渡：切换功能页时淡入上移；卡片入场：首页等页面元素错落浮现。</p>
           </div>
         </div>
 
-        <!-- 向量化检索 -->
-        <div v-show="aiTab === 'vector'" class="space-y-1">
-          <div class="text-sm text-[var(--text-dim)] mb-1">向量化检索（语义搜索）</div>
-          <div class="text-[11px] text-[var(--text-faint)] leading-5 mb-3">
-            给全书文稿与资源库建立本地向量索引，驱动三处语义能力：逐章生文构思细纲前自动检索相关前文、妙笔对话按智能体分配注入相关片段（智能体库逐个开启）、
-            Ctrl+K 语义混合检索。需要服务商支持 <b>/embeddings</b> 接口（如硅基流动 BAAI/bge-m3、智谱 embedding-3、通义 text-embedding-v4、OpenAI、Ollama 本地）。
-            <span style="color: var(--accent)">未配置服务商与模型时以上功能自动降级，不影响其他功能。</span>
-          </div>
-
-          <!-- 嵌入服务（独立面板，与服务商列表互不影响） -->
-          <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3.5 mb-4 space-y-3">
-            <div class="flex items-center justify-between gap-2">
-              <div class="text-xs text-[var(--text-dim)] tracking-wider">嵌入服务（独立于上方服务商列表，删除 / 修改对话模型服务商不影响这里）</div>
-              <button
-                v-if="es.baseUrl || es.model || cfg.tasks[EMBEDDING_KEY]?.providerId"
-                class="text-[11px] px-2 py-0.5 rounded-full cursor-pointer border transition-colors shrink-0"
-                style="border-color: #e08a7a66; color: #e08a7a"
-                title="清空嵌入服务配置与旧版通道引用，所有语义检索立即停用（索引文件保留）"
-                @click="clearEmbedding"
-              >
-                停用向量化
-              </button>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="w-20 text-sm shrink-0">接口地址</span>
-              <input v-model="es.baseUrl" class="ink-input flex-1" placeholder="https://api.siliconflow.cn/v1" />
-            </div>
-            <div class="flex flex-wrap items-center gap-1.5 pl-[88px] -mt-1">
-              <button
-                v-for="p in EMBED_PRESETS"
-                :key="p.name"
-                class="text-[11px] px-2 py-0.5 rounded-full cursor-pointer border border-[var(--border)] transition-colors"
-                :class="es.baseUrl === p.baseUrl ? 'text-[var(--accent)]' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)] hover:bg-[var(--hover)]'"
-                :style="es.baseUrl === p.baseUrl ? { borderColor: 'var(--accent)' } : {}"
-                :title="`填入 ${p.name} 接口地址${p.models.length ? '，推荐模型：' + p.models.join(' / ') : ''}`"
-                @click="pickEmbPreset(p)"
-              >
-                {{ p.name }}
-              </button>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="w-20 text-sm shrink-0">API Key</span>
-              <input v-model="es.apiKey" class="ink-input flex-1" placeholder="sk-…（Ollama 本地可留空）" autocomplete="off" />
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="w-20 text-sm shrink-0">模型名</span>
-              <InkCombo v-model="es.model" class="flex-1 min-w-0" :options="embModels" placeholder="嵌入模型名，如 BAAI/bge-m3" />
-              <button
-                class="text-[11.5px] px-2.5 py-1.5 rounded-lg cursor-pointer border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] transition-colors shrink-0 disabled:opacity-50 flex items-center gap-1"
-                :disabled="embFetching"
-                @click="fetchEmbModels"
-              >
-                <LoaderCircle v-if="embFetching" :size="12" class="animate-spin" /> 获取模型
-              </button>
-              <button
-                class="text-[11.5px] px-2.5 py-1.5 rounded-lg cursor-pointer border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] transition-colors shrink-0 disabled:opacity-50 flex items-center gap-1"
-                :disabled="embTesting"
-                @click="testEmb"
-              >
-                <LoaderCircle v-if="embTesting" :size="12" class="animate-spin" /> 测试连接
-              </button>
-            </div>
-            <div v-if="embPreset" class="flex flex-wrap items-center gap-1.5 pl-[88px] -mt-1">
-              <span class="text-[11px] text-[var(--text-faint)] shrink-0">推荐模型</span>
-              <button
-                v-for="m in embPreset.models"
-                :key="m"
-                class="text-[11px] px-2 py-0.5 rounded-full cursor-pointer border transition-colors max-w-[240px] truncate"
-                :class="es.model === m ? 'text-[var(--accent)]' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)] hover:bg-[var(--hover)]'"
-                :style="es.model === m ? { borderColor: 'var(--accent)' } : { borderColor: 'var(--border)' }"
-                @click="es.model = m"
-              >
-                {{ m }}
-              </button>
-            </div>
-            <div v-if="embErr" class="text-[11.5px]" style="color: #e08a7a">{{ embErr }}</div>
-            <div v-else-if="embTest" class="text-[11.5px]" :style="{ color: embTest.ok ? 'var(--accent)' : '#e08a7a' }">
-              {{ embTest.ok ? `连接成功 · ${embTest.latencyMs}ms · 向量维度 ${embTest.dim}` : `连接失败：${embTest.error}` }}
-            </div>
-            <div class="text-[11px] text-[var(--text-faint)] leading-5">
-              嵌入模型只负责把文字转成向量，不能用来聊天，与对话模型互不通用；常用如硅基流动 BAAI/bge-m3、智谱 embedding-3、通义 text-embedding-v4。
-              换模型后已有索引不兼容，需要到写作台「检索」面板重建。
-            </div>
-          </div>
-
-          <!-- 索引范围与切块 -->
-          <div class="text-xs text-[var(--text-dim)] tracking-wider mt-4 mb-2">索引范围与切块</div>
-          <div class="space-y-2.5 mb-2">
-            <div class="flex items-center gap-3">
-              <InkToggle v-model="vo.includeLib" label="索引资源库" />
-              <span class="text-[11px] text-[var(--text-faint)]">技能库 / 素材库 / 灵感便签也纳入语义检索；关闭后增量同步自动清掉已嵌的库块</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="w-40 text-sm shrink-0">整章一块上限</span>
-              <InkSelect v-model="vo.chunkFull" class="w-40 shrink-0" :options="CHUNK_FULL_OPTS" />
-              <span class="text-[11px] text-[var(--text-faint)]">不超过该字数的文件整篇作为一块，检索粒度最完整</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="w-40 text-sm shrink-0">滑窗大小</span>
-              <InkSelect v-model="vo.winSize" class="w-40 shrink-0" :options="WIN_OPTS" />
-              <span class="text-[11px] text-[var(--text-faint)]">超过整章上限的长文按此窗口切块（自动带 15% 重叠、贴齐段落边界）</span>
-            </div>
-          </div>
-
-          <!-- 检索行为 -->
-          <div class="text-xs text-[var(--text-dim)] tracking-wider mt-4 mb-2">检索行为</div>
-          <div class="flex items-center gap-2 mb-2.5">
-            <span class="w-40 text-sm shrink-0">相似度阈值</span>
-            <InkSelect v-model="vo.minScore" class="w-40 shrink-0" :options="MIN_SCORE_OPTS" />
-            <span class="text-[11px] text-[var(--text-faint)]">低于阈值的检索结果直接丢弃</span>
-          </div>
-
-          <!-- 三个注入点 -->
-          <div class="text-xs text-[var(--text-dim)] tracking-wider mt-4 mb-2">三个注入点（可单独开关）</div>
-          <div class="space-y-2.5">
-            <div class="flex items-center gap-3">
-              <InkToggle v-model="vo.injectBeat" label="逐章生文 · 细纲前注入" />
-              <InkSelect v-model="vo.topKBeat" class="w-28 shrink-0" :options="TOPK_OPTS" :disabled="!vo.injectBeat" />
-              <span class="text-[11px] text-[var(--text-faint)]">构思细纲前检索全书相关前文，跨章伏笔与设定更一致</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <span class="w-40 text-sm shrink-0">妙笔对话 · 按智能体注入</span>
-              <InkSelect v-model="vo.topKAgent" class="w-28 shrink-0" :options="TOPK_OPTS" />
-              <span class="text-[11px] text-[var(--text-faint)]">默认全关——到「智能体库」给需要的智能体点『开启语义检索』后才生效（自定义智能体在编辑表单里勾选）</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <InkToggle v-model="vo.injectSearch" label="Ctrl+K · 语义混合检索" />
-              <InkSelect v-model="vo.topKSearch" class="w-28 shrink-0" :options="TOPK_OPTS" :disabled="!vo.injectSearch" />
-              <span class="text-[11px] text-[var(--text-faint)]">关键词命中之外补充语义相关结果（带「语义」徽标）</span>
-            </div>
-          </div>
-
-          <div class="text-[11px] text-[var(--text-faint)] leading-5 mt-4">
-            索引与维护入口在写作台右栏「检索」标签：状态一览、增量更新、重建（含 token 成本确认）。
-            <span style="color: var(--accent)">配置好嵌入服务后，第一次使用语义功能会自动建立全书索引</span>（一次性嵌入成本，体量见「检索」面板的估算）；之后增删章节与资源库条目无需手动维护——每次检索自动增量同步。
-            改动切块参数后需重建索引才对已有块生效。每次向量化调用都会记入「数据」页的 AI 成本统计。
-          </div>
-        </div>
-
-        <!-- 联网搜索 -->
-        <div v-show="aiTab === 'search'" class="space-y-1">
-          <div class="text-sm text-[var(--text-dim)] mb-1">联网搜索</div>
-          <div class="text-[11px] text-[var(--text-faint)] leading-5 mb-2">
-            智能体有两种联网方式：<b>① 服务商自带搜索</b>——在各服务商卡片上启用，由厂商平台执行（Kimi / 智谱 / MiMo / 通义）；<b>② DAWO 自带搜索工具</b>——在智能体库给智能体安装，走下面的搜索源。
-            <span style="color: var(--accent)">两种同时可用时优先用服务商自带搜索</span>，此时不会触发 DAWO 的搜索工具。
-          </div>
-          <div class="flex items-center gap-2 mb-3 flex-wrap">
-            <span class="text-[11.5px] text-[var(--text-dim)]">已启用自带搜索：</span>
-            <template v-if="searchEnabledProviders.length">
-              <span
-                v-for="p in searchEnabledProviders"
-                :key="p.id"
-                class="text-[11px] px-2 py-0.5 rounded-full cursor-pointer"
-                :style="{ background: 'var(--panel-2)', color: 'var(--accent)' }"
-                :title="`${p.name}：${p.baseUrl}（点此关闭）`"
-                @click="toggleProviderSearch(p.id)"
-              >
-                {{ p.name }} ✕
-              </span>
-            </template>
-            <span v-else class="text-[11px] text-[var(--text-faint)]">暂无——到上方服务商卡片启用</span>
-          </div>
-          <div class="flex items-center gap-3">
-            <span class="w-28 text-sm shrink-0 text-[var(--text-dim)]">搜索源</span>
-            <InkSegmented
-              v-model="cfg.search.provider"
-              :options="[
-                { value: 'auto', label: '免费源' },
-                { value: 'bocha', label: '博查' },
-                { value: 'tavily', label: 'Tavily' }
-              ]"
-            />
-            <input
-              v-if="cfg.search.provider !== 'auto'"
-              v-model="cfg.search.apiKey"
-              class="ink-input flex-1"
-              :placeholder="cfg.search.provider === 'bocha' ? '博查 API Key（bochaai.com 申请）' : 'Tavily API Key（tavily.com 申请）'"
-            />
-            <span class="text-[10.5px] text-[var(--text-faint)] shrink-0">仅用于 DAWO 自带的 web_search 工具</span>
-          </div>
-        </div>
-
-        <!-- 智能体行为 -->
-        <div v-show="aiTab === 'behavior'" class="space-y-1">
-          <div class="text-sm text-[var(--text-dim)] mb-4">智能体行为</div>
-
-          <div class="flex items-center gap-3 mb-4">
-            <span class="w-28 text-sm shrink-0 text-[var(--text-dim)]">修改怎么算数</span>
-            <InkSegmented v-model="cfg.approvalMode" :options="APPROVAL_OPTIONS" />
-          </div>
-
-          <div class="flex items-center gap-3 mb-4">
-            <span class="w-28 text-sm shrink-0 text-[var(--text-dim)]">思考程度</span>
-            <InkSegmented v-model="thinkingLevel" :options="THINKING_LEVELS" />
-          </div>
-
-          <div class="flex items-center gap-3">
-            <span class="w-28 text-sm shrink-0 text-[var(--text-dim)]">创意程度</span>
-            <InkSegmented v-model="creativeLevel" :options="CREATIVE_LEVELS" />
-          </div>
-
-          <div class="mt-4 text-[11px] text-[var(--text-faint)] leading-5">
-            技能与素材的默认引用可在「资源库 → 智能体默认引用」中按智能体分别配置。
-          </div>
-        </div>
-      </div>
-
-      <!-- 外观 -->
-      <div v-if="tab === 'appearance'" class="space-y-5">
-        <div>
-          <div class="text-sm text-[var(--text-dim)] mb-2">主题（切换即时生效）</div>
-          <div class="flex gap-2 flex-wrap">
-            <button
-              v-for="t in THEME_OPTIONS"
-              :key="t.value"
-              class="text-[12.5px] px-3.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-              :class="themeValue === t.value ? 'bg-[var(--panel-2)] font-medium' : 'bg-[var(--bg-soft)] text-[var(--text-dim)] hover:text-[var(--text)]'"
-              :style="themeValue === t.value ? { color: 'var(--accent)' } : {}"
-              @click="themeValue = t.value"
-            >
-              {{ themeValue === t.value ? '✓ ' : '' }}{{ t.label }}
-            </button>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="w-28 text-sm shrink-0 text-[var(--text-dim)]">强调色</span>
-          <input v-model="cfg.appearance.accent" type="color" class="w-10 h-8 rounded-lg bg-transparent cursor-pointer" />
-          <span class="text-xs text-[var(--text-faint)]">{{ cfg.appearance.accent }}</span>
-          <button
-            class="text-[11px] text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer"
-            title="恢复书墨金默认强调色"
-            @click="cfg.appearance.accent = '#c9a15f'"
-          >
-            恢复默认
-          </button>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="w-28 text-sm shrink-0 text-[var(--text-dim)]">界面圆角</span>
-          <InkSegmented v-model="radiusValue" :options="RADIUS_OPTIONS" />
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="w-28 text-sm shrink-0 text-[var(--text-dim)]">界面字号</span>
-          <InkSegmented v-model="fontScaleValue" :options="FONT_SCALE_OPTIONS" />
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="w-28 text-sm shrink-0 text-[var(--text-dim)]">背景图片</span>
-          <div class="flex items-center gap-2 flex-1 min-w-0">
-            <!-- 当前背景预览缩略图 -->
-            <div
-              v-if="cfg.appearance.backgroundImage"
-              class="w-24 h-14 rounded-lg border border-[var(--border)] bg-cover bg-center shrink-0"
-              :style="bgPreviewStyle"
-              :title="cfg.appearance.backgroundImage"
-            />
-            <InkButton variant="ghost" @click="pickBg"><ImagePlus :size="14" /> 选择图片</InkButton>
-            <InkButton v-if="cfg.appearance.backgroundImage" variant="ghost" @click="cfg.appearance.backgroundImage = ''">清除</InkButton>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="w-28 text-sm shrink-0 text-[var(--text-dim)]">背景浓度</span>
-          <input v-model.number="cfg.appearance.bgOpacity" type="range" min="0.05" max="0.8" step="0.05" class="w-48 accent-[var(--accent)]" />
-          <span class="w-10 text-xs tabular-nums text-[var(--text-faint)]">{{ Math.round(cfg.appearance.bgOpacity * 100) }}%</span>
-        </div>
-        <div class="flex items-center gap-6 pt-2 flex-wrap">
-          <InkToggle v-model="cfg.appearance.glow" label="鼠标跟随光晕" />
-          <InkToggle v-model="cfg.appearance.orbs" label="背景浮动球体" />
-          <InkToggle v-model="cfg.appearance.particles" label="光标粒子（简约）" />
-        </div>
-        <div class="border-t border-[var(--border)] pt-4 mt-2">
-          <div class="text-[11px] text-[var(--text-faint)] tracking-wider mb-3">交互动效</div>
-          <div class="flex items-center gap-6 flex-wrap">
-            <InkToggle v-model="cfg.appearance.press" label="按钮按压反馈" />
-            <InkToggle v-model="cfg.appearance.pageFade" label="页面切换过渡" />
-            <InkToggle v-model="cfg.appearance.cardRise" label="卡片入场动画" />
-          </div>
-          <p class="text-[11px] text-[var(--text-faint)] mt-2.5">
-            按压反馈：所有按钮点下轻微下沉弹回；页面过渡：切换功能页时淡入上移；卡片入场：首页等页面元素错落浮现。
+        <!-- ============ 记忆 ============ -->
+        <div v-if="tab === 'memory'" class="settings-stack">
+          <p class="settings-hint">
+            记忆分两层：<b>全局记忆</b>跨书生效（写作偏好 / 常用套路 / 个人禁区），<b>书籍记忆</b>只对当前书生效（剧情决策 / 口述要求）。
+            每条记忆独立编辑互不影响；内容自动注入所有智能体的对话，智能体也会通过 read_memory / write_memory 单条读写（书籍记忆写入需你审阅）。
           </p>
-        </div>
-        <p class="text-xs text-[var(--text-faint)]">外观改动即时生效并自动保存</p>
-      </div>
 
-      <!-- 记忆 -->
-      <div v-if="tab === 'memory'" class="space-y-5">
-        <div class="text-[11.5px] text-[var(--text-faint)] leading-5">
-          记忆分两层：<b>全局记忆</b>跨书生效（写作偏好 / 常用套路 / 个人禁区），<b>书籍记忆</b>只对当前书生效（剧情决策 / 口述要求）。
-          每条记忆独立编辑互不影响；内容自动注入所有智能体的对话，智能体也会通过 read_memory / write_memory 单条读写（书籍记忆写入需你审阅）。
-        </div>
-
-        <!-- 全局记忆 -->
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 space-y-3">
-          <div class="flex items-center justify-between gap-2 flex-wrap">
-            <div class="text-sm text-[var(--text-dim)]">全局记忆（跨书通用） · {{ memGEntries.length }} 条</div>
-            <button class="text-[11px] text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer" @click="openMemFile('global')">打开文件</button>
-          </div>
-          <div class="flex gap-2">
-            <input v-model="newGText" class="ink-input flex-1" placeholder="一句话记忆，如：喜欢「先扬后抑」的开局节奏" @keydown.enter="addMemoryEntry('global')" />
-            <input v-model="newGCat" class="ink-input w-24 shrink-0" placeholder="分类，可选" @keydown.enter="addMemoryEntry('global')" />
-            <InkButton :disabled="!newGText.trim()" @click="addMemoryEntry('global')">添加</InkButton>
-          </div>
-          <div v-for="e in memGEntries" :key="e.id" class="flex gap-2 items-center group">
-            <input v-model="e.category" class="ink-input w-20 shrink-0 text-[12px]" placeholder="分类" @change="persistMemory('global')" />
-            <input v-model="e.text" class="ink-input flex-1 text-[13px]" @change="persistMemory('global')" />
-            <button class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" title="删除此条" @click="removeMemoryEntry('global', e.id)">
-              <Trash2 :size="13" />
-            </button>
-          </div>
-          <div v-if="!memGEntries.length" class="text-[12px] text-[var(--text-faint)] py-4 text-center rounded-lg border border-dashed border-[var(--border)]">
-            还没有全局记忆——上方输入框添加第一条，或在对话里对智能体说「记住……」
-          </div>
-          <InkButton variant="ghost" :disabled="memBusy || memGEntries.length < 3" @click="organizeMemory('global')">
-            {{ memBusy ? '整理中…' : 'AI 整理（去重合并）' }}
-          </InkButton>
-        </div>
-
-        <!-- 书籍记忆 -->
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 space-y-3">
-          <div class="flex items-center justify-between gap-2 flex-wrap">
-            <div class="text-sm text-[var(--text-dim)]">书籍记忆{{ lib.current ? `（《${lib.current.title}》）` : '' }} · {{ memBEntries.length }} 条</div>
-            <button v-if="lib.current && memBEntries.length" class="text-[11px] text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer" @click="openMemFile('book')">打开文件</button>
-          </div>
-          <template v-if="lib.current">
-            <div class="flex gap-2">
-              <input v-model="newBText" class="ink-input flex-1" placeholder="一句话记忆，如：女主绝对不能死" @keydown.enter="addMemoryEntry('book')" />
-              <input v-model="newBCat" class="ink-input w-24 shrink-0" placeholder="分类，可选" @keydown.enter="addMemoryEntry('book')" />
-              <InkButton :disabled="!newBText.trim()" @click="addMemoryEntry('book')">添加</InkButton>
+          <!-- 全局记忆 -->
+          <div class="ink-card p-5 settings-stack-sm">
+            <div class="settings-head">
+              <span class="settings-head-title">全局记忆</span>
+              <span class="settings-head-line" />
+              <span class="settings-head-meta">跨书通用 · {{ memGEntries.length }} 条</span>
+              <button type="button" class="set-text-btn shrink-0" @click="openMemFile('global')">打开文件</button>
             </div>
-            <div v-for="e in memBEntries" :key="e.id" class="flex gap-2 items-center group">
-              <input v-model="e.category" class="ink-input w-20 shrink-0 text-[12px]" placeholder="分类" @change="persistMemory('book')" />
-              <input v-model="e.text" class="ink-input flex-1 text-[13px]" @change="persistMemory('book')" />
-              <button class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" title="删除此条" @click="removeMemoryEntry('book', e.id)">
+            <div class="settings-row">
+              <input v-model="newGText" class="ink-input flex-1 min-w-0" placeholder="一句话记忆，如：喜欢「先扬后抑」的开局节奏" @keydown.enter="addMemoryEntry('global')" />
+              <input v-model="newGCat" class="ink-input w-24 shrink-0" placeholder="分类，可选" @keydown.enter="addMemoryEntry('global')" />
+              <InkButton :disabled="!newGText.trim()" @click="addMemoryEntry('global')">添加</InkButton>
+            </div>
+            <div v-for="e in memGEntries" :key="e.id" class="settings-row group">
+              <input v-model="e.category" class="ink-input w-20 shrink-0" placeholder="分类" @change="persistMemory('global')" />
+              <input v-model="e.text" class="ink-input flex-1 min-w-0" @change="persistMemory('global')" />
+              <button
+                type="button"
+                class="settings-icon-btn opacity-0 group-hover:opacity-100"
+                title="删除此条"
+                @click="removeMemoryEntry('global', e.id)"
+              >
                 <Trash2 :size="13" />
               </button>
             </div>
-            <div v-if="!memBEntries.length" class="text-[12px] text-[var(--text-faint)] py-4 text-center rounded-lg border border-dashed border-[var(--border)]">
-              还没有本书记忆——在对话里对智能体说「记住……」，或上方手动添加
-            </div>
-            <InkButton variant="ghost" :disabled="memBusy || memBEntries.length < 3" @click="organizeMemory('book')">
+            <p v-if="!memGEntries.length" class="settings-empty">还没有全局记忆——上方输入框添加第一条，或在对话里对智能体说「记住……」</p>
+            <InkButton variant="ghost" :disabled="memBusy || memGEntries.length < 3" @click="organizeMemory('global')">
               {{ memBusy ? '整理中…' : 'AI 整理（去重合并）' }}
             </InkButton>
-          </template>
-          <div v-else class="text-[12px] text-[var(--text-faint)] py-4 text-center rounded-lg border border-dashed border-[var(--border)]">
-            先到书架打开一部作品，书籍记忆才会显示
-          </div>
-        </div>
-
-        <div v-if="memTip" class="text-[12.5px]" style="color: var(--accent)">{{ memTip }}</div>
-      </div>
-
-      <!-- 提示词 -->
-      <div v-if="tab === 'prompts'" class="space-y-4">
-        <div class="flex gap-2 items-center">
-          <InkSelect v-model="promptActive" class="w-64" :options="promptList.map((id) => ({ label: id, value: id }))" />
-          <InkButton @click="savePrompt">保存修改</InkButton>
-          <span v-if="promptSavedTip" class="text-sm" style="color: var(--accent)">已保存</span>
-        </div>
-        <textarea v-model="promptContent" class="ink-textarea h-[440px] font-mono text-[13px]" />
-        <p class="text-xs text-[var(--text-faint)]">提示词存放于本机：<span class="select-text">{{ promptsDir }}</span> ，使用 <code>{{ '\{\{变量\}\}' }}</code> 占位</p>
-      </div>
-
-      <!-- 数据 -->
-      <div v-if="tab === 'data'" class="space-y-4">
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 space-y-2">
-          <div class="text-sm text-[var(--text-dim)]">书架根目录</div>
-          <div class="text-sm select-text">{{ cfg.libraryRoot }}</div>
-          <div class="text-xs text-[var(--text-faint)]">每本书是一个文件夹，正文与资料均为 UTF-8 Markdown，可用 Git 或任意编辑器管理</div>
-        </div>
-        <div class="flex gap-2">
-          <InkButton variant="ghost" @click="changeLibraryRoot">修改书架目录</InkButton>
-          <InkButton variant="ghost" @click="openLibrary"><FolderOpen :size="14" /> 在资源管理器中打开</InkButton>
-        </div>
-      </div>
-
-      <!-- 敏感词库 -->
-      <div v-if="tab === 'sensitive'" class="space-y-4">
-        <div class="text-sm text-[var(--text-dim)]">写作规避词（每行一个，共 {{ sensitiveCount }} 个）</div>
-        <textarea
-          v-model="sensitiveText"
-          class="ink-textarea h-[360px] font-mono text-[13px]"
-          placeholder="每行一个词语，例如：&#10;突然&#10;瞬间&#10;仿佛"
-          @change="saveSensitive"
-        />
-        <p class="text-xs text-[var(--text-faint)]">
-          这些词会被注入所有 AI 产出任务的提示词：正文、续写、润色、去 AI 味以及智能体修改都会规避它们。留空表示不启用。
-        </p>
-      </div>
-
-      <!-- AI 调用记录 -->
-      <div v-if="tab === 'ailog'" class="space-y-5">
-        <!-- 统计卡 -->
-        <div class="grid grid-cols-5 gap-3">
-          <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3.5">
-            <div class="text-[11px] text-[var(--text-faint)] mb-1">总调用</div>
-            <div class="text-xl font-semibold">{{ logStats?.total ?? '—' }}</div>
-          </div>
-          <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3.5">
-            <div class="text-[11px] text-[var(--text-faint)] mb-1">成功</div>
-            <div class="text-xl font-semibold" style="color: var(--accent)">{{ logStats?.success ?? '—' }}</div>
-          </div>
-          <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3.5">
-            <div class="text-[11px] text-[var(--text-faint)] mb-1">失败</div>
-            <div class="text-xl font-semibold text-[#e08a7a]">{{ logStats?.failed ?? '—' }}</div>
-          </div>
-          <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3.5">
-            <div class="text-[11px] text-[var(--text-faint)] mb-1">Token 用量（估）</div>
-            <div class="text-xl font-semibold">{{ logStats ? logStats.tokens.toLocaleString() : '—' }}</div>
-          </div>
-          <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3.5">
-            <div class="text-[11px] text-[var(--text-faint)] mb-1">平均耗时</div>
-            <div class="text-xl font-semibold">{{ logStats ? `${(logStats.avgMs / 1000).toFixed(1)}s` : '—' }}</div>
-          </div>
-        </div>
-
-        <!-- 筛选 -->
-        <div class="flex gap-2 items-center flex-wrap">
-          <InkSelect
-            v-model="logKind"
-            class="w-28"
-            :options="[
-              { label: '全部类型', value: 'all' },
-              { label: '文字 AI', value: 'text' },
-              { label: '智能体', value: 'agent' }
-            ]"
-          />
-          <InkSelect
-            v-model="logStatus"
-            class="w-28"
-            :options="[
-              { label: '全部状态', value: 'all' },
-              { label: '成功', value: 'success' },
-              { label: '失败', value: 'failed' },
-              { label: '中止', value: 'aborted' }
-            ]"
-          />
-          <InkSelect
-            v-model="logFeature"
-            class="w-40"
-            :options="[{ label: '全部功能', value: 'all' }, ...logFeatures.map((f) => ({ label: f.label, value: f.key }))]"
-          />
-          <div class="relative flex-1 min-w-40">
-            <Search :size="14" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-faint)]" />
-            <input v-model="logKeyword" class="ink-input pl-8" placeholder="搜索模型 / 服务商 / 错误信息" @keyup.enter="refreshLog" />
-          </div>
-          <InkButton variant="ghost" :disabled="logBusy" @click="refreshLog"><RefreshCw :size="13" /> 刷新</InkButton>
-          <InkButton variant="ghost" @click="clearLog"><Trash2 :size="13" /> 清空</InkButton>
-        </div>
-
-        <!-- 记录表格 -->
-        <div class="rounded-xl border border-[var(--border)] overflow-hidden">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="bg-[var(--panel)] text-[var(--text-dim)] text-xs">
-                <th class="text-left font-normal px-3 py-2">时间</th>
-                <th class="text-left font-normal px-3 py-2">类型</th>
-                <th class="text-left font-normal px-3 py-2">功能</th>
-                <th class="text-left font-normal px-3 py-2">模型</th>
-                <th class="text-left font-normal px-3 py-2">状态</th>
-                <th class="text-right font-normal px-3 py-2">耗时</th>
-                <th class="text-right font-normal px-3 py-2">Token</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="r in logList" :key="r.id" class="border-t border-[var(--border)] align-top">
-                <td class="px-3 py-2 text-xs text-[var(--text-dim)] whitespace-nowrap">{{ fmtTime(r.at) }}</td>
-                <td class="px-3 py-2 text-xs">{{ r.kind === 'agent' ? '智能体' : '文字 AI' }}</td>
-                <td class="px-3 py-2">
-                  {{ r.featureLabel }}
-                  <div v-if="r.error" class="text-xs text-[#e08a7a] mt-0.5 max-w-96 truncate" :title="r.error">{{ r.error }}</div>
-                </td>
-                <td class="px-3 py-2 text-xs text-[var(--text-dim)]">{{ r.model }}</td>
-                <td class="px-3 py-2 text-xs" :class="r.status === 'success' ? '' : r.status === 'failed' ? 'text-[#e08a7a]' : 'text-[var(--text-faint)]'">
-                  {{ LOG_STATUS_LABEL[r.status] }}
-                </td>
-                <td class="px-3 py-2 text-xs text-right text-[var(--text-dim)] whitespace-nowrap">{{ (r.durationMs / 1000).toFixed(1) }}s</td>
-                <td class="px-3 py-2 text-xs text-right text-[var(--text-dim)]">{{ r.tokens.toLocaleString() }}</td>
-              </tr>
-              <tr v-if="!logList.length">
-                <td colspan="7" class="px-3 py-10 text-center text-sm text-[var(--text-faint)]">
-                  {{ logStats?.total ? '没有符合筛选条件的记录' : '还没有调用记录——配置好 AI 服务后，这里的每一次调用都会留痕' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="text-xs text-[var(--text-faint)]">仅保留最近 2000 条；Token 按字符数估算（≈1.4 字/token），仅作用量参考。</p>
-      </div>
-
-      <!-- 保存与备份 -->
-      <div v-if="tab === 'backup'" class="space-y-5">
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 space-y-3">
-          <div class="text-sm text-[var(--text-dim)]">备份目录</div>
-          <input v-model="cfg.backup.dir" class="ink-input" placeholder="留空使用默认：书架旁的「DAWO 备份」" @change="save" />
-          <div class="text-xs text-[var(--text-faint)]">备份是整本书的完整副本（含正文、资料、会话与历史），以文件夹形式存放。</div>
-        </div>
-
-        <div class="flex items-center gap-4 flex-wrap">
-          <InkToggle v-model="cfg.backup.autoOnExit" label="退出应用时自动备份当前作品" @update:model-value="save" />
-          <InkToggle v-model="cfg.backup.backupOnUpdate" label="安装更新前自动备份当前作品" @update:model-value="save" />
-        </div>
-
-        <div class="flex gap-2 items-center flex-wrap">
-          <InkButton :disabled="backupBusy" @click="createBackupNow"><CloudUpload :size="14" /> 立即备份当前作品</InkButton>
-          <InkButton variant="ghost" @click="refreshBackups"><RefreshCw :size="13" /> 刷新列表</InkButton>
-          <InkButton variant="ghost" @click="openBackupDir"><FolderOpen :size="14" /> 打开备份目录</InkButton>
-          <span v-if="backupTip" class="text-sm" style="color: var(--accent)">{{ backupTip }}</span>
-        </div>
-
-        <div class="rounded-xl border border-[var(--border)] overflow-hidden">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="bg-[var(--panel)] text-[var(--text-dim)] text-xs">
-                <th class="text-left font-normal px-3 py-2">作品</th>
-                <th class="text-left font-normal px-3 py-2">备份时间</th>
-                <th class="text-right font-normal px-3 py-2">大小</th>
-                <th class="text-right font-normal px-3 py-2 w-36">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="b in backups" :key="b.dir" class="border-t border-[var(--border)]">
-                <td class="px-3 py-2">{{ b.book }}</td>
-                <td class="px-3 py-2 text-xs text-[var(--text-dim)]">{{ fmtTime(b.at) }}</td>
-                <td class="px-3 py-2 text-xs text-right text-[var(--text-dim)]">{{ fmtBytes(b.sizeBytes) }}</td>
-                <td class="px-3 py-2 text-right">
-                  <button class="text-xs text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer px-1.5 inline-flex items-center gap-1" @click="restoreOne(b.dir, b.book)">
-                    <ArchiveRestore :size="13" /> 恢复
-                  </button>
-                  <button class="text-xs text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer px-1.5 inline-flex items-center gap-1" @click="deleteOne(b.dir, b.book)">
-                    <Trash2 :size="13" /> 删除
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="!backups.length">
-                <td colspan="4" class="px-3 py-10 text-center text-sm text-[var(--text-faint)]">还没有备份。写作是长跑，建议开书后随手备份一份。</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="text-xs text-[var(--text-faint)]">恢复前会自动给当前版本做一次「恢复前快照」，放心操作。</p>
-      </div>
-
-      <!-- 关于 / 检查更新 -->
-      <div v-if="tab === 'about'" class="space-y-5 max-w-xl">
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 flex items-center gap-4">
-          <img :src="logoUrl" alt="DAWO" class="w-12 h-12 rounded-lg" />
-          <div class="flex-1">
-            <div class="text-sm font-medium">DAWO · AI 小说工作台</div>
-            <div class="text-xs text-[var(--text-faint)] mt-0.5">当前版本 v{{ appVersion }} · 免费 · 本地优先</div>
-          </div>
-        </div>
-
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 space-y-3">
-          <div class="text-sm text-[var(--text-dim)]">软件更新</div>
-          <div class="text-xs text-[var(--text-faint)] leading-5">
-            更新源是 GitHub Releases。检查到新版本后先下载，重启即完成安装；书稿与配置不受影响。仓库私有期间可能拉不到更新信息，可点「打开 Releases 页」手动下载。
-          </div>
-          <div class="flex items-center gap-3 flex-wrap">
-            <InkToggle v-model="updConf.autoCheck" label="自动检查更新" @update:model-value="save" />
-            <InkSelect v-model="updConf.frequency" class="w-36" :options="CHECK_FREQ_OPTS" :disabled="!updConf.autoCheck" @update:model-value="save" />
-            <span class="text-[11px] text-[var(--text-faint)]">每天最多一次时，距上次检查不足 24 小时则本次启动跳过</span>
-          </div>
-          <div class="flex gap-2 items-center flex-wrap">
-            <InkButton :disabled="upd.state === 'checking' || upd.state === 'downloading'" @click="checkUpdate">
-              <RefreshCw :size="13" /> {{ upd.state === 'checking' ? '正在检查…' : '检查更新' }}
-            </InkButton>
-            <InkButton v-if="upd.state === 'available'" @click="doDownload">下载 v{{ upd.version }}</InkButton>
-            <InkButton v-if="upd.state === 'downloaded'" @click="doInstall">重启安装 v{{ upd.version }}</InkButton>
-            <InkButton variant="ghost" @click="openReleasePage"><Github :size="13" /> 打开 Releases 页</InkButton>
-          </div>
-          <div v-if="upd.state === 'downloading'" class="space-y-1.5">
-            <div class="h-1.5 rounded-full overflow-hidden" style="background: var(--bg-soft)">
-              <div class="h-full rounded-full transition-all" :style="{ width: `${upd.percent}%`, background: 'var(--accent)' }" />
-            </div>
-            <div class="flex items-center justify-between text-xs" style="color: var(--accent)">
-              <span>下载中 {{ upd.percent }}%</span>
-              <span v-if="upd.total" class="text-[var(--text-faint)]">
-                {{ fmtBytes(upd.transferred) }} / {{ fmtBytes(upd.total) }}<template v-if="upd.bps"> · {{ fmtBytes(upd.bps) }}/s</template>
-              </span>
-            </div>
-          </div>
-          <div v-if="upd.state === 'downloaded'" class="text-xs" style="color: var(--accent)">下载完成，点「重启安装」即升级（也可直接退出，下次启动前自动装；安装前会按下方开关自动备份当前作品）。</div>
-          <div v-if="upd.state === 'none'" class="text-xs text-[var(--text-faint)]">已是最新版本（远端 v{{ upd.version }}）。</div>
-          <div v-if="upd.state === 'error'" class="flex items-center gap-3 flex-wrap">
-            <span class="text-xs" style="color: #e08a7a">{{ upd.message }}</span>
-            <InkButton v-if="upd.lastAction === 'download'" variant="ghost" @click="doDownload"><RefreshCw :size="13" /> 重试下载</InkButton>
           </div>
 
-          <!-- 更新日志：发现新版本 / 已下载时展示最新 Release 说明 -->
-          <div
-            v-if="(upd.state === 'available' || upd.state === 'downloaded') && (updNotes || updNotesErr || updNotesBusy)"
-            class="rounded-lg border border-[var(--border)] bg-[var(--bg-soft)]/40 p-3.5"
-          >
-            <div class="flex items-center gap-2 mb-2">
-              <span class="text-xs tracking-wider" style="color: var(--accent)">更新日志</span>
-              <span v-if="updMeta" class="text-[11px] text-[var(--text-faint)]">
-                v{{ updMeta.tag || upd.version }}
-                <template v-if="updMeta.date"> · {{ new Date(updMeta.date).toLocaleDateString('zh-CN') }}</template>
-                <template v-if="updMeta.sizeBytes"> · 安装包 {{ fmtBytes(updMeta.sizeBytes) }}</template>
-              </span>
-              <div class="flex-1" />
+          <!-- 书籍记忆 -->
+          <div class="ink-card p-5 settings-stack-sm">
+            <div class="settings-head">
+              <span class="settings-head-title">书籍记忆</span>
+              <span class="settings-head-line" />
+              <span class="settings-head-meta">{{ lib.current ? `《${lib.current.title}》 · ${memBEntries.length} 条` : '未打开作品' }}</span>
               <button
-                class="text-[11px] text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1"
-                :disabled="updNotesBusy"
-                @click="fetchNotes"
+                v-if="lib.current && memBEntries.length"
+                type="button"
+                class="set-text-btn shrink-0"
+                @click="openMemFile('book')"
               >
-                <LoaderCircle v-if="updNotesBusy" :size="11" class="animate-spin" />
-                <RefreshCw v-else :size="11" /> 刷新
+                打开文件
               </button>
             </div>
-            <div v-if="updNotesErr" class="text-[11.5px]" style="color: #e08a7a">{{ updNotesErr }}</div>
-            <div v-else class="text-[12px] prose-peek max-h-64 overflow-y-auto" v-html="updNotesHtml" />
+            <template v-if="lib.current">
+              <div class="settings-row">
+                <input v-model="newBText" class="ink-input flex-1 min-w-0" placeholder="一句话记忆，如：女主绝对不能死" @keydown.enter="addMemoryEntry('book')" />
+                <input v-model="newBCat" class="ink-input w-24 shrink-0" placeholder="分类，可选" @keydown.enter="addMemoryEntry('book')" />
+                <InkButton :disabled="!newBText.trim()" @click="addMemoryEntry('book')">添加</InkButton>
+              </div>
+              <div v-for="e in memBEntries" :key="e.id" class="settings-row group">
+                <input v-model="e.category" class="ink-input w-20 shrink-0" placeholder="分类" @change="persistMemory('book')" />
+                <input v-model="e.text" class="ink-input flex-1 min-w-0" @change="persistMemory('book')" />
+                <button
+                  type="button"
+                  class="settings-icon-btn opacity-0 group-hover:opacity-100"
+                  title="删除此条"
+                  @click="removeMemoryEntry('book', e.id)"
+                >
+                  <Trash2 :size="13" />
+                </button>
+              </div>
+              <p v-if="!memBEntries.length" class="settings-empty">还没有本书记忆——在对话里对智能体说「记住……」，或上方手动添加</p>
+              <InkButton variant="ghost" :disabled="memBusy || memBEntries.length < 3" @click="organizeMemory('book')">
+                {{ memBusy ? '整理中…' : 'AI 整理（去重合并）' }}
+              </InkButton>
+            </template>
+            <p v-else class="settings-empty">先到书架打开一部作品，书籍记忆才会显示</p>
+          </div>
+
+          <div v-if="memTip" class="settings-hint" style="color: var(--accent)">{{ memTip }}</div>
+        </div>
+
+        <!-- ============ 提示词 ============ -->
+        <div v-if="tab === 'prompts'" class="settings-stack">
+          <div class="settings-head">
+            <span class="settings-head-title">提示词</span>
+            <span class="settings-head-line" />
+            <span class="settings-head-meta">本机可编辑</span>
+          </div>
+          <div class="settings-row">
+            <InkSelect v-model="promptActive" class="w-64 shrink-0" :options="promptList.map((id) => ({ label: id, value: id }))" />
+            <InkButton @click="savePrompt">保存修改</InkButton>
+            <span v-if="promptSavedTip" class="settings-hint" style="color: var(--accent)">已保存</span>
+          </div>
+          <textarea v-model="promptContent" class="ink-textarea h-[440px] font-mono text-label" />
+          <p class="settings-hint">
+            提示词存放于本机：<span class="select-text">{{ promptsDir }}</span> ，使用 <code>{{ '\{\{变量\}\}' }}</code> 占位
+          </p>
+        </div>
+
+        <!-- ============ 数据 ============ -->
+        <div v-if="tab === 'data'" class="settings-stack">
+          <div class="settings-head">
+            <span class="settings-head-title">数据</span>
+            <span class="settings-head-line" />
+          </div>
+          <div class="ink-card p-5 settings-stack-sm">
+            <div class="section-title">书架根目录</div>
+            <div class="settings-path select-text">{{ cfg.libraryRoot }}</div>
+            <p class="settings-hint">每本书是一个文件夹，正文与资料均为 UTF-8 Markdown，可用 Git 或任意编辑器管理</p>
+          </div>
+          <div class="settings-row">
+            <InkButton variant="ghost" @click="changeLibraryRoot">修改书架目录</InkButton>
+            <InkButton variant="ghost" @click="openLibrary"><FolderOpen :size="14" /> 在资源管理器中打开</InkButton>
           </div>
         </div>
-      </div>
+
+        <!-- ============ 敏感词库 ============ -->
+        <div v-if="tab === 'sensitive'" class="settings-stack">
+          <div class="settings-head">
+            <span class="settings-head-title">写作规避词</span>
+            <span class="settings-head-line" />
+            <span class="settings-head-meta">每行一个 · 共 {{ sensitiveCount }} 个</span>
+          </div>
+          <textarea
+            v-model="sensitiveText"
+            class="ink-textarea h-[360px] font-mono text-label"
+            placeholder="每行一个词语，例如：&#10;突然&#10;瞬间&#10;仿佛"
+            @change="saveSensitive"
+          />
+          <p class="settings-hint">
+            这些词会被注入所有 AI 产出任务的提示词：正文、续写、润色、去 AI 味以及智能体修改都会规避它们。留空表示不启用。
+          </p>
+        </div>
+
+        <!-- ============ AI 调用记录 ============ -->
+        <div v-if="tab === 'ailog'" class="settings-stack">
+          <div class="settings-head">
+            <span class="settings-head-title">AI 调用记录</span>
+            <span class="settings-head-line" />
+            <span class="settings-head-meta">仅保留最近 2000 条 · Token 按字符数估算</span>
+          </div>
+
+          <!-- 统计卡 -->
+          <div class="grid grid-cols-5 gap-3">
+            <div class="ink-card p-3.5">
+              <div class="section-title mb-1">总调用</div>
+              <div class="settings-stat tnum">{{ logStats?.total ?? '—' }}</div>
+            </div>
+            <div class="ink-card p-3.5">
+              <div class="section-title mb-1">成功</div>
+              <div class="settings-stat tnum" style="color: var(--accent)">{{ logStats?.success ?? '—' }}</div>
+            </div>
+            <div class="ink-card p-3.5">
+              <div class="section-title mb-1">失败</div>
+              <div class="settings-stat tnum ink-text-danger">{{ logStats?.failed ?? '—' }}</div>
+            </div>
+            <div class="ink-card p-3.5">
+              <div class="section-title mb-1">Token 用量（估）</div>
+              <div class="settings-stat tnum">{{ logStats ? logStats.tokens.toLocaleString() : '—' }}</div>
+            </div>
+            <div class="ink-card p-3.5">
+              <div class="section-title mb-1">平均耗时</div>
+              <div class="settings-stat tnum">{{ logStats ? `${(logStats.avgMs / 1000).toFixed(1)}s` : '—' }}</div>
+            </div>
+          </div>
+
+          <!-- 筛选 -->
+          <div class="settings-row flex-wrap">
+            <InkSelect
+              v-model="logKind"
+              class="w-28 shrink-0"
+              :options="[
+                { label: '全部类型', value: 'all' },
+                { label: '文字 AI', value: 'text' },
+                { label: '智能体', value: 'agent' }
+              ]"
+            />
+            <InkSelect
+              v-model="logStatus"
+              class="w-28 shrink-0"
+              :options="[
+                { label: '全部状态', value: 'all' },
+                { label: '成功', value: 'success' },
+                { label: '失败', value: 'failed' },
+                { label: '中止', value: 'aborted' }
+              ]"
+            />
+            <InkSelect
+              v-model="logFeature"
+              class="w-40 shrink-0"
+              :options="[{ label: '全部功能', value: 'all' }, ...logFeatures.map((f) => ({ label: f.label, value: f.key }))]"
+            />
+            <div class="relative flex-1 min-w-40">
+              <Search :size="14" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-faint)]" />
+              <input v-model="logKeyword" class="ink-input pl-8" placeholder="搜索模型 / 服务商 / 错误信息" @keyup.enter="refreshLog" />
+            </div>
+            <InkButton variant="ghost" :disabled="logBusy" @click="refreshLog"><RefreshCw :size="13" /> 刷新</InkButton>
+            <InkButton variant="ghost" @click="clearLog"><Trash2 :size="13" /> 清空</InkButton>
+          </div>
+
+          <!-- 记录表格 -->
+          <div class="ink-card overflow-hidden">
+            <table class="w-full text-label">
+              <thead>
+                <tr class="bg-[var(--panel)] text-meta text-[var(--text-dim)]">
+                  <th class="text-left font-normal px-3 py-2">时间</th>
+                  <th class="text-left font-normal px-3 py-2">类型</th>
+                  <th class="text-left font-normal px-3 py-2">功能</th>
+                  <th class="text-left font-normal px-3 py-2">模型</th>
+                  <th class="text-left font-normal px-3 py-2">状态</th>
+                  <th class="text-right font-normal px-3 py-2">耗时</th>
+                  <th class="text-right font-normal px-3 py-2">Token</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in logList" :key="r.id" class="border-t border-[var(--border)] align-top">
+                  <td class="px-3 py-2 text-meta text-[var(--text-dim)] whitespace-nowrap tnum">{{ fmtTime(r.at) }}</td>
+                  <td class="px-3 py-2 text-meta">{{ r.kind === 'agent' ? '智能体' : '文字 AI' }}</td>
+                  <td class="px-3 py-2">
+                    {{ r.featureLabel }}
+                    <div v-if="r.error" class="text-meta ink-text-danger mt-0.5 max-w-96 truncate" :title="r.error">{{ r.error }}</div>
+                  </td>
+                  <td class="px-3 py-2 text-meta text-[var(--text-dim)]">{{ r.model }}</td>
+                  <td
+                    class="px-3 py-2 text-meta"
+                    :class="r.status === 'success' ? '' : r.status === 'failed' ? 'ink-text-danger' : 'text-[var(--text-faint)]'"
+                  >
+                    {{ LOG_STATUS_LABEL[r.status] }}
+                  </td>
+                  <td class="px-3 py-2 text-meta text-right text-[var(--text-dim)] whitespace-nowrap tnum">{{ (r.durationMs / 1000).toFixed(1) }}s</td>
+                  <td class="px-3 py-2 text-meta text-right text-[var(--text-dim)] tnum">{{ r.tokens.toLocaleString() }}</td>
+                </tr>
+                <tr v-if="!logList.length">
+                  <td colspan="7" class="px-3 py-10 text-center text-label text-[var(--text-faint)]">
+                    {{ logStats?.total ? '没有符合筛选条件的记录' : '还没有调用记录——配置好 AI 服务后，这里的每一次调用都会留痕' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ============ 保存与备份 ============ -->
+        <div v-if="tab === 'backup'" class="settings-stack">
+          <div class="settings-head">
+            <span class="settings-head-title">保存与备份</span>
+            <span class="settings-head-line" />
+          </div>
+          <div class="ink-card p-5 settings-stack-sm">
+            <div class="ink-field">
+              <span class="ink-field-label">备份目录</span>
+              <input v-model="cfg.backup.dir" class="ink-input" placeholder="留空使用默认：书架旁的「DAWO 备份」" @change="save" />
+            </div>
+            <p class="settings-hint">备份是整本书的完整副本（含正文、资料、会话与历史），以文件夹形式存放。</p>
+            <div class="settings-toggles">
+              <InkToggle v-model="cfg.backup.autoOnExit" label="退出应用时自动备份当前作品" @update:model-value="save" />
+              <InkToggle v-model="cfg.backup.backupOnUpdate" label="安装更新前自动备份当前作品" @update:model-value="save" />
+            </div>
+            <div class="settings-row flex-wrap">
+              <InkButton :disabled="backupBusy" @click="createBackupNow"><CloudUpload :size="14" /> 立即备份当前作品</InkButton>
+              <InkButton variant="ghost" :disabled="backupBusy" @click="refreshBackups"><RefreshCw :size="13" /> 刷新列表</InkButton>
+              <InkButton variant="ghost" @click="openBackupDir"><FolderOpen :size="14" /> 打开备份目录</InkButton>
+              <span v-if="backupTip" class="settings-hint" style="color: var(--accent)">{{ backupTip }}</span>
+            </div>
+          </div>
+
+          <div class="ink-card overflow-hidden">
+            <table class="w-full text-label">
+              <thead>
+                <tr class="bg-[var(--panel)] text-meta text-[var(--text-dim)]">
+                  <th class="text-left font-normal px-3 py-2">作品</th>
+                  <th class="text-left font-normal px-3 py-2">备份时间</th>
+                  <th class="text-right font-normal px-3 py-2">大小</th>
+                  <th class="text-right font-normal px-3 py-2 w-36">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="b in backups" :key="b.dir" class="border-t border-[var(--border)]">
+                  <td class="px-3 py-2">{{ b.book }}</td>
+                  <td class="px-3 py-2 text-meta text-[var(--text-dim)] tnum">{{ fmtTime(b.at) }}</td>
+                  <td class="px-3 py-2 text-meta text-right text-[var(--text-dim)] tnum">{{ fmtBytes(b.sizeBytes) }}</td>
+                  <td class="px-3 py-2 text-right">
+                    <button type="button" class="set-text-btn" @click="restoreOne(b.dir, b.book)">
+                      <ArchiveRestore :size="13" /> 恢复
+                    </button>
+                    <button type="button" class="set-text-btn hover:text-[var(--danger)]" @click="deleteOne(b.dir, b.book)">
+                      <Trash2 :size="13" /> 删除
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="!backups.length">
+                  <td colspan="4" class="px-3 py-10 text-center text-label text-[var(--text-faint)]">
+                    还没有备份。写作是长跑，建议开书后随手备份一份。
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="settings-hint">恢复前会自动给当前版本做一次「恢复前快照」，放心操作。</p>
+        </div>
+
+        <!-- ============ 关于 / 检查更新 ============ -->
+        <div v-if="tab === 'about'" class="settings-stack">
+          <div class="ink-card p-5 settings-row">
+            <img :src="logoUrl" alt="DAWO" class="settings-logo" />
+            <div class="flex-1 min-w-0">
+              <div class="settings-head-title">DAWO · AI 小说工作台</div>
+              <div class="settings-head-meta">当前版本 v{{ appVersion }} · 免费 · 本地优先</div>
+            </div>
+          </div>
+
+          <div class="ink-card p-5 settings-stack-sm">
+            <div class="settings-head">
+              <span class="settings-head-title">软件更新</span>
+              <span class="settings-head-line" />
+            </div>
+            <p class="settings-hint">
+              更新源是 GitHub Releases。检查到新版本后先下载，重启即完成安装；书稿与配置不受影响。仓库私有期间可能拉不到更新信息，可点「打开 Releases 页」手动下载。
+            </p>
+            <div class="settings-row flex-wrap">
+              <InkToggle v-model="updConf.autoCheck" label="自动检查更新" @update:model-value="save" />
+              <InkSelect
+                v-model="updConf.frequency"
+                class="w-36 shrink-0"
+                :options="CHECK_FREQ_OPTS"
+                :disabled="!updConf.autoCheck"
+                @update:model-value="save"
+              />
+              <span class="settings-hint">每天最多一次时，距上次检查不足 24 小时则本次启动跳过</span>
+            </div>
+            <div class="settings-row flex-wrap">
+              <InkButton :disabled="upd.state === 'checking' || upd.state === 'downloading'" @click="checkUpdate">
+                <RefreshCw :size="13" /> {{ upd.state === 'checking' ? '正在检查…' : '检查更新' }}
+              </InkButton>
+              <InkButton v-if="upd.state === 'available'" @click="doDownload">下载 v{{ upd.version }}</InkButton>
+              <InkButton v-if="upd.state === 'downloaded'" @click="doInstall">重启安装 v{{ upd.version }}</InkButton>
+              <InkButton variant="ghost" @click="openReleasePage"><Github :size="13" /> 打开 Releases 页</InkButton>
+            </div>
+            <div v-if="upd.state === 'downloading'" class="settings-stack-sm">
+              <div class="h-1.5 rounded-full overflow-hidden" style="background: var(--bg-soft)">
+                <div
+                  class="h-full w-full rounded-full"
+                  :style="{
+                    transform: `scaleX(${upd.percent / 100})`,
+                    transformOrigin: 'left',
+                    background: 'var(--accent)',
+                    transition: 'transform var(--dur-3) var(--ease-out)'
+                  }"
+                />
+              </div>
+              <div class="settings-row text-meta" style="color: var(--accent)">
+                <span class="tnum">下载中 {{ upd.percent }}%</span>
+                <span v-if="upd.total" class="settings-hint ml-auto tnum">
+                  {{ fmtBytes(upd.transferred) }} / {{ fmtBytes(upd.total) }}<template v-if="upd.bps"> · {{ fmtBytes(upd.bps) }}/s</template>
+                </span>
+              </div>
+            </div>
+            <div v-if="upd.state === 'downloaded'" class="settings-hint" style="color: var(--accent)">
+              下载完成，点「重启安装」即升级（也可直接退出，下次启动前自动装；安装前会按下方开关自动备份当前作品）。
+            </div>
+            <div v-if="upd.state === 'none'" class="settings-hint">已是最新版本（远端 v{{ upd.version }}）。</div>
+            <div v-if="upd.state === 'error'" class="settings-row flex-wrap">
+              <span class="settings-hint" style="color: var(--danger)">{{ upd.message }}</span>
+              <InkButton v-if="upd.lastAction === 'download'" variant="ghost" @click="doDownload"><RefreshCw :size="13" /> 重试下载</InkButton>
+            </div>
+
+            <!-- 更新日志：发现新版本 / 已下载时展示最新 Release 说明 -->
+            <div
+              v-if="(upd.state === 'available' || upd.state === 'downloaded') && (updNotes || updNotesErr || updNotesBusy)"
+              class="settings-inline-box settings-stack-sm"
+            >
+              <div class="settings-row">
+                <span class="section-title" style="color: var(--accent)">更新日志</span>
+                <span v-if="updMeta" class="settings-hint">
+                  v{{ updMeta.tag || upd.version }}
+                  <template v-if="updMeta.date"> · {{ new Date(updMeta.date).toLocaleDateString('zh-CN') }}</template>
+                  <template v-if="updMeta.sizeBytes"> · 安装包 {{ fmtBytes(updMeta.sizeBytes) }}</template>
+                </span>
+                <button type="button" class="set-text-btn ml-auto shrink-0" :disabled="updNotesBusy" @click="fetchNotes">
+                  <LoaderCircle v-if="updNotesBusy" :size="11" class="animate-spin" />
+                  <RefreshCw v-else :size="11" /> 刷新
+                </button>
+              </div>
+              <div v-if="updNotesErr" class="settings-hint ink-text-danger">{{ updNotesErr }}</div>
+              <div v-else class="text-label prose-peek max-h-64 overflow-y-auto" v-html="updNotesHtml" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+/* ---------------------------------------------------------------------------
+ * 左侧分组导航：窄列 + 左缘强调标记 + 极淡强调底（与侧栏选中态同一语言）
+ * ------------------------------------------------------------------------- */
+.settings-nav {
+  flex: 0 0 200px;
+  width: 200px;
+  padding: 20px 12px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.settings-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-nav-group-title {
+  padding: 0 10px;
+  margin-bottom: 4px;
+}
+.settings-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px 0 12px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-label);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background-color var(--dur-2), color var(--dur-2);
+}
+.settings-nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform var(--dur-2) var(--ease-out);
+}
+.settings-nav-item:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.settings-nav-item.is-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.settings-nav-item.is-active::before {
+  transform: scaleY(1);
+}
+.settings-nav-icon {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+.settings-nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+ * 右内容区：单列居中，列宽上限 880
+ * ------------------------------------------------------------------------- */
+.settings-body {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+.settings-column {
+  max-width: 880px;
+  padding: var(--sp-page);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-gutter);
+}
+
+/* ---------------------------------------------------------------------------
+ * 区块 / 卡片头 / 行 / 提示
+ * ------------------------------------------------------------------------- */
+.settings-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.settings-stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.settings-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings-head-title {
+  font-family: var(--font-serif);
+  font-size: var(--fs-heading);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  white-space: nowrap;
+}
+.settings-head-title-sm {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+.settings-head-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--border), transparent);
+}
+.settings-head-meta {
+  font-size: var(--fs-meta);
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.settings-strong {
+  font-size: var(--fs-label);
+  font-weight: 500;
+  color: var(--accent);
+}
+.settings-hint {
+  font-size: var(--fs-meta);
+  color: var(--text-faint);
+  line-height: 1.6;
+}
+.settings-path {
+  font-size: var(--fs-label);
+  color: var(--text);
+  word-break: break-all;
+}
+.settings-empty {
+  padding: 20px 12px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-md);
+  font-size: var(--fs-label);
+  color: var(--text-faint);
+}
+.settings-inline-box {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-soft);
+}
+/* 与 .ink-field 的控件列左对齐（用于字段下方的 chips 行） */
+.settings-indent {
+  padding-left: calc(var(--field-w, 160px) + var(--sp-inline));
+}
+.settings-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.settings-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 24px;
+}
+.settings-stat {
+  font-size: var(--fs-title);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.settings-logo {
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  border-radius: var(--r-md);
+}
+.settings-color {
+  width: 2.25rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: transparent;
+  cursor: pointer;
+}
+.settings-bg-preview {
+  width: 6rem;
+  height: 3.5rem;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background-size: cover;
+  background-position: center;
+}
+
+/* ---------------------------------------------------------------------------
+ * AI 内部标签条：细标签 + 底部强调下划线
+ * ------------------------------------------------------------------------- */
+.settings-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.settings-tab {
+  position: relative;
+  padding: 7px 12px 9px;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  font-size: var(--fs-label);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background-color var(--dur-2), color var(--dur-2);
+}
+.settings-tab:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.settings-tab.is-active {
+  color: var(--accent);
+}
+.settings-tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+.settings-tab-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: var(--warn);
+}
+
+/* ---------------------------------------------------------------------------
+ * 交互小件：chip / 开关 chip / 文字按钮 / 图标按钮
+ * ------------------------------------------------------------------------- */
+.set-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-meta);
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--dur-2), background-color var(--dur-2), border-color var(--dur-2);
+}
+.set-chip:hover {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.set-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.set-chip.is-on {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.set-toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: var(--bg-soft);
+  font-size: var(--fs-meta);
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--dur-2), background-color var(--dur-2), border-color var(--dur-2);
+}
+.set-toggle-chip:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+.set-toggle-chip.is-on {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.set-text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-meta);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color var(--dur-2), background-color var(--dur-2);
+}
+.set-text-btn:hover {
+  color: var(--accent);
+  background: var(--hover);
+}
+.settings-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--dur-2), background-color var(--dur-2);
+}
+.settings-icon-btn:hover {
+  color: var(--danger);
+  background: var(--hover);
+}
+
+/* ---------------------------------------------------------------------------
+ * 主题选择：等宽网格 + 选中态强调
+ * ------------------------------------------------------------------------- */
+.settings-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 8px;
+}
+.set-theme {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg-soft);
+  font-size: var(--fs-label);
+  color: var(--text-dim);
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--dur-2), background-color var(--dur-2), border-color var(--dur-2);
+}
+.set-theme:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.set-theme.is-on {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.set-theme-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

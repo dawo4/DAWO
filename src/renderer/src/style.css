@@ -354,13 +354,17 @@ body {
     background: var(--panel-2);
     border-color: var(--border-strong);
   }
-  /* 表单行：label(左, 固定宽) + control(右) 对齐网格 */
+  /* 表单行：label(左, 固定宽) + control(右) 对齐网格。列宽可用 --field-w 按页覆盖 */
   .ink-field {
     display: grid;
-    grid-template-columns: 140px 1fr;
+    grid-template-columns: var(--field-w, 140px) 1fr;
     align-items: center;
     gap: var(--sp-inline);
     min-height: 34px;
+  }
+  /* 控件为多行（如输入框 + 说明 chips）时，label 顶对齐 */
+  .ink-field-top {
+    align-items: start;
   }
   .ink-field-label {
     font-size: var(--fs-label);
