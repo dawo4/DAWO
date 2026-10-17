@@ -290,13 +290,18 @@ body {
   background: var(--border-strong);
 }
 
-/* 焦点环：统一走强调色，键盘可达性 */
-:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-:focus:not(:focus-visible) {
-  outline: none;
+/* 焦点环：统一走强调色，键盘可达性。
+   必须放在 base 层 —— 文本输入框（Chromium 下鼠标点击也会命中 :focus-visible）
+   自身已有「边框变色」的聚焦样式，未分层会盖掉 .ink-input 的 outline:none 与
+   Tailwind 的 outline-none，导致点一下就多出一个直角外环（与圆角容器不贴合）。*/
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
 /* ---------------------------------------------------------------------------

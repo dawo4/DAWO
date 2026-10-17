@@ -26,7 +26,7 @@ import EmptyHint from '../ui/EmptyHint.vue'
 import { renderMarkdown } from '../ui/markdown'
 import { onHeaderAction } from '../ui/headerActions'
 import { inkConfirm } from '../ui/inkPrompt'
-import { Maximize2, Minimize2, Eye, Columns2, PanelRight, Sparkles, Search, Type, History, Lightbulb, Check, Undo2, Redo2, FileText, ArrowUpRight } from 'lucide-vue-next'
+import { Maximize2, Minimize2, Eye, Columns2, PanelRight, Sparkles, Search, Type, History, Lightbulb, Check, Undo2, Redo2, FileText, ArrowUpRight, ChevronDown } from 'lucide-vue-next'
 
 const app = useAppStore()
 const lib = useLibraryStore()
@@ -100,21 +100,72 @@ const mateTabs = computed(() => [...MATE_TABS, ...customPanels.value])
 const customTabInst = computed(() => customPanels.value.find((p) => p.key === rightTab.value))
 
 /**
- * 右栏标签条：单行横向滚动（17+ 个标签不再折行占掉三行高度）。
- * 切换标签时把选中项滚入视野；只改 scrollLeft，不影响页面纵向滚动。
+ * 右栏标签条：自适应换行（最多 2 行），放不下的收进「更多」下拉。
+ * 17+ 个标签在窄栏里既不折成三行、也不出现横向滚动条 —— 永远不要求用户滚标签。
  */
-const tabStrip = ref<HTMLElement>()
-watch(rightTab, (t) => {
-  void nextTick(() => {
-    const host = tabStrip.value
-    if (!host) return
-    const el = host.querySelector(`[data-tab="${CSS.escape(t)}"]`) as HTMLElement | null
-    if (!el) return
-    const left = el.offsetLeft
-    const right = left + el.offsetWidth
-    if (left < host.scrollLeft + 4) host.scrollTo({ left: Math.max(0, left - 8), behavior: 'smooth' })
-    else if (right > host.scrollLeft + host.clientWidth - 4) host.scrollTo({ left: right - host.clientWidth + 8, behavior: 'smooth' })
-  })
+const moreWrap = ref<HTMLElement>()
+const tabWrap = ref<HTMLElement>()
+/** 被 2 行高度裁掉的标签 key */
+const overflowKeys = ref<string[]>([])
+const moreOpen = ref(false)
+const tabOverflow = computed(() => overflowKeys.value.length > 0)
+/** 当前选中项被收进「更多」时按钮高亮，避免用户以为标签丢了 */
+const activeInMore = computed(() => overflowKeys.value.includes(rightTab.value))
+
+/** 按「写作辅助 / 资料 / 自定义面板」分组，供「更多」下拉使用 */
+const ASSIST_KEYS = ['ai', 'deai', '速检', '检索', '章节']
+const tabGroups = computed(() => {
+  const customKeys = customPanels.value.map((p) => p.key)
+  const assist = mateTabs.value.filter((t) => ASSIST_KEYS.includes(t.key))
+  const material = mateTabs.value.filter((t) => !ASSIST_KEYS.includes(t.key) && !customKeys.includes(t.key))
+  const groups: { label: string; items: { key: string; label: string }[] }[] = []
+  if (assist.length) groups.push({ label: '写作辅助', items: assist })
+  if (material.length) groups.push({ label: '资料', items: material })
+  if (customPanels.value.length) groups.push({ label: '自定义面板', items: customPanels.value })
+  return groups
+})
+
+/**
+ * 测量哪些标签被裁掉。用「标签底边 vs 容器内边距盒底边」判断，
+ * 不依赖 offsetParent（标签条的定位祖先是外层容器，不是自身）。
+ */
+function measureTabs() {
+  const wrap = tabWrap.value
+  if (!wrap) return
+  const box = wrap.getBoundingClientRect()
+  const limit = box.bottom - parseFloat(getComputedStyle(wrap).paddingBottom)
+  const hidden: string[] = []
+  for (const el of Array.from(wrap.querySelectorAll<HTMLElement>('[data-tab]'))) {
+    if (el.getBoundingClientRect().bottom > limit + 1) hidden.push(el.dataset.tab || '')
+  }
+  overflowKeys.value = hidden
+  if (!hidden.length) moreOpen.value = false
+}
+
+function selectTab(key: string) {
+  rightTab.value = key
+  moreOpen.value = false
+}
+
+let tabRO: ResizeObserver | null = null
+// 换书 / 换标签 / 面板增删都会改变标签宽度 → 重新测量
+watch([rightTab, mateTabs], () => void nextTick(measureTabs))
+// 标签条在 v-if 分支里，出现/消失时挂载与释放观察器
+watch(tabWrap, (el, old) => {
+  if (old) tabRO?.unobserve(old)
+  if (!el) return
+  tabRO = tabRO || new ResizeObserver(() => measureTabs())
+  tabRO.observe(el)
+  void nextTick(measureTabs)
+})
+
+function onMoreOutside(e: PointerEvent) {
+  if (moreWrap.value?.contains(e.target as Node)) return
+  moreOpen.value = false
+}
+watch(moreOpen, (v) => {
+  if (v) window.addEventListener('pointerdown', onMoreOutside, true)
+  else window.removeEventListener('pointerdown', onMoreOutside, true)
 })
 /** Markdown 资料按目录读取：目录下所有 .md 都可作为速览来源（此前写死单个文件，内容在别的文件里就误报「暂无资料」） */
 const MATE_DIRS: Record<string, string> = {
@@ -447,6 +498,9 @@ onUnmounted(() => {
   offHeader = null
   window.removeEventListener('inkdesk:file-changed', onFileChanged)
   window.removeEventListener('keydown', onGlobalKeydown)
+  window.removeEventListener('pointerdown', onMoreOutside, true)
+  tabRO?.disconnect()
+  tabRO = null
 })
 </script>
 
@@ -575,9 +629,9 @@ onUnmounted(() => {
       :style="{ width: rightDrag.width.value + 'px' }"
     >
       <div class="panel-resizer left-0" :class="{ 'is-dragging': rightDrag.dragging.value }" @mousedown="rightDrag.onDown($event, -1)" />
-      <!-- 标签条：单行横向滚动（17+ 个标签不再折行占掉三行高度），右缘渐隐提示还有更多 -->
-      <div class="relative shrink-0 border-b border-[var(--border)]">
-        <div ref="tabStrip" class="tab-strip flex items-center gap-0.5 px-2 h-9">
+      <!-- 标签条：自适应换行（最多 2 行），放不下的收进「更多」下拉，永不出现滚动条 -->
+      <div ref="moreWrap" class="relative shrink-0 border-b border-[var(--border)] flex items-start">
+        <div ref="tabWrap" class="tab-wrap flex-1 min-w-0 flex flex-wrap items-center gap-0.5 px-2 py-1.5">
           <button
             v-for="t in mateTabs"
             :key="t.key"
@@ -585,12 +639,45 @@ onUnmounted(() => {
             class="shrink-0 px-2 h-6 text-label rounded-[var(--r-sm)] cursor-pointer transition-colors whitespace-nowrap"
             :class="rightTab === t.key ? 'font-medium' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)] hover:bg-[var(--hover)]'"
             :style="rightTab === t.key ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : {}"
-            @click="rightTab = t.key"
+            @click="selectTab(t.key)"
           >
             {{ t.label }}
           </button>
         </div>
-        <span class="tab-fade" />
+        <button
+          v-if="tabOverflow"
+          class="tab-more"
+          :class="{ 'tab-more-on': activeInMore }"
+          :title="activeInMore ? '更多板块（当前查看的标签收在这里）' : '更多板块'"
+          @click="moreOpen = !moreOpen"
+        >
+          更多
+          <ChevronDown :size="12" :class="moreOpen ? 'rotate-180' : ''" class="transition-transform duration-200" />
+        </button>
+
+        <Transition name="pop">
+          <div
+            v-if="moreOpen"
+            class="absolute right-2 top-full mt-1 w-56 max-h-[60vh] overflow-y-auto rounded-[var(--r-md)] border border-[var(--border)] bg-[var(--panel-2)] shadow-[var(--sh-2)] p-1 z-[var(--z-popover)]"
+          >
+            <template v-for="g in tabGroups" :key="g.label">
+              <div class="text-micro tracking-[0.1em] text-[var(--text-faint)] px-2 pt-2 pb-1">{{ g.label }}</div>
+              <button
+                v-for="t in g.items"
+                :key="t.key"
+                class="w-full text-left px-2 py-1.5 rounded-[var(--r-sm)] text-label cursor-pointer transition-colors truncate"
+                :class="
+                  rightTab === t.key
+                    ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+                    : 'text-[var(--text-dim)] hover:bg-[var(--hover)] hover:text-[var(--text)]'
+                "
+                @click="selectTab(t.key)"
+              >
+                {{ t.label }}
+              </button>
+            </template>
+          </div>
+        </Transition>
       </div>
 
       <!-- 智能体对话 -->
@@ -713,23 +800,33 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* 右栏标签条：横向滚动但隐藏滚动条（右缘渐隐已明示可滚动） */
-.tab-strip {
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
+/* 标签条：最多 2 行，超出部分裁掉并由「更多」下拉承接（不做横向滚动） */
+.tab-wrap {
+  /* 2 × 1.5rem(h-6) + 0.125rem(gap) + 0.75rem(py-1.5) = 3.875rem */
+  max-height: 3.875rem;
+  overflow: hidden;
 }
-.tab-strip::-webkit-scrollbar {
-  display: none;
+/* 「更多」：与标签同高，紧贴第一行右缘 */
+.tab-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 1.5rem;
+  margin: 0.375rem 0.5rem 0 0;
+  padding: 0 0.5rem;
+  border-radius: var(--r-sm);
+  font-size: var(--text-label);
+  color: var(--text-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--dur-2), color var(--dur-2);
 }
-/* 右缘渐隐：暗示后方还有标签；底色与栏底一致，避免出现色块 */
-.tab-fade {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 1px;
-  width: 24px;
-  pointer-events: none;
-  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--bg-soft) 70%, transparent));
+.tab-more:hover {
+  color: var(--text-dim);
+  background: var(--hover);
+}
+.tab-more-on {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 </style>
