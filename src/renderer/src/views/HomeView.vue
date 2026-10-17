@@ -172,7 +172,9 @@ function openNotes() {
 
 // ============ 常用工具 ============
 const TOOLS = [
-  { key: 'new', title: 'AI 一键建书', desc: '定位 + 灵感生成', icon: SquarePen, run: () => app.requestBookshelf('new') },
+  // 「AI 一键建书」要连同跳转一起做：只置一个 request 而不跳页，会让它悬着，
+  // 等下次进书架时才突然弹出新建表单
+  { key: 'new', title: 'AI 一键建书', desc: '定位 + 灵感生成', icon: SquarePen, run: () => { app.requestBookshelf('new'); app.go('bookshelf') } },
   { key: 'workflow', title: '逐章生文工作流', desc: '细纲到正文一条龙', icon: Workflow, run: () => app.go('workflow') },
   { key: 'deai', title: '整章去 AI 味', desc: '六维信号 + 注入改写', icon: Wand2, run: () => { app.writingRightTab = 'deai'; app.go('writing') } },
   { key: 'assistant', title: '妙笔', desc: '智能体工作台', icon: UserRound, run: () => app.go('assistant') },
