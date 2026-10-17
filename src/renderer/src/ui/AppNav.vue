@@ -161,43 +161,33 @@ onMounted(() => void libs.refresh())
 <template>
   <aside
     v-if="app.navOpen"
-    class="app-chrome relative shrink-0 flex flex-col border-r border-[var(--border)] bg-[var(--bg-soft)]/80 backdrop-blur"
+    class="app-chrome relative shrink-0 flex flex-col border-r border-[var(--border)] bg-[var(--bg-soft)]/70 backdrop-blur-[8px]"
     :class="{ 'focus-dim': app.focusMode }"
     :style="{ width: navDrag.width.value + 'px' }"
   >
     <!-- 右缘拖拽分割线：可左右拖动调宽（180–360px） -->
     <div class="panel-resizer right-0" :class="{ 'is-dragging': navDrag.dragging.value }" @mousedown="navDrag.onDown($event, 1)" />
     <!-- 品牌 -->
-    <div class="px-4 pt-4 pb-3 flex items-center gap-2.5">
-      <img :src="dawoLogo" alt="DAWO" class="w-10 h-10 rounded-lg shrink-0" draggable="false" />
+    <div class="px-3.5 pt-4 pb-3 flex items-center gap-2.5">
+      <img :src="dawoLogo" alt="DAWO" class="w-10 h-10 rounded-[var(--r-md)] shrink-0" draggable="false" />
       <div>
-        <div class="font-serif-ink text-[20px] tracking-wide leading-6" style="color: var(--accent)">DAWO</div>
-        <div class="text-[9.5px] text-[var(--text-faint)] tracking-[0.28em]">AI 小说工作台</div>
+        <div class="font-serif-ink text-title leading-6" style="color: var(--accent)">DAWO</div>
+        <div class="text-micro text-[var(--text-faint)] tracking-[0.14em]">AI 小说工作台</div>
       </div>
     </div>
 
-    <div class="px-3 pb-2 space-y-1.5">
-      <!-- 首页：工作台总览（参考软件的首页形态） -->
-      <button
-        class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] cursor-pointer transition-colors"
-        :class="app.view === 'home' ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:bg-[var(--hover)]'"
-        :style="app.view === 'home' ? { color: 'var(--accent)' } : {}"
-        @click="app.go('home')"
-      >
-        <House :size="14" class="shrink-0" />
-        <span>首页</span>
+    <div class="px-2 pb-2 space-y-0.5">
+      <!-- 首页：工作台总览 -->
+      <button class="nav-item" :class="app.view === 'home' ? 'nav-item-on' : 'nav-item-off'" @click="app.go('home')">
+        <House :size="15" class="shrink-0" />
+        <span class="flex-1 text-left">首页</span>
       </button>
 
       <!-- 妙笔是高频入口，常驻顶部，不参与滚动 -->
-      <button
-        class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] cursor-pointer transition-colors"
-        :class="app.view === 'assistant' ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:bg-[var(--hover)]'"
-        :style="app.view === 'assistant' ? { color: 'var(--accent)' } : {}"
-        @click="app.go('assistant')"
-      >
-        <UserRound :size="14" class="shrink-0" />
-        <span>妙笔</span>
-        <span class="text-[10.5px] text-[var(--text-faint)] ml-auto">AI 助手</span>
+      <button class="nav-item" :class="app.view === 'assistant' ? 'nav-item-on' : 'nav-item-off'" @click="app.go('assistant')">
+        <UserRound :size="15" class="shrink-0" />
+        <span class="flex-1 text-left">妙笔</span>
+        <span class="text-micro text-[var(--text-faint)]">AI 助手</span>
       </button>
     </div>
 
@@ -209,10 +199,9 @@ onMounted(() => void libs.refresh())
         :key="p.key"
         class="nav-item"
         :class="app.view === p.view ? 'nav-item-on' : 'nav-item-off'"
-        :style="app.view === p.view ? { color: 'var(--accent)' } : {}"
         @click="app.go(p.view)"
       >
-        <component :is="p.icon" :size="14" class="shrink-0" />
+        <component :is="p.icon" :size="15" class="shrink-0" />
         <span class="flex-1 text-left">{{ p.label }}</span>
       </button>
 
@@ -226,8 +215,8 @@ onMounted(() => void libs.refresh())
           <div
             v-for="n in bookNodes"
             :key="n.path"
-            class="flex items-center gap-1 pr-2 py-1 rounded-md text-[12px]"
-            :class="n.dir ? 'text-[var(--text-faint)]' : 'text-[var(--text-dim)] hover:bg-[var(--hover)] cursor-pointer'"
+            class="flex items-center gap-1 pr-2 py-[3px] rounded-[var(--r-sm)] text-label transition-colors"
+            :class="n.dir ? 'text-[var(--text-faint)]' : 'text-[var(--text-dim)] hover:bg-[var(--hover)] hover:text-[var(--text)] cursor-pointer'"
             :style="{ paddingLeft: 14 + n.depth * 12 + 'px' }"
             @click="!n.dir && app.requestOpenFile(n.path)"
           >
@@ -248,10 +237,9 @@ onMounted(() => void libs.refresh())
             :key="t.key"
             class="nav-item"
             :class="app.view === 'materials' && app.materialsTab === t.key ? 'nav-item-on' : 'nav-item-off'"
-            :style="app.view === 'materials' && app.materialsTab === t.key ? { color: 'var(--accent)' } : {}"
             @click="app.goMaterials(t.key)"
           >
-            <component :is="t.icon" :size="14" class="shrink-0" />
+            <component :is="t.icon" :size="15" class="shrink-0" />
             <span class="flex-1 text-left">{{ t.label }}</span>
           </button>
         </template>
@@ -264,10 +252,9 @@ onMounted(() => void libs.refresh())
         :key="t.k"
         class="nav-item"
         :class="app.view === 'library' && app.libraryTab === t.k ? 'nav-item-on' : 'nav-item-off'"
-        :style="app.view === 'library' && app.libraryTab === t.k ? { color: 'var(--accent)' } : {}"
         @click="app.goLibrary(t.k)"
       >
-        <component :is="t.icon" :size="14" class="shrink-0" />
+        <component :is="t.icon" :size="15" class="shrink-0" />
         <span class="flex-1 text-left">{{ t.l }}</span>
       </button>
 
@@ -277,8 +264,8 @@ onMounted(() => void libs.refresh())
           <button
             v-for="t in LIB_TABS"
             :key="t.k"
-            class="text-[11px] px-1.5 py-0.5 rounded cursor-pointer"
-            :class="libTreeKind === t.k ? 'bg-[var(--panel-2)]' : 'text-[var(--text-faint)]'"
+            class="text-meta px-1.5 py-0.5 rounded-[var(--r-xs)] cursor-pointer transition-colors"
+            :class="libTreeKind === t.k ? 'bg-[var(--panel-2)]' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)]'"
             :style="libTreeKind === t.k ? { color: 'var(--accent)' } : {}"
             @click="libTreeKind = t.k"
           >
@@ -294,7 +281,7 @@ onMounted(() => void libs.refresh())
             <button
               v-for="e in g.entries"
               :key="e.name"
-              class="w-full text-left pl-3 pr-1 py-1 rounded-md text-[12px] text-[var(--text-dim)] hover:bg-[var(--hover)] truncate cursor-pointer"
+              class="w-full text-left pl-3 pr-1 py-[3px] rounded-[var(--r-sm)] text-label text-[var(--text-dim)] hover:bg-[var(--hover)] hover:text-[var(--text)] truncate cursor-pointer transition-colors"
               @click="app.requestOpenLibraryEntry(e.kind, e.group, e.name)"
             >
               {{ e.name }}
@@ -306,17 +293,12 @@ onMounted(() => void libs.refresh())
     </nav>
 
     <!-- 底部常驻：设置固定在这里，不随滚动消失 -->
-    <div class="shrink-0 px-3 py-2 border-t border-[var(--border)] space-y-1">
-      <button
-        class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] cursor-pointer transition-colors"
-        :class="app.view === 'settings' ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:bg-[var(--hover)]'"
-        :style="app.view === 'settings' ? { color: 'var(--accent)' } : {}"
-        @click="app.go('settings')"
-      >
-        <Settings :size="14" class="shrink-0" />
-        <span>设置</span>
+    <div class="shrink-0 px-2 py-2 border-t border-[var(--border)] space-y-0.5">
+      <button class="nav-item" :class="app.view === 'settings' ? 'nav-item-on' : 'nav-item-off'" @click="app.go('settings')">
+        <Settings :size="15" class="shrink-0" />
+        <span class="flex-1 text-left">设置</span>
       </button>
-      <div class="px-3 text-[11px] text-[var(--text-faint)] leading-relaxed">
+      <div class="px-3 pt-1 text-micro text-[var(--text-faint)] leading-relaxed">
         <template v-if="lib.current">当前作品 · <span class="text-[var(--text-dim)]">{{ lib.current.title }}</span></template>
         <template v-else>未打开作品</template>
       </div>
@@ -327,33 +309,53 @@ onMounted(() => void libs.refresh())
 <style scoped>
 /* 导航归类小标题：纯静态，不可点击，也不折叠 */
 .nav-label {
-  font-size: 10.5px;
-  letter-spacing: 0.12em;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.1em;
   color: var(--text-faint);
-  padding: 9px 10px 3px;
+  padding: 10px 10px 4px;
 }
 .nav-label:first-child {
   padding-top: 2px;
 }
+
+/* 导航条目：30px 行高（图标 15px 由模板指定） */
 .nav-item {
+  position: relative;
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4.5px 8px 4.5px 12px;
-  border-radius: 6px;
+  gap: 9px;
+  min-height: 30px;
+  padding: 4px 8px 4px 12px;
+  border-radius: var(--r-sm);
   cursor: pointer;
-  font-size: 12.5px;
-  transition: background 0.15s;
+  font-size: var(--fs-label);
+  transition: background-color var(--dur-2), color var(--dur-2);
 }
+/* 选中态：左缘 2px 强调色标记条 + 极淡强调底。
+   用标记条而非整块底色表达选中，视觉更安静。 */
 .nav-item-on {
-  background: var(--panel-2);
+  background: var(--accent-soft);
+  color: var(--accent);
   font-weight: 500;
+}
+.nav-item-on::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 2px;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 1px;
+  background: var(--accent);
+  animation: nav-mark-in var(--dur-2) var(--ease-out) both;
 }
 .nav-item-off {
   color: var(--text-dim);
 }
 .nav-item-off:hover {
   background: var(--hover);
+  color: var(--text);
 }
 </style>

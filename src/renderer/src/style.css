@@ -1,133 +1,249 @@
 @import 'tailwindcss';
 
-/* ============ 主题变量：四暗两明（书墨风家族） ============ */
-:root {
-  --accent: #c9a15f;
-  --radius: 10px;
-}
-html[data-theme='dark'] {
-  --bg: #14110d;
-  --bg-soft: #1b1712;
-  --panel: #201b15;
-  --panel-2: #292219;
-  --border: #3a3125;
-  --text: #e8e2d3;
-  --text-dim: #9a917e;
-  --text-faint: #6b6353;
-  --hover: rgba(232, 226, 211, 0.06);
-  --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
-  --orb-opacity: 0.14;
-  --glow-color: rgba(201, 161, 95, 0.07);
-  --overlay-rgb: 20, 17, 13;
-}
-html[data-theme='ink-blue'] {
-  --bg: #0e1218;
-  --bg-soft: #121824;
-  --panel: #16202e;
-  --panel-2: #1d2a3d;
-  --border: #2b3a52;
-  --text: #dde4ee;
-  --text-dim: #8b96a8;
-  --text-faint: #5d6a7d;
-  --hover: rgba(221, 228, 238, 0.06);
-  --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-  --orb-opacity: 0.12;
-  --glow-color: rgba(120, 160, 220, 0.06);
-  --overlay-rgb: 14, 18, 24;
-}
-html[data-theme='ink-green'] {
-  --bg: #0f1512;
-  --bg-soft: #131b16;
-  --panel: #17211a;
-  --panel-2: #1e2b22;
-  --border: #2d4033;
-  --text: #dfe8dd;
-  --text-dim: #8fa294;
-  --text-faint: #5f7263;
-  --hover: rgba(223, 232, 221, 0.06);
-  --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
-  --orb-opacity: 0.12;
-  --glow-color: rgba(110, 180, 130, 0.06);
-  --overlay-rgb: 15, 21, 18;
-}
-html[data-theme='ink-purple'] {
-  --bg: #141018;
-  --bg-soft: #1a1420;
-  --panel: #201929;
-  --panel-2: #291f36;
-  --border: #3b2e4a;
-  --text: #e9dfef;
-  --text-dim: #a08fae;
-  --text-faint: #6f5f7d;
-  --hover: rgba(233, 223, 239, 0.06);
-  --shadow: 0 8px 30px rgba(0, 0, 0, 0.48);
-  --orb-opacity: 0.12;
-  --glow-color: rgba(180, 140, 220, 0.06);
-  --overlay-rgb: 20, 16, 24;
-}
-html[data-theme='light'] {
-  --bg: #f6f2e9;
-  --bg-soft: #efe9dc;
-  --panel: #fbf8f1;
-  --panel-2: #f1ebdf;
-  --border: #ddd2bd;
-  --text: #322c22;
-  --text-dim: #7a7159;
-  --text-faint: #a89e86;
-  --hover: rgba(50, 44, 34, 0.05);
-  --shadow: 0 8px 30px rgba(80, 65, 35, 0.12);
-  --orb-opacity: 0.2;
-  --glow-color: rgba(166, 124, 46, 0.05);
-  --overlay-rgb: 246, 242, 233;
-}
-html[data-theme='sepia'] {
-  --bg: #efe4cd;
-  --bg-soft: #e7d9bc;
-  --panel: #f7eeda;
-  --panel-2: #ecdfc2;
-  --border: #d2bf99;
-  --text: #3d3222;
-  --text-dim: #7d6d50;
-  --text-faint: #a8977a;
-  --hover: rgba(61, 50, 34, 0.06);
-  --shadow: 0 8px 30px rgba(90, 70, 30, 0.16);
-  --orb-opacity: 0.18;
-  --glow-color: rgba(180, 140, 60, 0.06);
-  --overlay-rgb: 239, 228, 205;
-}
-/* 月白风清：偏冷的月光纸白 */
-html[data-theme='moon'] {
-  --bg: #edf1f5;
-  --bg-soft: #e2e8ee;
-  --panel: #f8fafc;
-  --panel-2: #eaeff4;
-  --border: #c9d3dd;
-  --text: #29323d;
-  --text-dim: #64707c;
-  --text-faint: #929ea9;
-  --hover: rgba(41, 50, 61, 0.05);
-  --shadow: 0 8px 30px rgba(45, 65, 95, 0.13);
-  --orb-opacity: 0.16;
-  --glow-color: rgba(100, 140, 190, 0.06);
-  --overlay-rgb: 237, 241, 245;
-}
-/* 青瓷雨霁：淡青瓷釉的浅绿纸面 */
-html[data-theme='celadon'] {
-  --bg: #ebf1ea;
-  --bg-soft: #dfe8de;
-  --panel: #f5f9f4;
-  --panel-2: #e9f1e8;
-  --border: #c4d5c4;
-  --text: #263529;
-  --text-dim: #5f7261;
-  --text-faint: #8ca18d;
-  --hover: rgba(38, 53, 41, 0.05);
-  --shadow: 0 8px 30px rgba(50, 90, 60, 0.12);
-  --orb-opacity: 0.16;
-  --glow-color: rgba(100, 165, 115, 0.06);
-  --overlay-rgb: 235, 241, 234;
+/* ---------------------------------------------------------------------------
+ * 0. Tailwind 主题扩展
+ *    Tailwind 的 text-* 工具类对「CSS 变量」无法判断是字号还是颜色，
+ *    因此把字号阶梯注册成原生 token，模板里直接用 text-label / text-meta 等。
+ *    同时这些变量会注入 :root，普通 CSS 里可用 var(--text-label) 引用。
+ *    数值用 rem：随「设置 → 外观 → 界面字号」缩放。
+ * ------------------------------------------------------------------------- */
+@theme {
+  --text-display: 1.75rem; /* 28px 首页大标题 */
+  --text-title: 1.25rem; /* 20px 页面标题 / 品牌 */
+  --text-heading: 1rem; /* 16px 区块标题 */
+  --text-body: 0.875rem; /* 14px 正文 UI */
+  --text-label: 0.78125rem; /* 12.5px 列表 / 按钮 / 表单 */
+  --text-meta: 0.6875rem; /* 11px 辅助信息 */
+  --text-micro: 0.625rem; /* 10px 角标 */
 }
 
+/* =============================================================================
+ *  DAWO 设计系统 · 现代编辑风（纸与文具）
+ *  ---------------------------------------------------------------------------
+ *  本文件只放「设计令牌 + 基础原语 + 元素级样式」。
+ *  所有动画（keyframes / 过渡类 / 动效开关）集中在 styles/animations.css。
+ *
+ *  约定：
+ *  1. 一个强调色 —— --accent 是全局唯一强调色，其余一律中性灰阶（状态色除外）。
+ *  2. 层级靠亮度 —— bg / bg-soft / panel / panel-2 四档亮度 + 1px 低对比 hairline。
+ *  3. 既有类名一律保留（避免视图大面积改名），只调整其数值与视觉。
+ *  4. @layer components 的分层必须保留：Tailwind 的 utilities 层在其后，
+ *     这样 w-40 / h-24 等工具类才能覆盖这里定义的默认值。
+ * ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * 1. 设计令牌（与主题无关的公共部分）
+ * ------------------------------------------------------------------------- */
+:root {
+  /* 强调色与圆角：由 store/app.ts 的 applyAppearance() 在运行时覆盖，
+     这里只给默认值，保证首屏（配置未加载前）也正确渲染 */
+  --accent: #c9a15f;
+  --radius: 10px;
+
+  /* 强调色的派生色：统一用 color-mix 生成，用户自定义 --accent 时全局自洽 */
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 45%, transparent);
+  --accent-ink: #1a150c; /* 强调色实底上的文字色 */
+
+  /* 字体族 */
+  --font-ui: -apple-system, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-serif: 'Source Han Serif SC', 'Noto Serif SC', 'STZhongsong', 'SimSun', serif;
+  --font-mono: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+
+  /* 字号阶梯：别名指向 @theme 注册的原生 token（数值见文件顶部） */
+  --fs-display: var(--text-display);
+  --fs-title: var(--text-title);
+  --fs-heading: var(--text-heading);
+  --fs-body: var(--text-body);
+  --fs-label: var(--text-label);
+  --fs-meta: var(--text-meta);
+  --fs-micro: var(--text-micro);
+
+  /* 间距语义刻度（数值层仍用 Tailwind 工具类） */
+  --sp-page: 28px;
+  --sp-gutter: 24px;
+  --sp-inline: 12px;
+  --sp-tight: 6px;
+
+  /* 圆角刻度 */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+
+  /* 阴影（现代编辑风＝浅而柔） */
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.16);
+  --sh-2: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --sh-3: 0 16px 48px rgba(0, 0, 0, 0.3);
+
+  /* 状态色：唯一允许的非强调色，仅用于成功/警告/危险 */
+  --ok: #6fae74;
+  --warn: #d8a24a;
+  --danger: #c05a4a;
+  --danger-strong: #a5442f;
+
+  /* 焦点环 */
+  --ring: color-mix(in srgb, var(--accent) 45%, transparent);
+
+  /* z-index 规范（统一，杜绝各处乱写） */
+  --z-orb: 0;
+  --z-glow: 1;
+  --z-app: 10;
+  --z-resizer: 30;
+  --z-popover: 50;
+  --z-particles: 60;
+  --z-modal: 80;
+  --z-toast: 90;
+}
+
+/* ---------------------------------------------------------------------------
+ * 2. 主题（8 套，id 保持与历史配置完全一致，只重做色值）
+ *    每组包含：bg / bg-soft / panel / panel-2 / border / border-strong
+ *              text / text-dim / text-faint / hover / shadow
+ *              orb-opacity / glow-color / overlay-rgb
+ * ------------------------------------------------------------------------- */
+
+/* 墨 · 默认暗色：中性暖灰，降低黄味 */
+html[data-theme='dark'] {
+  --bg: #151513;
+  --bg-soft: #1a1917;
+  --panel: #1f1e1b;
+  --panel-2: #272521;
+  --border: #322f2a;
+  --border-strong: #46413a;
+  --text: #eae7e1;
+  --text-dim: #a19c93;
+  --text-faint: #6d6960;
+  --hover: rgba(234, 231, 225, 0.055);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  --orb-opacity: 0.12;
+  --glow-color: rgba(201, 161, 95, 0.065);
+  --overlay-rgb: 21, 21, 19;
+}
+/* 靛 */
+html[data-theme='ink-blue'] {
+  --bg: #101418;
+  --bg-soft: #141a20;
+  --panel: #182028;
+  --panel-2: #1e2830;
+  --border: #2a3640;
+  --border-strong: #3c4a56;
+  --text: #e2e8ee;
+  --text-dim: #94a0ac;
+  --text-faint: #626d79;
+  --hover: rgba(226, 232, 238, 0.055);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
+  --orb-opacity: 0.1;
+  --glow-color: rgba(120, 160, 220, 0.055);
+  --overlay-rgb: 16, 20, 24;
+}
+/* 青 */
+html[data-theme='ink-green'] {
+  --bg: #101613;
+  --bg-soft: #141c17;
+  --panel: #18221c;
+  --panel-2: #1e2a22;
+  --border: #2a3a30;
+  --border-strong: #3d5044;
+  --text: #e0e8e2;
+  --text-dim: #93a19a;
+  --text-faint: #62706a;
+  --hover: rgba(224, 232, 226, 0.055);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  --orb-opacity: 0.1;
+  --glow-color: rgba(110, 180, 130, 0.055);
+  --overlay-rgb: 16, 22, 19;
+}
+/* 紫 */
+html[data-theme='ink-purple'] {
+  --bg: #151118;
+  --bg-soft: #1a151e;
+  --panel: #201a24;
+  --panel-2: #28202e;
+  --border: #372c3f;
+  --border-strong: #4a3a55;
+  --text: #e9e2ee;
+  --text-dim: #a196aa;
+  --text-faint: #6e6477;
+  --hover: rgba(233, 226, 238, 0.055);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
+  --orb-opacity: 0.1;
+  --glow-color: rgba(180, 140, 220, 0.055);
+  --overlay-rgb: 21, 17, 24;
+}
+/* 宣 · 亮色 */
+html[data-theme='light'] {
+  --bg: #f7f5f0;
+  --bg-soft: #f1eee7;
+  --panel: #fdfcfa;
+  --panel-2: #f2efe8;
+  --border: #e2dcd0;
+  --border-strong: #c9c1b1;
+  --text: #2b2823;
+  --text-dim: #6e6860;
+  --text-faint: #9c968c;
+  --hover: rgba(43, 40, 35, 0.045);
+  --shadow: 0 2px 10px rgba(90, 78, 55, 0.1);
+  --orb-opacity: 0.16;
+  --glow-color: rgba(166, 124, 46, 0.05);
+  --overlay-rgb: 247, 245, 240;
+}
+/* 茶 */
+html[data-theme='sepia'] {
+  --bg: #f0e8d8;
+  --bg-soft: #e9dfca;
+  --panel: #f8f2e6;
+  --panel-2: #ece1c8;
+  --border: #d8c9a8;
+  --border-strong: #bfa97f;
+  --text: #38301f;
+  --text-dim: #756a50;
+  --text-faint: #a2957c;
+  --hover: rgba(56, 48, 31, 0.05);
+  --shadow: 0 2px 10px rgba(100, 80, 40, 0.13);
+  --orb-opacity: 0.14;
+  --glow-color: rgba(180, 140, 60, 0.055);
+  --overlay-rgb: 240, 232, 216;
+}
+/* 月白 */
+html[data-theme='moon'] {
+  --bg: #eef1f5;
+  --bg-soft: #e4e9ef;
+  --panel: #f9fafc;
+  --panel-2: #eceff4;
+  --border: #ccd4dd;
+  --border-strong: #b2bdc9;
+  --text: #262e37;
+  --text-dim: #616b76;
+  --text-faint: #8f98a3;
+  --hover: rgba(38, 46, 55, 0.045);
+  --shadow: 0 2px 10px rgba(45, 65, 95, 0.11);
+  --orb-opacity: 0.14;
+  --glow-color: rgba(100, 140, 190, 0.055);
+  --overlay-rgb: 238, 241, 245;
+}
+/* 青瓷 */
+html[data-theme='celadon'] {
+  --bg: #edf1ec;
+  --bg-soft: #e2e9e1;
+  --panel: #f6f9f5;
+  --panel-2: #eaf0e8;
+  --border: #c8d5c7;
+  --border-strong: #adbfad;
+  --text: #22301f;
+  --text-dim: #5d6e5e;
+  --text-faint: #8b9c8c;
+  --hover: rgba(34, 48, 31, 0.045);
+  --shadow: 0 2px 10px rgba(50, 90, 60, 0.1);
+  --orb-opacity: 0.14;
+  --glow-color: rgba(100, 165, 115, 0.055);
+  --overlay-rgb: 237, 241, 236;
+}
+
+/* ---------------------------------------------------------------------------
+ * 3. 基础重置
+ * ------------------------------------------------------------------------- */
 html,
 body,
 #app {
@@ -137,210 +253,165 @@ body,
 }
 
 body {
-  font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: 1.5;
   background: var(--bg);
   color: var(--text);
-  font-size: 14px;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
+/* 衬线：品牌 / 区块标题 / 弹窗标题 / 正文稿件 */
 .font-serif-ink {
-  font-family: 'Source Han Serif SC', 'Noto Serif SC', 'STZhongsong', 'SimSun', serif;
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
 }
 
+/* 数字等宽：统计、计数、章节号，避免跳动 */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 滚动条（跟随主题，静置低调） */
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 4px;
+  border-radius: var(--r-xs);
 }
 *::-webkit-scrollbar-track {
   background: transparent;
 }
-
-/* ============ 通用交互 ============ */
-.ink-ripple {
-  position: relative;
-  overflow: hidden;
-}
-.ink-ripple .ripple-dot {
-  position: absolute;
-  border-radius: 9999px;
-  background: currentColor;
-  opacity: 0.25;
-  transform: scale(0);
-  animation: ripple 0.55s ease-out forwards;
-  pointer-events: none;
-}
-@keyframes ripple {
-  to {
-    transform: scale(2.6);
-    opacity: 0;
-  }
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
 }
 
-/* ============ 动效体系 ============
-   统一缓动曲线；所有动效由 body 上的 fx-* 开关类控制，
-   对应「设置 → 外观」的动效选项；prefers-reduced-motion 一票否决。 */
-:root {
-  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+/* 焦点环：统一走强调色，键盘可达性 */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
 }
 
-/* 按压反馈：所有按钮点下时轻微下沉，松开弹回（100ms 内完成） */
-body.fx-press button {
-  transition: transform 0.12s var(--ease-out-quart), background-color 0.15s, color 0.15s, border-color 0.15s;
-}
-body.fx-press button:active {
-  transform: scale(0.96);
-}
-
-/* 卡片 / 区块入场：上浮 + 淡入，配合 style 上的 animation-delay 做 stagger */
-@keyframes rise-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-body.fx-rise .rise-in {
-  animation: rise-in 0.5s var(--ease-out-quart) both;
-}
-
-/* 页面切换：淡入 + 轻微上移（App.vue 的 Transition 使用） */
-.page-fade-enter-active {
-  transition: opacity 0.22s var(--ease-out-quart), transform 0.22s var(--ease-out-quart);
-}
-.page-fade-leave-active {
-  transition: opacity 0.15s ease;
-}
-.page-fade-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
-}
-.page-fade-leave-to {
-  opacity: 0;
-}
-
-/* 成功提示：轻脉冲一次 */
-@keyframes ok-pulse {
-  0% {
-    transform: scale(1);
-  }
-  40% {
-    transform: scale(1.06);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-.ok-pulse {
-  animation: ok-pulse 0.4s var(--ease-out-quart);
-}
-
-/* 写作台工具行按钮 */
-.tool-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 26px;
-  border-radius: 6px;
-  color: var(--text-faint);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-.tool-btn:hover {
-  color: var(--accent);
-  background: var(--hover);
-}
-.tool-btn-on {
-  color: var(--accent);
-  background: var(--panel-2);
-}
-
-/* 无障碍：系统开启「减少动态效果」时，全部动效一票否决 */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* 鼠标跟随光晕 */
-#glow-cursor {
-  position: fixed;
-  width: 340px;
-  height: 340px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--glow-color) 0%, transparent 65%);
-  pointer-events: none;
-  z-index: 1;
-  transform: translate(-50%, -50%);
-  left: -500px;
-}
-
-/* 背景浮动球体 */
-.orb {
-  position: fixed;
-  border-radius: 50%;
-  filter: blur(60px);
-  pointer-events: none;
-  z-index: 0;
-  opacity: var(--orb-opacity);
-  background: var(--accent);
-  animation: float-orb 18s ease-in-out infinite;
-}
-@keyframes float-orb {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(40px, -60px) scale(1.15);
-  }
-  66% {
-    transform: translate(-50px, 30px) scale(0.9);
-  }
-}
-
-/* 专注模式：暗其余 UI */
-.focus-dim {
-  opacity: 0.25;
-  transition: opacity 0.4s;
-}
-.app-chrome {
-  transition: opacity 0.4s;
-}
-
-/* 表单控件统一
-   必须放在 components 层：Tailwind 的 utilities 层在其后，
-   这样 w-40 / w-36 / h-24 等工具类才能覆盖这里的默认值。
-   （放在层外会形成「无层样式 > 有层样式」的优先级反转，导致所有宽度工具类失效） */
+/* ---------------------------------------------------------------------------
+ * 4. 页面级容器规范（后续各视图统一使用）
+ *    放在 components 层，允许 Tailwind 工具类覆盖
+ * ------------------------------------------------------------------------- */
 @layer components {
+  .page {
+    padding: var(--sp-page);
+    max-width: 1440px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-gutter);
+    min-height: 100%;
+  }
+  .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--sp-inline);
+  }
+  .page-title {
+    font-family: var(--font-serif);
+    font-size: var(--fs-title);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .page-sub {
+    font-size: var(--fs-label);
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  /* 区块标题：小号 + 大字距，安静但有秩序 */
+  .section-title {
+    font-size: var(--fs-micro);
+    letter-spacing: 0.1em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+  }
+  /* 卡片：靠亮度分层，不靠边框 */
+  .ink-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    transition: border-color 0.16s, background-color 0.16s;
+  }
+  .ink-card-hover:hover {
+    background: var(--panel-2);
+    border-color: var(--border-strong);
+  }
+  /* 表单行：label(左, 固定宽) + control(右) 对齐网格 */
+  .ink-field {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    align-items: center;
+    gap: var(--sp-inline);
+    min-height: 34px;
+  }
+  .ink-field-label {
+    font-size: var(--fs-label);
+    color: var(--text-dim);
+  }
+  /* 状态小标签 */
+  .ink-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 8px;
+    border-radius: var(--r-pill);
+    font-size: var(--fs-micro);
+    line-height: 1.7;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .ink-chip-accent {
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  /* 分隔线：极细 hairline */
+  .ink-hairline {
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ---- 既有表单原语（类名保留，只调视觉） ---- */
   .ink-input,
   .ink-textarea,
   .ink-select {
     background: var(--bg-soft);
     border: 1px solid var(--border);
     color: var(--text);
-    border-radius: var(--radius);
+    border-radius: var(--r-md);
     padding: 8px 12px;
+    font-size: var(--fs-label);
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, background-color 0.2s;
     width: 100%;
+  }
+  .ink-input::placeholder,
+  .ink-textarea::placeholder {
+    color: var(--text-faint);
+  }
+  .ink-input:hover,
+  .ink-textarea:hover,
+  .ink-select:hover {
+    border-color: var(--border-strong);
   }
   .ink-input:focus,
   .ink-textarea:focus,
   .ink-select:focus {
     border-color: var(--accent);
+    background: var(--panel);
   }
   .ink-textarea {
     resize: vertical;
@@ -352,8 +423,10 @@ body.fx-rise .rise-in {
   }
 }
 
-/* ============ 表单控件的系统色修正 ============
-   去掉浏览器默认蓝：勾选框 / 下拉选中项 / 文本选区全部走强调色。 */
+/* ---------------------------------------------------------------------------
+ * 5. 表单控件的系统色修正
+ *    去掉浏览器默认蓝：勾选框 / 下拉选中项 / 文本选区全部走强调色
+ * ------------------------------------------------------------------------- */
 input[type='checkbox'],
 input[type='radio'],
 select,
@@ -375,12 +448,8 @@ input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   height: 5px;
-  border-radius: 999px;
-  background: linear-gradient(
-    to right,
-    var(--accent) var(--fill, 50%),
-    var(--bg-soft) var(--fill, 50%)
-  );
+  border-radius: var(--r-pill);
+  background: linear-gradient(to right, var(--accent) var(--fill, 50%), var(--bg-soft) var(--fill, 50%));
   outline: none;
   cursor: pointer;
 }
@@ -392,8 +461,8 @@ input[type='range']::-webkit-slider-thumb {
   border-radius: 50%;
   background: var(--accent);
   border: 2px solid var(--panel);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-  transition: transform 0.12s var(--ease-out-quart);
+  box-shadow: var(--sh-1);
+  transition: transform 0.12s var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1));
 }
 input[type='range']::-webkit-slider-thumb:hover {
   transform: scale(1.15);
@@ -409,43 +478,65 @@ input[type='range']::-moz-range-thumb {
   border: 2px solid var(--panel);
 }
 
-/* 资料速览（右栏 Markdown）：紧凑排版 */
-.prose-peek h1,
-.prose-peek h2,
-.prose-peek h3 {
-  font-size: 1.05em;
-  margin: 0.4em 0 0.5em;
-  color: var(--text);
+/* ---------------------------------------------------------------------------
+ * 6. 写作台工具行
+ * ------------------------------------------------------------------------- */
+.tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: background-color 0.14s, color 0.14s;
 }
-.prose-peek p {
-  margin: 0 0 0.7em;
-  color: var(--text-dim);
-  line-height: 1.85;
+.tool-btn:hover {
+  color: var(--accent);
+  background: var(--hover);
 }
-.prose-peek ul,
-.prose-peek ol {
-  margin: 0 0 0.7em;
-  padding-left: 1.4em;
-  color: var(--text-dim);
-}
-.prose-peek li {
-  margin-bottom: 0.25em;
-  line-height: 1.8;
-}
-.prose-peek strong {
-  color: var(--text);
+.tool-btn-on {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
-/* ============ 可拖拽分割线 ============
-   贴在面板边缘的透明热区，悬停/拖动时显示强调色细线。
-   拖动宽度由 usePanelDrag 组合式函数管理并持久化。 */
+/* ---------------------------------------------------------------------------
+ * 7. 环境层（背景光晕 / 专注模式）
+ * ------------------------------------------------------------------------- */
+#glow-cursor {
+  position: fixed;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--glow-color) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: var(--z-glow);
+  transform: translate(-50%, -50%);
+  left: -500px;
+}
+
+/* 专注模式：暗其余 UI */
+.focus-dim {
+  opacity: 0.25;
+  transition: opacity 0.4s;
+}
+.app-chrome {
+  transition: opacity 0.4s;
+}
+
+/* ---------------------------------------------------------------------------
+ * 8. 可拖拽分割线
+ *    贴在面板边缘的透明热区，悬停/拖动时显示强调色细线。
+ *    拖动宽度由 usePanelDrag 组合式函数管理并持久化。
+ * ------------------------------------------------------------------------- */
 .panel-resizer {
   position: absolute;
   top: 0;
   bottom: 0;
   width: 5px;
   cursor: col-resize;
-  z-index: 30;
+  z-index: var(--z-resizer);
 }
 .panel-resizer::after {
   content: '';
@@ -467,9 +558,11 @@ input[type='range']::-moz-range-thumb {
   right: 2px;
 }
 
-/* ============ 无边框窗口：拖拽区域 ============
-   顶部栏整体可拖动；里面所有可交互元素自动排除在拖拽之外，
-   否则按钮会点不动、输入框无法聚焦。 */
+/* ---------------------------------------------------------------------------
+ * 9. 无边框窗口：拖拽区域
+ *    顶部栏整体可拖动；里面所有可交互元素自动排除在拖拽之外，
+ *    否则按钮会点不动、输入框无法聚焦。
+ * ------------------------------------------------------------------------- */
 .app-drag {
   -webkit-app-region: drag;
 }
@@ -483,13 +576,18 @@ input[type='range']::-moz-range-thumb {
   -webkit-app-region: no-drag;
 }
 
-/* ============ 编辑器（TipTap） ============ */
+/* ---------------------------------------------------------------------------
+ * 10. 编辑器（TipTap）
+ *     排版变量 --ink-fs / --ink-lh / --ink-para / --ink-font / --ink-measure
+ *     由「排版」面板写入，此处只给默认值。稿纸网格线逻辑不得改动。
+ * ------------------------------------------------------------------------- */
 .ink-editor .tiptap {
   outline: none;
   min-height: 60%;
   line-height: var(--ink-lh, 2);
   font-size: var(--ink-fs, 16px);
   letter-spacing: 0.02em;
+  font-family: var(--ink-font, inherit);
 }
 .ink-editor .tiptap p {
   margin: 0 0 var(--ink-para, 1em);
@@ -520,14 +618,14 @@ input[type='range']::-moz-range-thumb {
 .ghost-hint {
   position: absolute;
   transform: translateY(1.4em);
-  font-size: 11px;
+  font-size: var(--fs-meta);
   color: var(--text-faint);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   padding: 2px 8px;
   white-space: nowrap;
-  z-index: 30;
+  z-index: var(--z-resizer);
 }
 
 /* 划词浮窗 */
@@ -536,39 +634,31 @@ input[type='range']::-moz-range-thumb {
   gap: 2px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-3);
   padding: 4px;
-  z-index: 50;
+  z-index: var(--z-popover);
 }
 .bubble-menu button {
   border: none;
   background: transparent;
   color: var(--text);
   padding: 5px 10px;
-  border-radius: 7px;
+  border-radius: var(--r-sm);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-label);
 }
 .bubble-menu button:hover {
   background: var(--hover);
 }
 
-/* 滚动条下的正文区域 */
+/* 滚动条下的正文区域：居中留白最大 */
 .prose-ink {
   max-width: var(--ink-measure, 720px);
   margin: 0 auto;
   padding: 32px 40px 120px;
 }
-/* 排版设置（写作台「排版」面板）：字号 / 行高 / 字体 / 网格线，变量挂在编辑器容器上 */
-.ink-editor .tiptap {
-  font-size: var(--ink-fs, 16px);
-  line-height: var(--ink-lh, 2);
-  font-family: var(--ink-font, inherit);
-}
-.ink-editor .tiptap p {
-  margin: 0 0 var(--ink-para, 1em);
-}
+
 /* 稿纸网格线：实线 / 虚线，随行高铺在正文区背景 */
 .ink-grid-solid .tiptap,
 .ink-grid-dash .tiptap {
@@ -597,85 +687,38 @@ input[type='range']::-moz-range-thumb {
   );
 }
 
-/* vue-flow 主题适配 */
-.vue-flow__node-default,
-.vue-flow__node-input,
-.vue-flow__node-output {
-  background: var(--panel-2) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 10px !important;
-  font-size: 13px;
-  padding: 10px 14px;
+/* ---------------------------------------------------------------------------
+ * 11. 资料速览（右栏 Markdown）：紧凑排版
+ * ------------------------------------------------------------------------- */
+.prose-peek h1,
+.prose-peek h2,
+.prose-peek h3 {
+  font-size: 1.05em;
+  margin: 0.4em 0 0.5em;
+  color: var(--text);
 }
-.vue-flow__edge-path {
-  stroke: var(--text-faint) !important;
+.prose-peek p {
+  margin: 0 0 0.7em;
+  color: var(--text-dim);
+  line-height: 1.85;
 }
-.vue-flow__handle {
-  background: var(--accent) !important;
-  border: none !important;
+.prose-peek ul,
+.prose-peek ol {
+  margin: 0 0 0.7em;
+  padding-left: 1.4em;
+  color: var(--text-dim);
 }
-
-/* 评分卡 */
-.score-bar {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--bg-soft);
-  overflow: hidden;
+.prose-peek li {
+  margin-bottom: 0.25em;
+  line-height: 1.8;
 }
-.score-bar > div {
-  height: 100%;
-  border-radius: 3px;
-  background: var(--accent);
-  transition: width 0.6s ease;
+.prose-peek strong {
+  color: var(--text);
 }
 
-/* 光标粒子画布 */
-#particle-canvas {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 60;
-}
-
-/* 加载指示 */
-.ink-dots span {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent);
-  margin-right: 3px;
-  animation: blink 1.2s infinite;
-}
-.ink-dots span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.ink-dots span:nth-child(3) {
-  animation-delay: 0.4s;
-}
-@keyframes blink {
-  0%,
-  80%,
-  100% {
-    opacity: 0.25;
-  }
-  40% {
-    opacity: 1;
-  }
-}
-
-/* 淡入动画 */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.25s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-/* ============ 智能体对话：Markdown 渲染 ============ */
+/* ---------------------------------------------------------------------------
+ * 12. 智能体对话：Markdown 渲染
+ * ------------------------------------------------------------------------- */
 .markdown-body {
   color: var(--text);
 }
@@ -689,7 +732,7 @@ input[type='range']::-moz-range-thumb {
 .markdown-body h2,
 .markdown-body h3,
 .markdown-body h4 {
-  font-family: 'Source Han Serif SC', 'Noto Serif SC', 'STZhongsong', 'SimSun', serif;
+  font-family: var(--font-serif);
   line-height: 1.45;
   margin: 1.1em 0 0.5em;
 }
@@ -723,14 +766,15 @@ input[type='range']::-moz-range-thumb {
 .markdown-body code {
   background: var(--bg-soft);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--r-xs);
   padding: 1px 5px;
+  font-family: var(--font-mono);
   font-size: 0.9em;
 }
 .markdown-body pre {
   background: var(--bg-soft);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   padding: 10px 12px;
   overflow-x: auto;
   margin: 0 0 0.85em;
@@ -774,16 +818,18 @@ input[type='range']::-moz-range-thumb {
   font-weight: 600;
 }
 
-/* ============ 智能体对话：差异行着色 ============ */
+/* 差异行着色 */
 .diff-add {
-  background: rgba(127, 174, 122, 0.15);
+  background: color-mix(in srgb, var(--ok) 16%, transparent);
 }
 .diff-del {
-  background: rgba(224, 138, 122, 0.13);
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
 }
 
-/* ============ 资料区竖栏：滚动条平时隐身，悬停浮现 3px 细条 ============ */
-/* 负边距补偿：滚动条悬浮在竖栏右缘外，按钮列与上下固定的妙笔/写作台保持同轴 */
+/* ---------------------------------------------------------------------------
+ * 13. 资料区竖栏：滚动条平时隐身，悬停浮现 3px 细条
+ *     负边距补偿：滚动条悬浮在竖栏右缘外，按钮列与上下固定的妙笔/写作台保持同轴
+ * ------------------------------------------------------------------------- */
 .panel-rail-scroll {
   scrollbar-color: transparent transparent;
   width: calc(100% + 3px);
@@ -801,4 +847,49 @@ input[type='range']::-moz-range-thumb {
 }
 .panel-rail-scroll::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+ * 14. vue-flow 主题适配
+ * ------------------------------------------------------------------------- */
+.vue-flow__node-default,
+.vue-flow__node-input,
+.vue-flow__node-output {
+  background: var(--panel-2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--r-md) !important;
+  font-size: var(--fs-label);
+  padding: 10px 14px;
+}
+.vue-flow__edge-path {
+  stroke: var(--text-faint) !important;
+}
+.vue-flow__handle {
+  background: var(--accent) !important;
+  border: none !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * 15. 评分条 / 进度条
+ * ------------------------------------------------------------------------- */
+.score-bar {
+  height: 6px;
+  border-radius: var(--r-xs);
+  background: var(--bg-soft);
+  overflow: hidden;
+}
+.score-bar > div {
+  height: 100%;
+  border-radius: var(--r-xs);
+  background: var(--accent);
+  transition: width 0.6s var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1));
+}
+
+/* 光标粒子画布 */
+#particle-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-particles);
 }

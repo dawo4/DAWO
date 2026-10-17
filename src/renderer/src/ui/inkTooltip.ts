@@ -19,17 +19,17 @@ function ensureTipEl(): HTMLDivElement {
       'z-index: 95',
       'max-width: 340px',
       'padding: 6px 10px',
-      'border-radius: 8px',
-      'border: 1px solid var(--border)',
+      'border-radius: var(--r-sm)',
+      'border: 1px solid var(--border-strong)',
       'background: var(--panel-2)',
       'color: var(--text)',
-      'font-size: 11.5px',
+      'font-size: var(--fs-meta)',
       'line-height: 1.6',
       'white-space: pre-wrap',
-      'box-shadow: var(--shadow)',
+      'box-shadow: var(--sh-2)',
       'pointer-events: none',
       'opacity: 0',
-      'transition: opacity 0.15s, transform 0.15s',
+      'transition: opacity var(--dur-2), transform var(--dur-2)',
       'transform: translateY(2px)'
     ].join(';')
     document.body.appendChild(tipEl)

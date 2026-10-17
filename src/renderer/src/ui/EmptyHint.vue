@@ -1,5 +1,9 @@
 <script setup lang="ts">
-// 统一的空状态提示：图标 + 主文案 + 副文案 + 动作按钮，写作台右栏各标签页共用
+/**
+ * 统一的空状态提示：印章式圆形底 + 图标 + 主文案（衬线）+ 副文案 + 动作按钮。
+ * 写作台右栏各标签页 / 时间线 / 故事线 / 关系图等处共用。
+ * props 与 emits 与旧版一致。
+ */
 import InkButton from './InkButton.vue'
 
 defineProps<{
@@ -12,12 +16,19 @@ const emit = defineEmits<{ (e: 'action'): void }>()
 </script>
 
 <template>
-  <div class="h-full flex flex-col items-center justify-center gap-2.5 text-center px-6">
-    <component :is="icon" v-if="icon" :size="22" class="text-[var(--text-faint)]" />
-    <p class="text-[12.5px] text-[var(--text-dim)]">{{ title }}</p>
-    <p v-if="desc" class="text-[11.5px] text-[var(--text-faint)] leading-5">{{ desc }}</p>
-    <div v-if="action" class="mt-1.5">
-      <InkButton @click="emit('action')">{{ action }}</InkButton>
+  <div class="h-full flex flex-col items-center justify-center gap-3 text-center px-6">
+    <!-- 印章式底座：低对比圆形，弱化「空」的失落感 -->
+    <span
+      v-if="icon"
+      class="w-14 h-14 rounded-full flex items-center justify-center"
+      :style="{ background: 'var(--bg-soft)', border: '1px solid var(--border)' }"
+    >
+      <component :is="icon" :size="20" class="text-[var(--text-faint)]" />
+    </span>
+    <p class="font-serif-ink text-body text-[var(--text-dim)]">{{ title }}</p>
+    <p v-if="desc" class="text-meta text-[var(--text-faint)] leading-5 max-w-[320px]">{{ desc }}</p>
+    <div v-if="action" class="mt-1">
+      <InkButton variant="ghost" size="sm" @click="emit('action')">{{ action }}</InkButton>
     </div>
   </div>
 </template>

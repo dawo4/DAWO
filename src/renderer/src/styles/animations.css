@@ -1,0 +1,287 @@
+/* =============================================================================
+ *  DAWO 动效集中层（animations.css）
+ *  ---------------------------------------------------------------------------
+ *  这里是全站唯一的动效来源：动效令牌、@keyframes、过渡类、动效开关映射。
+ *  修改动效时只改本文件，不要散落到各组件里。
+ *
+ *  性能铁律：
+ *  1. 只对 transform / opacity 做动画，绝不触发布局或重绘重排。
+ *  2. will-change 只在交互期挂载，用完即摘。
+ *  3. prefers-reduced-motion 一票否决（见文件末尾）。
+ *  4. 长列表不做入场 stagger —— 长时间写作不该被动画分心，也是低配掉帧主因。
+ * ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * 1. 动效令牌
+ * ------------------------------------------------------------------------- */
+:root {
+  --dur-1: 110ms; /* 微交互：hover / press / 状态点 */
+  --dur-2: 160ms; /* 控件状态切换 */
+  --dur-3: 220ms; /* 弹层 / 面板 / 页面切换 */
+  --dur-4: 320ms; /* 大区块 */
+
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1); /* 默认：进出场 */
+  --ease-inout: cubic-bezier(0.4, 0, 0.2, 1); /* 对称位移 */
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1); /* 仅开关/弹层，克制使用 */
+
+  /* 兼容别名：老样式里引用了 --ease-out-quart，统一指向 --ease-out */
+  --ease-out-quart: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ---------------------------------------------------------------------------
+ * 2. 微交互：按压反馈
+ *    所有按钮点下时轻微下沉，松开弹回（110ms 内完成）
+ * ------------------------------------------------------------------------- */
+body.fx-press button {
+  transition: transform var(--dur-1) var(--ease-out), background-color var(--dur-2), color var(--dur-2),
+    border-color var(--dur-2), opacity var(--dur-2);
+}
+body.fx-press button:active {
+  transform: scale(0.97);
+}
+
+/* 导航选中标记条：竖向展开（AppNav 选中项左缘的 2px 金色标记） */
+@keyframes nav-mark-in {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 3. 涟漪（自绘 InkButton / 顶栏轻提示共用）
+ * ------------------------------------------------------------------------- */
+.ink-ripple {
+  position: relative;
+  overflow: hidden;
+}
+.ink-ripple .ripple-dot {
+  position: absolute;
+  border-radius: var(--r-pill);
+  background: currentColor;
+  opacity: 0.22;
+  transform: scale(0);
+  animation: ripple 0.5s var(--ease-out) forwards;
+  pointer-events: none;
+}
+@keyframes ripple {
+  to {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 4. 入场：上浮 + 淡入
+ *    仅用于页面首屏区块（.rise-in）；长列表禁止使用。
+ *    需要错峰时在元素 style 上写 animation-delay。
+ * ------------------------------------------------------------------------- */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+body.fx-rise .rise-in {
+  animation: rise-in 0.42s var(--ease-out) both;
+}
+
+/* 向下展开（折叠区块内容） */
+@keyframes expand-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+body.fx-rise .expand-in {
+  animation: expand-down 0.28s var(--ease-out) both;
+}
+
+/* ---------------------------------------------------------------------------
+ * 5. 状态反馈
+ * ------------------------------------------------------------------------- */
+
+/* 成功提示：轻脉冲一次 */
+@keyframes ok-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.ok-pulse {
+  animation: ok-pulse 0.4s var(--ease-out);
+}
+
+/* 加载指示：三点呼吸 */
+.ink-dots span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-right: 3px;
+  animation: blink 1.2s infinite;
+}
+.ink-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.ink-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* 流式输出光标：呼吸 */
+@keyframes stream-breathe {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+.stream-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  vertical-align: -0.15em;
+  background: var(--accent);
+  animation: stream-breathe 1.4s var(--ease-inout) infinite;
+}
+
+/* 骨架屏：浅扫光（仅 opacity + transform） */
+@keyframes shimmer {
+  0% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+.skeleton {
+  background: var(--panel-2);
+  border-radius: var(--r-sm);
+  animation: shimmer 1.6s var(--ease-inout) infinite;
+}
+
+/* ---------------------------------------------------------------------------
+ * 6. 页面切换（App.vue 的 Transition name="page-fade"）
+ *    fx-fade 关闭时 App.vue 传无动画名，这里不必再加开关判断。
+ * ------------------------------------------------------------------------- */
+.page-fade-enter-active {
+  transition: opacity var(--dur-3) var(--ease-out), transform var(--dur-3) var(--ease-out);
+}
+.page-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.page-fade-leave-to {
+  opacity: 0;
+}
+
+/* 通用淡入淡出（InkModal 遮罩等） */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--dur-3) var(--ease-out);
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * 7. 弹层 / 下拉 / 气泡统一入场（Transition name="pop"）
+ *    transform-origin 跟随触发元素，由使用方通过 style 指定。
+ * ------------------------------------------------------------------------- */
+.pop-enter-active {
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
+}
+.pop-leave-active {
+  transition: opacity var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
+}
+.pop-enter-from,
+.pop-leave-to {
+  opacity: 0;
+  transform: scale(0.985);
+}
+
+/* 从上方滑入（轻提示 / toast） */
+.toast-enter-active,
+.toast-leave-active {
+  transition: opacity var(--dur-3) var(--ease-out), transform var(--dur-3) var(--ease-out);
+}
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* ---------------------------------------------------------------------------
+ * 8. 环境动效：背景浮动球体（独立固定层，长期存在）
+ *    数量与透明度由主题变量 --orb-opacity 与设置开关控制。
+ * ------------------------------------------------------------------------- */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: var(--z-orb);
+  opacity: var(--orb-opacity);
+  background: var(--accent);
+  animation: float-orb 18s ease-in-out infinite;
+}
+@keyframes float-orb {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(40px, -60px) scale(1.15);
+  }
+  66% {
+    transform: translate(-50px, 30px) scale(0.9);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 9. 无障碍：系统开启「减少动态效果」时，全部动效一票否决
+ * ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
