@@ -12,6 +12,8 @@ const isDev = !!process.env.ELECTRON_RENDERER_URL
 if (isDev) {
   // 开发时不走 HTTP 缓存：否则改了渲染层代码，窗口仍会加载到旧模块
   app.commandLine.appendSwitch('disable-http-cache')
+  // 开发调试：设 DAWO_DEBUG_PORT=9223 环境变量即可用 Chrome DevTools / CDP 连接排查（electron-vite dev 不透传该开关）
+  if (process.env.DAWO_DEBUG_PORT) app.commandLine.appendSwitch('remote-debugging-port', process.env.DAWO_DEBUG_PORT)
 }
 
 /** 应用图标：只要图标文件在就显式设置（开发/预览模式 electron.exe 自带的是默认图标，必须覆盖；打包后 exe 已带同款图标，设置了也无害） */
