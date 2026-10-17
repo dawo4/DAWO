@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onActivated, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAppStore } from '../store/app'
 import { useLibraryStore } from '../store/library'
 import { useConversationStore } from '../store/conversation'
@@ -98,6 +98,24 @@ window.addEventListener('inkdesk:panels-changed', () => void refreshCustomPanels
 
 const mateTabs = computed(() => [...MATE_TABS, ...customPanels.value])
 const customTabInst = computed(() => customPanels.value.find((p) => p.key === rightTab.value))
+
+/**
+ * 右栏标签条：单行横向滚动（17+ 个标签不再折行占掉三行高度）。
+ * 切换标签时把选中项滚入视野；只改 scrollLeft，不影响页面纵向滚动。
+ */
+const tabStrip = ref<HTMLElement>()
+watch(rightTab, (t) => {
+  void nextTick(() => {
+    const host = tabStrip.value
+    if (!host) return
+    const el = host.querySelector(`[data-tab="${CSS.escape(t)}"]`) as HTMLElement | null
+    if (!el) return
+    const left = el.offsetLeft
+    const right = left + el.offsetWidth
+    if (left < host.scrollLeft + 4) host.scrollTo({ left: Math.max(0, left - 8), behavior: 'smooth' })
+    else if (right > host.scrollLeft + host.clientWidth - 4) host.scrollTo({ left: right - host.clientWidth + 8, behavior: 'smooth' })
+  })
+})
 /** Markdown 资料按目录读取：目录下所有 .md 都可作为速览来源（此前写死单个文件，内容在别的文件里就误报「暂无资料」） */
 const MATE_DIRS: Record<string, string> = {
   大纲: '大纲',
@@ -442,7 +460,7 @@ onUnmounted(() => {
   <div v-else class="h-full flex">
     <!-- 左：文件树 -->
     <aside
-      class="app-chrome relative shrink-0 border-r border-[var(--border)] bg-[var(--bg-soft)]/60 overflow-y-auto py-2"
+      class="app-chrome relative shrink-0 border-r border-[var(--border)] bg-[var(--bg-soft)]/70 overflow-y-auto pt-1 pb-2"
       :class="{ 'focus-dim': app.focusMode }"
       :style="{ width: treeDrag.width.value + 'px' }"
     >
@@ -465,8 +483,8 @@ onUnmounted(() => {
     <section class="flex-1 min-w-0 flex flex-col">
       <PageSubNav dense>
         <template #left>
-          <span class="font-serif-ink text-[14px] shrink-0">{{ chapterTitle || '未选择文件' }}</span>
-          <span class="text-[11px] text-[var(--text-faint)] shrink-0">{{ content.length }} 字</span>
+          <span class="font-serif-ink text-heading shrink-0 text-[var(--text)]">{{ chapterTitle || '未选择文件' }}</span>
+          <span class="text-meta text-[var(--text-faint)] tnum shrink-0">{{ content.length }} 字</span>
           <WritingAssistBar
             v-if="currentFile && currentFile.startsWith('正文/')"
             :today-written="stats.handwritten + stats.ai"
@@ -476,8 +494,12 @@ onUnmounted(() => {
         </template>
         <template #right>
           <button
-            class="text-[12px] inline-flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer transition-colors"
-            :class="aiContinueBusy ? 'text-[var(--text-faint)]' : 'text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)]'"
+            class="text-meta inline-flex items-center gap-1 px-2.5 h-7 rounded-[var(--r-sm)] cursor-pointer transition-colors whitespace-nowrap"
+            :class="
+              aiContinueBusy
+                ? 'text-[var(--text-faint)] border border-[var(--border)]'
+                : 'border border-[var(--accent-line)] text-[var(--accent)] hover:bg-[var(--accent-soft)]'
+            "
             :disabled="aiContinueBusy"
             title="交给「分节写手」智能体续写当前章节：它会读大纲、设定与全文，续写后以修改提案交你审阅（需先在设置里配置智能体模型）"
             @click="aiContinue"
@@ -485,14 +507,14 @@ onUnmounted(() => {
             <Sparkles :size="13" /> {{ aiContinueBusy ? '续写中…' : 'AI 续写' }}
           </button>
           <button
-            class="text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer p-1.5 ml-3"
+            class="w-7 h-7 rounded-[var(--r-sm)] flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors ml-2"
             :title="threePane ? '切换为右栏标签页布局' : '切换为三栏布局（对话居中）'"
             @click="app.toggleLayout()"
           >
             <component :is="threePane ? PanelRight : Columns2" :size="16" />
           </button>
           <button
-            class="text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer p-1.5"
+            class="w-7 h-7 rounded-[var(--r-sm)] flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors"
             :title="app.focusMode ? '退出专注模式' : '专注模式'"
             @click="app.focusMode = !app.focusMode"
           >
@@ -502,7 +524,7 @@ onUnmounted(() => {
       </PageSubNav>
 
       <!-- 写作工具行：撤回 / 重做 / 快速取名 / 查找 / 排版 / 历史版本 / 灵感速记 -->
-      <div class="shrink-0 flex items-center gap-0.5 px-3 py-1 border-b border-[var(--border)]">
+      <div class="shrink-0 flex items-center gap-0.5 px-3 h-9 border-b border-[var(--border)]">
         <button class="tool-btn" title="撤销（Ctrl+Z）" @click="editorRef?.undo()">
           <Undo2 :size="15" />
         </button>
@@ -526,16 +548,14 @@ onUnmounted(() => {
           <Lightbulb :size="15" />
         </button>
         <div class="flex-1" />
-        <span v-if="currentFile" class="text-[10.5px] text-[var(--text-faint)] pr-1">{{ chapterTitle }}</span>
+        <span v-if="currentFile" class="text-micro text-[var(--text-faint)] pr-1">{{ chapterTitle }}</span>
       </div>
 
       <!-- 查找替换（Ctrl+F） -->
       <FindReplace v-if="findOpen" :text="content" @close="findOpen = false" @apply="applyFind" />
 
       <div class="flex-1 min-h-0 overflow-y-auto" @click="app.focusMode && (app.focusMode = false)">
-        <div v-if="!currentFile" class="h-full flex items-center justify-center text-[var(--text-faint)] text-sm">
-          从左侧选择章节或资料文件开始写作
-        </div>
+        <EmptyHint v-if="!currentFile" :icon="FileText" title="从左侧选择章节或资料文件开始写作" desc="也可以新建一章，或让智能体按大纲生成" />
         <div v-else class="prose-ink" :class="typoGrid" :style="typoVars">
           <InkEditor
             ref="editorRef"
@@ -550,22 +570,27 @@ onUnmounted(() => {
     <!-- 右（标签页布局）：智能体 / 去 AI 味 / 资料速览 -->
     <aside
       v-if="!threePane"
-      class="app-chrome relative shrink-0 border-l border-[var(--border)] bg-[var(--bg-soft)]/60 flex flex-col min-h-0"
+      class="app-chrome relative shrink-0 border-l border-[var(--border)] bg-[var(--bg-soft)]/70 flex flex-col min-h-0"
       :class="{ 'focus-dim': app.focusMode }"
       :style="{ width: rightDrag.width.value + 'px' }"
     >
       <div class="panel-resizer left-0" :class="{ 'is-dragging': rightDrag.dragging.value }" @mousedown="rightDrag.onDown($event, -1)" />
-      <div class="flex flex-wrap border-b border-[var(--border)] px-2 pt-1.5 pb-1 shrink-0">
-        <button
-          v-for="t in mateTabs"
-          :key="t.key"
-          class="px-2 py-1 text-[11.5px] cursor-pointer rounded-md transition-colors whitespace-nowrap"
-          :class="rightTab === t.key ? 'font-medium bg-[var(--panel-2)]' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)] hover:bg-[var(--hover)]'"
-          :style="rightTab === t.key ? { color: 'var(--accent)' } : {}"
-          @click="rightTab = t.key"
-        >
-          {{ t.label }}
-        </button>
+      <!-- 标签条：单行横向滚动（17+ 个标签不再折行占掉三行高度），右缘渐隐提示还有更多 -->
+      <div class="relative shrink-0 border-b border-[var(--border)]">
+        <div ref="tabStrip" class="tab-strip flex items-center gap-0.5 px-2 h-9">
+          <button
+            v-for="t in mateTabs"
+            :key="t.key"
+            :data-tab="t.key"
+            class="shrink-0 px-2 h-6 text-label rounded-[var(--r-sm)] cursor-pointer transition-colors whitespace-nowrap"
+            :class="rightTab === t.key ? 'font-medium' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)] hover:bg-[var(--hover)]'"
+            :style="rightTab === t.key ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : {}"
+            @click="rightTab = t.key"
+          >
+            {{ t.label }}
+          </button>
+        </div>
+        <span class="tab-fade" />
       </div>
 
       <!-- 智能体对话 -->
@@ -576,14 +601,14 @@ onUnmounted(() => {
       <!-- 去 AI 味 -->
       <div v-else-if="rightTab === 'deai'" class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
         <div>
-          <div class="text-xs text-[var(--text-faint)] tracking-wider mb-2 flex items-center gap-1.5">
+          <div class="text-meta tracking-[0.08em] text-[var(--text-faint)] mb-2 flex items-center gap-1.5">
             <Eye :size="13" /> 整章去 AI 味
           </div>
-          <p class="text-[11px] text-[var(--text-faint)] leading-5 mb-3">
+          <p class="text-meta text-[var(--text-faint)] leading-5 mb-3">
             对当前打开的章节做人类信号自检（六维密度+红牌警告）、红牌级诊断（含 OOC 角色对照）、L1-L4 四档注入式改写与 5 维评分，改写结果可编辑后一键应用。
           </p>
           <DeaiPanel v-if="currentFile.startsWith('正文/')" :chapter-text="content" :book="lib.current.title" :file="currentFile" @apply-text="applyWholeText" />
-          <p v-else class="text-xs text-[var(--text-faint)]">打开一个章节文件后可使用整章诊断 / 改写 / 评分。</p>
+          <p v-else class="text-meta text-[var(--text-faint)]">打开一个章节文件后可使用整章诊断 / 改写 / 评分。</p>
         </div>
       </div>
 
@@ -614,17 +639,16 @@ onUnmounted(() => {
 
       <!-- 资料速览（Markdown）：目录下多文件用 chips 切换；空态与内容态统一风格 -->
       <div v-else class="flex-1 min-h-0 flex flex-col">
-        <div v-if="mateFiles.length > 1" class="shrink-0 flex flex-wrap gap-1 px-3 pt-2.5 pb-1 border-b border-[var(--border)]">
+        <div v-if="mateFiles.length > 1" class="shrink-0 flex flex-wrap gap-1 px-3 pt-2.5 pb-1.5 border-b border-[var(--border)]">
           <button
             v-for="f in mateFiles"
             :key="f"
-            class="px-2 py-0.5 text-[11px] rounded-full cursor-pointer transition-colors max-w-[45%] truncate"
-            :class="mateFile === f ? 'font-medium' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)]'"
-            :style="mateFile === f ? { background: 'var(--panel-2)', color: 'var(--accent)' } : {}"
+            class="ink-chip max-w-[45%] cursor-pointer transition-colors"
+            :class="mateFile === f ? 'ink-chip-accent' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)]'"
             :title="f.split('/').pop()"
             @click="mateFile = f; void loadMateFile(f)"
           >
-            {{ (f.split('/').pop() || '').replace(/\.(md|txt)$/i, '') }}
+            <span class="truncate">{{ (f.split('/').pop() || '').replace(/\.(md|txt)$/i, '') }}</span>
           </button>
         </div>
         <EmptyHint
@@ -637,10 +661,10 @@ onUnmounted(() => {
           @action="app.goMaterials(rightTab)"
         />
         <template v-else>
-          <div class="flex-1 min-h-0 overflow-y-auto p-4 text-[13px] prose-peek" v-html="mateHtml" />
+          <div class="flex-1 min-h-0 overflow-y-auto p-4 text-label prose-peek" v-html="mateHtml" />
           <div class="shrink-0 px-3.5 py-2 border-t border-[var(--border)]">
             <button
-              class="w-full flex items-center justify-center gap-1.5 text-[11.5px] py-1.5 rounded-lg cursor-pointer text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] transition-colors"
+              class="w-full flex items-center justify-center gap-1.5 text-label py-1.5 rounded-[var(--r-sm)] cursor-pointer text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] transition-colors"
               @click="app.goMaterials(rightTab)"
             >
               在资料区编辑<ArrowUpRight :size="13" />
@@ -676,9 +700,9 @@ onUnmounted(() => {
     <!-- 灵感速记 -->
     <InkModal :open="noteOpen" title="灵感速记" @close="noteOpen = false">
       <div class="space-y-3">
-        <textarea v-model="noteText" rows="5" class="ink-textarea text-[13px]" placeholder="随手记一条灵感…存进灵感便签库" />
+        <textarea v-model="noteText" rows="5" class="ink-textarea text-label" placeholder="随手记一条灵感…存进灵感便签库" />
         <div class="flex items-center justify-end gap-2">
-          <span v-if="noteSaved" class="text-[11.5px] ok-pulse inline-flex items-center gap-1" style="color: var(--accent)">
+          <span v-if="noteSaved" class="text-label ok-pulse inline-flex items-center gap-1" style="color: var(--accent)">
             <Check :size="12" /> 已存入灵感便签
           </span>
           <InkButton :disabled="!noteText.trim()" @click="saveNote">记下来</InkButton>
@@ -687,3 +711,25 @@ onUnmounted(() => {
     </InkModal>
   </div>
 </template>
+
+<style scoped>
+/* 右栏标签条：横向滚动但隐藏滚动条（右缘渐隐已明示可滚动） */
+.tab-strip {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.tab-strip::-webkit-scrollbar {
+  display: none;
+}
+/* 右缘渐隐：暗示后方还有标签；底色与栏底一致，避免出现色块 */
+.tab-fade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 1px;
+  width: 24px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--bg-soft) 70%, transparent));
+}
+</style>

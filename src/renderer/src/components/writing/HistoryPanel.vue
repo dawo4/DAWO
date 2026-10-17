@@ -115,7 +115,7 @@ onMounted(() => void load())
     <div class="flex-1 min-w-0 flex flex-col">
       <div class="flex items-center gap-2 mb-2">
         <span v-if="picked && diff" class="text-[11.5px] text-[var(--text-dim)]">
-          相对当前稿：<span style="color: var(--accent)">+{{ diff.additions }}</span> / <span style="color: #e08a7a">−{{ diff.deletions }}</span>
+          相对当前稿：<span style="color: var(--accent)">+{{ diff.additions }}</span> / <span style="color: var(--danger)">−{{ diff.deletions }}</span>
         </span>
         <span v-else class="text-[12px] text-[var(--text-dim)]">版本差异</span>
         <div class="flex-1" />

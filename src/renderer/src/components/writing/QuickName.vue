@@ -162,7 +162,7 @@ async function copyName(name: string, i: number) {
         <WandSparkles v-else :size="13" />
         {{ busy ? '生成中…' : '开始生成' }}
       </InkButton>
-      <div v-if="error" class="text-[12px] text-[#e08a7a]">{{ error }}</div>
+      <div v-if="error" class="text-label ink-text-danger">{{ error }}</div>
     </div>
 
     <!-- 右：结果 -->

@@ -84,11 +84,11 @@ async function editGoal() {
       title="点击修改每日目标"
       @click="editGoal"
     >
-      <span class="text-[11px] text-[var(--text-faint)]">今日</span>
-      <span class="text-[11.5px] tabular-nums" :style="{ color: reached ? 'var(--accent)' : 'var(--text-dim)' }">
+      <span class="text-meta text-[var(--text-faint)]">今日</span>
+      <span class="text-label tnum" :style="{ color: reached ? 'var(--accent)' : 'var(--text-dim)' }">
         {{ todayWritten }}
       </span>
-      <span class="text-[11px] text-[var(--text-faint)] tabular-nums group-hover:text-[var(--accent)]">/ {{ goal }}</span>
+      <span class="text-meta text-[var(--text-faint)] tnum group-hover:text-[var(--accent)]">/ {{ goal }}</span>
     </button>
     <span class="w-16 h-1 rounded-full overflow-hidden" style="background: var(--border)" :title="`${pct}%`">
       <span
@@ -98,7 +98,7 @@ async function editGoal() {
     </span>
 
     <!-- 本次写作 -->
-    <span v-if="elapsedMin >= 1 || typed > 0" class="flex items-center gap-1.5 text-[11px] text-[var(--text-faint)]">
+    <span v-if="elapsedMin >= 1 || typed > 0" class="flex items-center gap-1.5 text-meta text-[var(--text-faint)]">
       <span class="flex items-center gap-1">
         <span
           class="w-1.5 h-1.5 rounded-full"
@@ -108,9 +108,9 @@ async function editGoal() {
         本次 {{ elapsedMin }} 分钟
       </span>
       <span>·</span>
-      <span class="tabular-nums">{{ typed }} 字</span>
+      <span class="tnum">{{ typed }} 字</span>
       <span v-if="speed > 0">·</span>
-      <span v-if="speed > 0" class="tabular-nums">{{ speed }} 字/分</span>
+      <span v-if="speed > 0" class="tnum">{{ speed }} 字/分</span>
     </span>
   </div>
 </template>

@@ -77,11 +77,12 @@
   --sh-2: 0 4px 16px rgba(0, 0, 0, 0.2);
   --sh-3: 0 16px 48px rgba(0, 0, 0, 0.3);
 
-  /* 状态色：唯一允许的非强调色，仅用于成功/警告/危险 */
+  /* 状态色：唯一允许的非强调色，仅用于成功/警告/危险/中性提示 */
   --ok: #6fae74;
   --warn: #d8a24a;
   --danger: #c05a4a;
   --danger-strong: #a5442f;
+  --info: #7a92b8;
 
   /* 焦点环 */
   --ring: color-mix(in srgb, var(--accent) 45%, transparent);
@@ -382,6 +383,30 @@ body {
   .ink-hairline {
     height: 1px;
     background: var(--border);
+  }
+
+  /* 语义色浅底/浅边：错误、警告、成功。
+     统一在这里生成，避免各组件硬编码带 alpha 的 hex（如 #e08a7a55）。 */
+  .ink-soft-danger {
+    border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+    background: color-mix(in srgb, var(--danger) 9%, transparent);
+  }
+  .ink-soft-warn {
+    border-color: color-mix(in srgb, var(--warn) 55%, transparent);
+    background: color-mix(in srgb, var(--warn) 8%, transparent);
+  }
+  .ink-soft-ok {
+    border-color: color-mix(in srgb, var(--ok) 55%, transparent);
+    background: color-mix(in srgb, var(--ok) 9%, transparent);
+  }
+  .ink-text-danger {
+    color: var(--danger);
+  }
+  .ink-text-warn {
+    color: var(--warn);
+  }
+  .ink-text-ok {
+    color: var(--ok);
   }
 
   /* ---- 既有表单原语（类名保留，只调视觉） ---- */

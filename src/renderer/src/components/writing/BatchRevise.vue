@@ -221,7 +221,7 @@ async function acceptAll() {
           <div class="flex items-center gap-2">
             <div class="flex-1 text-[11px] text-[var(--text-faint)] leading-4">逐章调「润色 / 扩写 / 纠错」任务模型；每章生成差异提案，不改指令之外的内容。</div>
             <button
-              class="text-[12.5px] px-5 py-1.5 rounded-lg cursor-pointer font-medium text-[#1b1712] transition-[filter] hover:brightness-110 disabled:opacity-40"
+              class="text-label px-5 h-7 rounded-[var(--r-sm)] cursor-pointer font-medium text-[var(--accent-ink)] transition-[filter] hover:brightness-110 disabled:opacity-40"
               style="background: var(--accent)"
               :disabled="!checked.length || !instruction.trim()"
               @click="start"
@@ -237,7 +237,7 @@ async function acceptAll() {
             <template v-if="running">
               <LoaderCircle :size="13" class="animate-spin" style="color: var(--accent)" />
               <span class="text-[12px] text-[var(--text-dim)]">进度 {{ doneCount }}/{{ checked.length }}</span>
-              <button class="text-[11.5px] px-2.5 py-1 rounded-lg cursor-pointer border border-[var(--border)] text-[var(--text-dim)] hover:text-[#e08a7a]" @click="stop">
+              <button class="text-label px-2.5 h-7 rounded-[var(--r-sm)] cursor-pointer border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--danger)] hover:border-[var(--danger)]" @click="stop">
                 <Square :size="11" class="inline mr-1 -mt-0.5" />停止
               </button>
             </template>
@@ -257,7 +257,7 @@ async function acceptAll() {
               v-for="it in items"
               :key="it.path"
               class="rounded-lg border text-[12px]"
-              :class="[it.status === 'error' ? 'border-[#e08a7a55]' : 'border-[var(--border)]', it.status === 'run' ? 'bg-[var(--bg-soft)]' : 'bg-[var(--bg-soft)]/50']"
+              :class="[it.status === 'error' ? 'ink-soft-danger' : 'border-[var(--border)]', it.status === 'run' ? 'bg-[var(--bg-soft)]' : 'bg-[var(--bg-soft)]/50']"
             >
               <button
                 class="w-full flex items-center gap-2 px-3 py-2 text-left cursor-pointer"
@@ -267,7 +267,7 @@ async function acceptAll() {
                 <template v-if="it.status === 'run'"><LoaderCircle :size="12" class="animate-spin" style="color: var(--accent)" /></template>
                 <template v-else-if="it.status === 'ok'"><ChevronDown v-if="it.expanded" :size="12" class="text-[var(--accent)]" /><ChevronRight v-else :size="12" style="color: var(--accent)" /></template>
                 <template v-else-if="it.status === 'applied'"><Check :size="12" style="color: var(--accent)" /></template>
-                <template v-else-if="it.status === 'error'"><X :size="12" style="color: #e08a7a" /></template>
+                <template v-else-if="it.status === 'error'"><X :size="12" style="color: var(--danger)" /></template>
                 <span v-else-if="it.status === 'rejected'" class="text-[var(--text-faint)]">—</span>
                 <b v-else class="text-[var(--text-faint)]">·</b>
                 <span class="flex-1" :class="it.status === 'wait' ? 'text-[var(--text-faint)]' : ''">{{ it.title }}</span>
@@ -278,7 +278,7 @@ async function acceptAll() {
                 </span>
                 <span v-else-if="it.status === 'applied'" class="text-[10.5px]" style="color: var(--accent)">已应用</span>
                 <span v-else-if="it.status === 'rejected'" class="text-[10.5px] text-[var(--text-faint)]">已放弃</span>
-                <span v-else-if="it.status === 'error'" class="text-[10.5px] text-left flex-1" style="color: #e08a7a">{{ it.error }}</span>
+                <span v-else-if="it.status === 'error'" class="text-micro text-left flex-1" style="color: var(--danger)">{{ it.error }}</span>
               </button>
               <div v-if="it.expanded && it.proposal" class="px-3 pb-2.5">
                 <div class="rounded-lg border border-[var(--border)] overflow-hidden max-h-[320px] overflow-y-auto">
@@ -289,7 +289,7 @@ async function acceptAll() {
                     放弃
                   </button>
                   <button
-                    class="text-[11.5px] px-3 py-1 rounded-lg cursor-pointer font-medium text-[#1b1712]"
+                    class="text-label px-3 h-7 rounded-[var(--r-sm)] cursor-pointer font-medium text-[var(--accent-ink)]"
                     style="background: var(--accent)"
                     @click="decide(it, true)"
                   >

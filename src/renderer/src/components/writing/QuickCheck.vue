@@ -42,11 +42,11 @@ function parseVoiceprint(name: string, content: string): Voiceprint {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  健康: '#6fae6f',
-  受伤: '#d9a441',
-  闭关: '#7a92b8',
-  离场: '#9a917e',
-  死亡: '#e08a7a'
+  健康: 'var(--ok)',
+  受伤: 'var(--warn)',
+  闭关: 'var(--info)',
+  离场: 'var(--text-dim)',
+  死亡: 'var(--danger)'
 }
 
 async function load() {

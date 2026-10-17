@@ -41,7 +41,7 @@ const redCount = computed(() => findings.value.filter((f) => f.level === 'red').
 const yellowCount = computed(() => findings.value.filter((f) => f.level === 'yellow').length)
 
 const LEVEL_ICON = { red: CircleX, yellow: CircleAlert, info: Info }
-const LEVEL_COLOR = { red: '#e08a7a', yellow: '#d9a441', info: 'var(--accent)' }
+const LEVEL_COLOR = { red: 'var(--danger)', yellow: 'var(--warn)', info: 'var(--accent)' }
 
 async function scan() {
   if (scanning.value || !props.book) return
@@ -193,7 +193,7 @@ watch(
           </p>
           <button
             v-if="!scanning"
-            class="shrink-0 text-[12.5px] px-4 py-1.5 rounded-lg cursor-pointer font-medium text-[#1b1712] transition-[filter] hover:brightness-110"
+            class="shrink-0 text-label px-4 h-7 rounded-[var(--r-sm)] cursor-pointer font-medium text-[var(--accent-ink)] transition-[filter] hover:brightness-110"
             style="background: var(--accent)"
             @click="scan"
           >
@@ -201,7 +201,7 @@ watch(
           </button>
           <button
             v-else
-            class="shrink-0 text-[12.5px] px-4 py-1.5 rounded-lg cursor-pointer border border-[var(--border)] text-[var(--text-dim)] hover:text-[#e08a7a]"
+            class="shrink-0 text-label px-4 h-7 rounded-[var(--r-sm)] cursor-pointer border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--danger)] hover:border-[var(--danger)]"
             @click="stopFlag = true"
           >
             停止

@@ -131,10 +131,10 @@ const FORESHADOW_COLOR: Record<string, string> = {
 /** 出场状态色 */
 const TRACKING_COLOR: Record<string, string> = {
   健康: 'var(--text-faint)',
-  受伤: '#e0a87a',
+  受伤: 'var(--warn)',
   闭关: 'var(--text-dim)',
   离场: 'var(--text-faint)',
-  死亡: '#e08a7a'
+  死亡: 'var(--danger)'
 }
 
 /** 时间线按 sortKey 升序，读起来就是故事发生的顺序 */
