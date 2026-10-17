@@ -1246,14 +1246,19 @@ export async function runAgent(win: BrowserWindow, params: AgentRunParams): Prom
   let agentLabel = agentId
 
   try {
+    const agent = resolveAgent(agentId)
+    agentLabel = agent.name
     const provider: Provider | undefined = cfg.providers.find((p) => p.id === taskCfg.providerId)
     if (!provider || !taskCfg.model) {
+      // 该智能体在库里有单独分配、但服务商已不存在（被删/ID 变了）：提示直指智能体库，避免误导去全局设置
+      if (agentModel?.providerId && !cfg.providers.some((p) => p.id === agentModel.providerId)) {
+        send(win, runId, 'error', `「${agent.name}」在智能体库里指定的服务商已不存在（可能被删除）：请到「智能体库」重新为它分配模型，或改回「跟随设置」`)
+        return
+      }
       send(win, runId, 'error', '尚未配置智能体模型：请到「设置 → AI 服务」为「智能体对话」分配服务商与模型')
       return
     }
 
-    const agent = resolveAgent(agentId)
-    agentLabel = agent.name
     // 语义检索注入：只对在智能体库开启了「语义检索」的智能体生效（默认关闭，与联网搜索/分配模式同模式）。
     // ① 传入运行 AbortSignal：作者点「停止」时嵌入请求立即中断；② 10 秒兜底时限：首次建索引可能耗时较长，
     // 超时先跳过注入继续对话（索引在后台继续建，下一条消息即可命中），绝不让检索拖住对话主流程
