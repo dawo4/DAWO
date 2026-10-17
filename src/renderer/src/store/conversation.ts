@@ -281,8 +281,12 @@ export const useConversationStore = defineStore('conversation', {
       // 圆桌模式：成员按顺序依次发言，后者能看到前者的发言
       if (this.teamAgents.length >= 2) {
         const ids = [...this.teamAgents]
+        const originalAgentId = this.agentId
         for (let i = 0; i < ids.length; i++) {
           const a = this.allAgents.find((x) => x.id === ids[i])
+          if (!a) continue // 成员已被删除：跳过
+          // 真正切换到该成员：人格提示词、库权限、语义检索与模型分配逐轮生效（此前所有轮次都在用同一智能体）
+          this.agentId = a.id
           const prompt =
             i === 0
               ? text
@@ -293,6 +297,8 @@ export const useConversationStore = defineStore('conversation', {
           const last = this.messages[this.messages.length - 1]?.status
           if (last === 'error' || last === 'aborted') break
         }
+        // 圆桌结束：回到发起会话时的智能体，会话默认对象不变
+        this.agentId = originalAgentId
         return
       }
       await this.sendSingle(text)
