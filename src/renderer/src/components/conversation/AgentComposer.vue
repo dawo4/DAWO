@@ -7,7 +7,7 @@ import { useLibraryStore } from '../../store/library'
 import type { LibEntry, LibKind } from '../../types'
 import InkSegmented from '../../ui/InkSegmented.vue'
 import { CREATIVE_LEVELS, THINKING_LEVELS, levelToTemp, tempToLevel } from '../../ui/writingScale'
-import { ArrowUp, Square, Paperclip, Sparkles, BookOpen, Settings2, X, Search, Lightbulb, Users, Image as ImageIcon } from 'lucide-vue-next'
+import { ArrowUp, Square, Paperclip, Sparkles, BookOpen, Settings2, X, Search, Lightbulb, Users, Image as ImageIcon, Gauge, ShieldCheck, ShieldOff } from 'lucide-vue-next'
 
 const app = useAppStore()
 const conv = useConversationStore()
@@ -214,7 +214,7 @@ async function toggleApproval() {
 </script>
 
 <template>
-  <div class="relative">
+  <div class="relative composer">
     <!-- 引用与附件 chips -->
     <div class="flex flex-wrap gap-1.5 mb-2">
       <span v-for="(s, i) in conv.skillRefs" :key="'s' + i" class="ink-chip-btn">
@@ -400,7 +400,7 @@ async function toggleApproval() {
         @input="onInput"
         @keydown="onKeydown"
       />
-      <div class="flex items-center gap-1 px-2.5 pb-2 pt-1.5">
+      <div class="composer-bar flex items-center gap-1 px-2.5 pb-2 pt-1.5">
         <button class="ink-icon-btn" title="附加文本文件或图片（多模态模型可识图）" @click="fileInput?.click()">
           <Paperclip :size="15" />
         </button>
@@ -423,7 +423,9 @@ async function toggleApproval() {
           :title="conv.approvalMode === 'auto-approve' ? '智能体的改动静默写入文稿' : '智能体只给差异，你点接受才写入'"
           @click="toggleApproval"
         >
-          {{ conv.approvalMode === 'auto-approve' ? '替我审批' : '我来审阅' }}
+          <ShieldCheck v-if="conv.approvalMode !== 'auto-approve'" :size="13" class="chip-icon" />
+          <ShieldOff v-else :size="13" class="chip-icon" />
+          <span class="chip-label">{{ conv.approvalMode === 'auto-approve' ? '替我审批' : '我来审阅' }}</span>
         </button>
 
         <div class="flex-1" />
@@ -447,8 +449,9 @@ async function toggleApproval() {
           "
           @click="ctxOpen = !ctxOpen"
         >
-          上下文 ≈{{ contextTokens }} tok
-          <span v-if="usagePercent !== null" class="inline-block w-12 h-1 rounded-full overflow-hidden bg-[var(--border)] align-middle">
+          <Gauge :size="13" class="chip-icon" />
+          <span class="chip-label">上下文 ≈{{ contextTokens }} tok</span>
+          <span v-if="usagePercent !== null" class="chip-label inline-block w-12 h-1 rounded-full overflow-hidden bg-[var(--border)] align-middle">
             <span
               class="block h-full w-full rounded-full origin-left"
               :style="{
@@ -458,7 +461,7 @@ async function toggleApproval() {
               }"
             />
           </span>
-          <span v-if="usagePercent !== null">{{ usagePercent }}%</span>
+          <span v-if="usagePercent !== null" class="chip-label">{{ usagePercent }}%</span>
         </button>
 
         <button v-if="conv.running" class="ink-icon-btn is-danger ml-1" title="停止生成" @click="conv.stop()">
@@ -489,5 +492,32 @@ async function toggleApproval() {
   border-radius: var(--r-md);
   background: var(--panel);
   box-shadow: var(--sh-2);
+}
+
+/* 窄栏降级：输入框下那排工具（5 个图标 + 审批 + 上下文占用 + 发送）满配需要约 464px，
+   而右栏最窄只能拖到 300px —— 不降级就会把按钮挤出面板。
+   按容器宽度断点，窄态把两个文字按钮收成纯图案（信息仍在 title 悬浮提示里）。 */
+.composer {
+  container-type: inline-size;
+}
+.chip-icon {
+  display: none;
+}
+@container (max-width: 500px) {
+  .chip-label {
+    display: none;
+  }
+  .chip-icon {
+    display: block;
+  }
+  /* 收紧间距与内距，给最窄的 300px 栏留出余量 */
+  .composer-bar {
+    column-gap: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .composer-bar .ink-chip-btn {
+    padding: 0 5px;
+  }
 }
 </style>
