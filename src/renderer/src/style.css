@@ -340,10 +340,11 @@ body {
     color: var(--text-dim);
     line-height: 1.6;
   }
-  /* 区块标题：小号 + 大字距，安静但有秩序 */
+  /* 区块标题：小号 + 轻微字距（中文标签不散开），安静但有秩序。
+     需要「远字距 kicker」的场合由使用方显式写 tracking-[0.14em] 覆盖。 */
   .section-title {
     font-size: var(--fs-micro);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.04em;
     color: var(--text-faint);
     text-transform: uppercase;
   }
@@ -530,12 +531,19 @@ body {
     font-size: var(--fs-meta);
     color: var(--text-faint);
     white-space: nowrap;
+    /* 说明文字偏长时截断，避免与右侧操作挤在一起、或在窄面板里溢出 */
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  /* 面板主体：占满剩余高度并自行滚动 */
+  /* 面板主体：占满剩余高度并自行滚动。
+     scrollbar-gutter: stable —— 滚动条槽位常驻，内容宽度不随「是否溢出」变化，
+     否则筛选/列表一变短就会整体横移，标签跟着跳行。 */
   .panel-body {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    scrollbar-gutter: stable;
   }
   /* 面板左侧导航列表：定宽 + hairline 分隔 + 滚动条平时隐身、悬停浮现 3px */
   .panel-list {
@@ -543,6 +551,7 @@ body {
     overflow-y: auto;
     border-right: 1px solid var(--border);
     scrollbar-color: transparent transparent;
+    scrollbar-gutter: stable;
   }
   .panel-list::-webkit-scrollbar {
     width: 3px;
@@ -557,12 +566,13 @@ body {
   .panel-list::-webkit-scrollbar-track {
     background: transparent;
   }
-  /* 列表项：左缘 2px 标记条，选中走强调色淡底 + 强调色文字 */
+  /* 列表项：左缘 2px 标记条，选中走强调色淡底 + 强调色文字。
+     padding-left 扣掉标记条的 2px，使正文左缘与分组标题（px-4=16px）严格对齐。 */
   .panel-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 16px;
+    padding: 6px 16px 6px 14px;
     border-left: 2px solid transparent;
     cursor: pointer;
     transition: background-color var(--dur-2), border-color var(--dur-2), color var(--dur-2);
@@ -574,6 +584,23 @@ body {
     border-left-color: var(--accent);
     background: var(--accent-soft);
     color: var(--accent);
+  }
+  /* 筛选标签阵：固定列数的等宽网格，列数由 --chip-cols 指定。
+     等宽 + 居中 + 不换行行数固定 → 容器宽度有细微变化（如滚动条槽位）也不会让标签跳行；
+     静置去描边改浅底，降低线条噪声，只有选中态留强调色描边。 */
+  .chip-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--chip-cols, 3), minmax(0, 1fr));
+    gap: 6px;
+  }
+  .chip-grid > * {
+    justify-content: center;
+    border-color: transparent;
+    background: var(--bg-soft);
+  }
+  .chip-grid > .is-on {
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
   }
   /* 表单字段标签：面板内 label 统一用小号 + 字距 + 淡色 */
   .form-label {

@@ -148,7 +148,7 @@ onMounted(() => void load())
     <div class="flex-1 min-h-0 flex">
       <!-- 左：词条列表（按类别分组） -->
       <div class="panel-list w-80 py-2">
-        <div class="px-4 pb-2 flex flex-wrap gap-1">
+        <div class="chip-grid px-4 pb-2.5" style="--chip-cols: 3">
           <button
             v-for="c in ['全部', ...CATEGORIES]"
             :key="c"

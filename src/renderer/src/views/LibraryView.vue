@@ -649,7 +649,7 @@ watch(
     <div v-else class="flex-1 min-h-0 flex">
       <aside class="panel-list w-72 py-2">
         <div v-for="g in groups" :key="g.name" class="mb-1">
-          <div class="flex items-center gap-1.5 px-3 py-1.5 group">
+          <div class="flex items-center gap-1.5 px-4 py-1.5 group">
             <span class="section-title flex-1">{{ g.name }} · {{ g.entries.length }}</span>
             <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="delGroup(g.name, g.entries.length)">
               <Trash2 :size="12" />

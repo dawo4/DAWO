@@ -115,7 +115,7 @@ onMounted(() => void load())
     <div class="flex-1 min-h-0 flex">
       <!-- 左：伏笔列表（按状态筛选） -->
       <div class="panel-list w-80 py-2">
-        <div class="px-4 pb-2 flex flex-wrap gap-1">
+        <div class="chip-grid px-4 pb-2.5" style="--chip-cols: 2">
           <button
             v-for="s in ['全部', ...STATUSES]"
             :key="s"
