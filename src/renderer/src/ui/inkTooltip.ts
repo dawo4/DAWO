@@ -16,7 +16,7 @@ function ensureTipEl(): HTMLDivElement {
     tipEl.id = 'ink-tip'
     tipEl.style.cssText = [
       'position: fixed',
-      'z-index: 95',
+      'z-index: var(--z-tooltip)',
       'max-width: 340px',
       'padding: 6px 10px',
       'border-radius: var(--r-sm)',

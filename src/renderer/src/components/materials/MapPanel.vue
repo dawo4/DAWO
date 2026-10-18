@@ -374,14 +374,14 @@ onMounted(() => void load())
 <template>
   <div class="h-full flex flex-col min-h-0">
     <!-- 顶栏：说明 + 工具 -->
-    <div class="h-11 shrink-0 flex items-center gap-3 px-6 border-b border-[var(--border)]">
-      <span class="text-[12.5px]" style="color: var(--accent)">地图路线图</span>
-      <span class="text-[11px] text-[var(--text-faint)]">地点节点+连线，标已写过/待写；底层可手绘色块或贴图</span>
+    <div class="panel-head">
+      <span class="panel-head-title">地图路线图</span>
+      <span class="panel-head-meta">地点节点 + 连线，标已写过 / 待写；底层可手绘色块或贴图</span>
       <div class="flex-1" />
-      <button class="text-[11.5px] flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="askAgent">
+      <button class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="askAgent">
         <WandSparkles :size="12" /> 让智能体梳理地图
       </button>
-      <button class="text-[11.5px] flex items-center gap-1 text-[var(--accent)] cursor-pointer" @click="addNode"><Plus :size="13" /> 新增地点</button>
+      <button class="ink-chip-btn is-on text-label" @click="addNode"><Plus :size="13" /> 新增地点</button>
     </div>
 
     <div class="flex-1 min-h-0 flex flex-col">
@@ -390,16 +390,19 @@ onMounted(() => void load())
         <div
           v-for="m in maps"
           :key="m.id"
-          class="group flex items-center gap-1 px-3 py-1 rounded-t-md text-[12px] cursor-pointer border-b-2 whitespace-nowrap"
-          :class="activeId === m.id ? 'bg-[var(--panel-2)]' : 'border-transparent text-[var(--text-dim)] hover:bg-[var(--hover)]'"
-          :style="activeId === m.id ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : {}"
+          class="group flex items-center gap-1 px-3 py-1 rounded-t-[var(--r-sm)] text-label cursor-pointer border-b-2 whitespace-nowrap transition-colors"
+          :class="
+            activeId === m.id
+              ? 'bg-[var(--accent-soft)] border-[var(--accent)] text-[var(--accent)]'
+              : 'border-transparent text-[var(--text-dim)] hover:bg-[var(--hover)]'
+          "
           @dblclick="startRename(m)"
           @click="activeId = m.id"
         >
           <template v-if="renamingId === m.id">
             <input
               v-model="renamingName"
-              class="bg-transparent outline-none text-[12px] w-24 border-b border-[var(--accent)]"
+              class="bg-transparent outline-none text-label w-24 border-b border-[var(--accent)]"
               @keydown.enter="commitRename"
               @blur="commitRename"
               @click.stop
@@ -408,44 +411,43 @@ onMounted(() => void load())
           <template v-else>
             <MapIcon :size="12" class="shrink-0" />
             <span>{{ m.name }}</span>
-            <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" title="删除地图" @click.stop="removeMap(m.id)">
+            <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" title="删除地图" @click.stop="removeMap(m.id)">
               <X :size="11" />
             </button>
           </template>
         </div>
-        <button class="px-2 py-1 text-[11.5px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer whitespace-nowrap" title="新建地图" @click="addMap">
-          <Plus :size="13" />
-        </button>
+        <button class="ink-icon-btn" title="新建地图" @click="addMap"><Plus :size="13" /></button>
         <div class="flex-1" />
-        <span class="text-[10.5px] text-[var(--text-faint)] whitespace-nowrap">双击标签重命名</span>
+        <span class="text-micro text-[var(--text-faint)] whitespace-nowrap">双击标签重命名</span>
       </div>
 
       <!-- 工具条 -->
-      <div class="h-9 shrink-0 flex items-center gap-2 px-4 border-b border-[var(--border)] text-[11.5px]">
-        <button
-          class="px-2 py-0.5 rounded-full flex items-center gap-1 cursor-pointer"
-          :class="brushMode ? 'text-white' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-          :style="brushMode ? { background: 'var(--accent)' } : {}"
-          @click="toggleBrush"
-        >
+      <div class="h-9 shrink-0 flex items-center gap-2 px-4 border-b border-[var(--border)]">
+        <button class="ink-chip-btn" :class="brushMode ? 'is-on' : ''" @click="toggleBrush">
           <Pencil :size="12" /> 画笔
         </button>
         <template v-if="brushMode">
-          <button class="px-2 py-0.5 rounded-full cursor-pointer" :class="eraser ? 'text-white bg-[var(--text-faint)]' : 'text-[var(--text-dim)]'" @click="eraser = !eraser">
+          <button class="ink-chip-btn" :class="eraser ? 'is-on' : ''" @click="eraser = !eraser">
             <Eraser :size="12" />
           </button>
-          <span v-for="c in PALETTE" :key="c" class="w-4 h-4 rounded-full cursor-pointer border" :style="{ background: c, borderColor: brushColor === c && !eraser ? 'var(--text)' : 'transparent' }" @click="((brushColor = c), (eraser = false))" />
-          <input v-model.number="brushSize" type="range" min="4" max="60" class="w-20 accent-[var(--accent)]" title="笔宽" />
-          <span class="text-[var(--text-faint)]">停手自动保存</span>
+          <span
+            v-for="c in PALETTE"
+            :key="c"
+            class="w-4 h-4 rounded-full cursor-pointer border"
+            :style="{ background: c, borderColor: brushColor === c && !eraser ? 'var(--text)' : 'transparent' }"
+            @click="((brushColor = c), (eraser = false))"
+          />
+          <input v-model.number="brushSize" type="range" min="4" max="60" class="w-20" title="笔宽" />
+          <span class="text-meta text-[var(--text-faint)]">停手自动保存</span>
         </template>
         <template v-else>
-          <button class="px-2 py-0.5 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1" @click="pickBase">
+          <button class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="pickBase">
             <ImagePlus :size="12" /> 上传底图
           </button>
-          <button v-if="active?.base.path" class="text-[var(--text-dim)] hover:text-[#e08a7a] cursor-pointer" @click="clearBase">清除底图</button>
-          <label v-if="active?.base.path" class="flex items-center gap-1 text-[var(--text-faint)]">
+          <button v-if="active?.base.path" class="text-label text-[var(--text-dim)] hover:text-[var(--danger)] cursor-pointer" @click="clearBase">清除底图</button>
+          <label v-if="active?.base.path" class="flex items-center gap-1 text-meta text-[var(--text-faint)]">
             底图浓度
-            <input v-model.number="baseOpacity" type="range" min="0.05" max="1" step="0.05" class="w-20 accent-[var(--accent)]" @change="onOpacityChange" />
+            <input v-model.number="baseOpacity" type="range" min="0.05" max="1" step="0.05" class="w-20" @change="onOpacityChange" />
           </label>
         </template>
       </div>
@@ -487,7 +489,7 @@ onMounted(() => void load())
           @pointerleave="onBrushUp"
         />
 
-        <div v-if="!maps.length" class="absolute inset-0 flex items-center justify-center text-[var(--text-faint)] text-[13px]">
+        <div v-if="!maps.length" class="absolute inset-0 flex items-center justify-center text-[var(--text-faint)] text-body">
           还没有地图，点上方标签条的 + 新建一张
         </div>
       </div>
@@ -496,31 +498,31 @@ onMounted(() => void load())
     <!-- 右侧：选中地点编辑（浮层小卡） -->
     <div v-if="selectedNode" class="w-72 shrink-0 border-l border-[var(--border)] overflow-y-auto px-5 py-4 space-y-3">
       <div class="flex items-center">
-        <span class="text-[11px] text-[var(--text-faint)] tracking-wider">地点</span>
+        <span class="section-title">地点</span>
         <div class="flex-1" />
-        <button class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="removeNode(selectedNode.id)"><Trash2 :size="13" /></button>
+        <button class="ink-icon-btn is-danger" title="删除该地点" @click="removeNode(selectedNode.id)"><Trash2 :size="13" /></button>
       </div>
       <div>
-        <div class="text-[11px] text-[var(--text-faint)] mb-1.5">名称</div>
+        <div class="form-label">名称</div>
         <input v-model="selectedNode.label" class="ink-input" placeholder="如：青云宗" @change="persist" />
       </div>
       <div>
-        <div class="text-[11px] text-[var(--text-faint)] mb-1.5">场景状态</div>
+        <div class="form-label">场景状态</div>
         <InkSelect v-model="selectedNode.status" class="w-full" :options="STATUSES.map((s) => ({ label: s, value: s }))" @change="persist" />
       </div>
       <div>
-        <div class="text-[11px] text-[var(--text-faint)] mb-1.5">相关路径（{{ selectedNodeEdges.length }}）</div>
+        <div class="form-label">相关路径（{{ selectedNodeEdges.length }}）</div>
         <div v-for="x in selectedNodeEdges" :key="x.edge.id" class="flex items-center gap-2 py-1">
-          <span class="flex-1 min-w-0 truncate text-[12px] text-[var(--text-dim)]">
+          <span class="flex-1 min-w-0 truncate text-label text-[var(--text-dim)]">
             {{ x.other?.label || '未知地点' }}<template v-if="x.edge.label"> · {{ x.edge.label }}</template>
           </span>
-          <button class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer shrink-0" title="删除这条路径" @click="removeEdge(x.edge.id)">
+          <button class="text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer shrink-0" title="删除这条路径" @click="removeEdge(x.edge.id)">
             <X :size="12" />
           </button>
         </div>
-        <div v-if="!selectedNodeEdges.length" class="text-[10.5px] text-[var(--text-faint)] leading-5">从本节点边缘拖线到另一个节点即可连出路径</div>
+        <div v-if="!selectedNodeEdges.length" class="text-micro text-[var(--text-faint)] leading-5">从本节点边缘拖线到另一个节点即可连出路径</div>
       </div>
-      <p class="text-[10.5px] text-[var(--text-faint)] leading-5">在画布上拖动节点摆位；从一个节点拖到另一个节点即连线路径。</p>
+      <p class="text-micro text-[var(--text-faint)] leading-5">在画布上拖动节点摆位；从一个节点拖到另一个节点即连线路径。</p>
     </div>
   </div>
 </template>

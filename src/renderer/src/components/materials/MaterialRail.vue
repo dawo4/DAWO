@@ -30,13 +30,13 @@ const section = computed(() => app.materialsTab || '大纲')
   <aside class="w-[68px] shrink-0 border-l border-[var(--border)] bg-[var(--bg-soft)]/60 flex flex-col items-center py-2 gap-0.5">
     <!-- 妙笔：跳到写作台的智能体 -->
     <button
-      class="w-full flex flex-col items-center gap-1 py-2.5 cursor-pointer transition-colors rounded-lg"
+      class="w-full flex flex-col items-center gap-1 py-2.5 cursor-pointer transition-colors rounded-[var(--r-sm)]"
       :style="{ color: 'var(--accent)' }"
       title="妙笔 · AI 助手"
       @click="app.goAskAgent()"
     >
       <Sparkles :size="17" />
-      <span class="text-[10.5px]">妙笔</span>
+      <span class="text-micro">妙笔</span>
     </button>
 
     <div class="w-8 h-px bg-[var(--border)] my-1 shrink-0" />
@@ -46,46 +46,46 @@ const section = computed(() => app.materialsTab || '大纲')
       <button
         v-for="it in ITEMS"
         :key="it.key"
-        class="w-full shrink-0 flex flex-col items-center gap-1 py-2.5 cursor-pointer transition-colors rounded-lg"
-        :class="section === it.key ? 'bg-[var(--panel-2)]' : 'text-[var(--text-dim)] hover:bg-[var(--hover)]'"
+        class="w-full shrink-0 flex flex-col items-center gap-1 py-2.5 cursor-pointer transition-colors rounded-[var(--r-sm)]"
+        :class="section === it.key ? 'bg-[var(--accent-soft)]' : 'text-[var(--text-dim)] hover:bg-[var(--hover)]'"
         :style="section === it.key ? { color: 'var(--accent)' } : {}"
         @click="emit('switch', it.key)"
       >
         <component :is="it.icon" :size="17" />
-        <span class="text-[10.5px]">{{ it.label }}</span>
+        <span class="text-micro">{{ it.label }}</span>
       </button>
 
       <!-- 自定义面板 -->
       <template v-for="p in props.extra || []" :key="p.key">
         <button
-          class="w-full shrink-0 flex flex-col items-center gap-1 py-2.5 cursor-pointer transition-colors rounded-lg"
-          :class="section === p.key ? 'bg-[var(--panel-2)]' : 'text-[var(--text-dim)] hover:bg-[var(--hover)]'"
+          class="w-full shrink-0 flex flex-col items-center gap-1 py-2.5 cursor-pointer transition-colors rounded-[var(--r-sm)]"
+          :class="section === p.key ? 'bg-[var(--accent-soft)]' : 'text-[var(--text-dim)] hover:bg-[var(--hover)]'"
           :style="section === p.key ? { color: 'var(--accent)' } : {}"
           :title="`${p.label} · 自定义面板`"
           @click="emit('switch', p.key)"
         >
           <LayoutGrid :size="17" />
-          <span class="text-[10.5px] truncate max-w-full px-1">{{ p.label }}</span>
+          <span class="text-micro truncate max-w-full px-1">{{ p.label }}</span>
         </button>
       </template>
 
       <button
-        class="w-full shrink-0 flex flex-col items-center gap-1 py-2 cursor-pointer text-[var(--text-faint)] hover:text-[var(--accent)] hover:bg-[var(--hover)] rounded-lg"
+        class="w-full shrink-0 flex flex-col items-center gap-1 py-2 cursor-pointer text-[var(--text-faint)] hover:text-[var(--accent)] hover:bg-[var(--hover)] rounded-[var(--r-sm)]"
         title="新建自定义面板"
         @click="emit('add')"
       >
         <Plus :size="16" />
-        <span class="text-[10px]">添加</span>
+        <span class="text-micro">添加</span>
       </button>
     </nav>
 
     <button
-      class="w-full shrink-0 flex flex-col items-center gap-1 py-2.5 cursor-pointer text-[var(--text-dim)] hover:bg-[var(--hover)] rounded-lg"
+      class="w-full shrink-0 flex flex-col items-center gap-1 py-2.5 cursor-pointer text-[var(--text-dim)] hover:bg-[var(--hover)] rounded-[var(--r-sm)]"
       title="回到写作台"
       @click="app.go('writing')"
     >
       <PenLine :size="17" />
-      <span class="text-[10.5px]">写作台</span>
+      <span class="text-micro">写作台</span>
     </button>
   </aside>
 </template>

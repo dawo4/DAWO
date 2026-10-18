@@ -85,22 +85,22 @@ async function create() {
 
 <template>
   <InkModal :open="open" title="新建自定义面板" @close="emit('close')">
-    <div class="space-y-4 text-sm">
+    <div class="space-y-4">
       <div class="space-y-1.5">
-        <div class="text-[12px] text-[var(--text-dim)]">面板名称</div>
+        <div class="form-label text-[var(--text-dim)]">面板名称</div>
         <input v-model="name" class="ink-input" placeholder="如：文风 / 科技树 / 桥段库 / 禁忌清单" @keydown.enter="create" />
       </div>
 
       <div class="space-y-1.5">
         <div class="flex items-center justify-between">
-          <div class="text-[12px] text-[var(--text-dim)]">字段（每条条目会按这些字段填写）</div>
+          <div class="form-label text-[var(--text-dim)]">字段（每条条目会按这些字段填写）</div>
           <InkButton variant="ghost" @click="addRow"><Plus :size="12" /> 加字段</InkButton>
         </div>
         <div v-for="(r, i) in rows" :key="i" class="flex items-center gap-2">
           <input v-model="r.label" class="ink-input flex-1" placeholder="字段名，如：要点 / 禁用词 / 示例" />
           <InkSelect v-model="r.type" class="w-24 shrink-0" :options="TYPE_OPTS" />
           <button
-            class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer shrink-0 disabled:opacity-30"
+            class="ink-icon-btn is-danger shrink-0"
             :disabled="rows.length <= 1"
             title="删除此字段"
             @click="removeRow(i)"
@@ -110,7 +110,7 @@ async function create() {
         </div>
       </div>
 
-      <div v-if="err" class="text-[12.5px] text-[#e08a7a]">{{ err }}</div>
+      <div v-if="err" class="text-label ink-text-danger">{{ err }}</div>
 
       <div class="flex justify-end gap-2 pt-1">
         <InkButton variant="ghost" @click="emit('close')">取消</InkButton>

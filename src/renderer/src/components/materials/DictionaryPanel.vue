@@ -5,7 +5,8 @@ import { useLibraryStore } from '../../store/library'
 import { useAppStore } from '../../store/app'
 import { inkConfirm } from '../../ui/inkPrompt'
 import InkSelect from '../../ui/InkSelect.vue'
-import { Plus, Trash2, WandSparkles, Map as MapIcon } from 'lucide-vue-next'
+import EmptyHint from '../../ui/EmptyHint.vue'
+import { BookMarked, Plus, Trash2, WandSparkles, Map as MapIcon } from 'lucide-vue-next'
 import type { BookMap } from '../../types'
 
 const lib = useLibraryStore()
@@ -134,44 +135,36 @@ onMounted(() => void load())
 
 <template>
   <div class="h-full flex flex-col min-h-0">
-    <div class="h-11 shrink-0 flex items-center gap-3 px-6 border-b border-[var(--border)]">
-      <span class="text-[12.5px]" style="color: var(--accent)">专名词典</span>
-      <span class="text-[11px] text-[var(--text-faint)]">专有名词统一登记，智能体写作时强制对齐，防吃书</span>
+    <div class="panel-head">
+      <span class="panel-head-title">专名词典</span>
+      <span class="panel-head-meta">专有名词统一登记，智能体写作时强制对齐，防吃书</span>
       <div class="flex-1" />
-      <button class="text-[11.5px] flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="askAgent">
+      <button class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="askAgent">
         <WandSparkles :size="12" /> 让智能体从正文提取
       </button>
-      <button class="text-[11.5px] flex items-center gap-1 text-[var(--accent)] cursor-pointer" @click="addEntry"><Plus :size="13" /> 新增词条</button>
+      <button class="ink-chip-btn is-on text-label" @click="addEntry"><Plus :size="13" /> 新增词条</button>
     </div>
 
     <div class="flex-1 min-h-0 flex">
       <!-- 左：词条列表（按类别分组） -->
-      <div class="w-80 shrink-0 border-r border-[var(--border)] overflow-y-auto py-2">
+      <div class="panel-list w-80 py-2">
         <div class="px-4 pb-2 flex flex-wrap gap-1">
           <button
             v-for="c in ['全部', ...CATEGORIES]"
             :key="c"
-            class="px-2 py-0.5 text-[11px] rounded-full cursor-pointer transition-colors"
-            :class="filterCat === c ? 'bg-[var(--panel-2)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-            :style="filterCat === c ? { color: 'var(--accent)' } : {}"
+            class="ink-chip-btn"
+            :class="filterCat === c ? 'is-on' : ''"
             @click="filterCat = c"
           >
             {{ c }}
           </button>
         </div>
         <div v-for="g in grouped" :key="g.cat" class="mb-2">
-          <div class="px-4 py-1 text-[10.5px] tracking-wider text-[var(--text-faint)]">{{ g.cat }}（{{ g.list.length }}）</div>
-          <div
-            v-for="e in g.list"
-            :key="e.id"
-            class="group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-l-2"
-            :class="selectedId === e.id ? 'bg-[var(--panel-2)]' : 'border-transparent hover:bg-[var(--hover)]'"
-            :style="selectedId === e.id ? { borderColor: 'var(--accent)' } : {}"
-            @click="selectedId = e.id"
-          >
+          <div class="section-title px-4 py-1">{{ g.cat }}（{{ g.list.length }}）</div>
+          <div v-for="e in g.list" :key="e.id" class="panel-item group" :class="selectedId === e.id ? 'is-on' : ''" @click="selectedId = e.id">
             <div class="flex-1 min-w-0">
-              <div class="text-[12.5px] truncate" :style="selectedId === e.id ? { color: 'var(--accent)' } : {}">{{ e.term }}</div>
-              <div v-if="e.desc" class="text-[10.5px] text-[var(--text-faint)] truncate">{{ e.desc }}</div>
+              <div class="text-label truncate">{{ e.term }}</div>
+              <div v-if="e.desc" class="text-micro text-[var(--text-faint)] truncate">{{ e.desc }}</div>
             </div>
             <button
               v-if="e.category === '地点'"
@@ -181,42 +174,40 @@ onMounted(() => void load())
             >
               <MapIcon :size="12" />
             </button>
-            <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click.stop="removeEntry(e.id)">
+            <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click.stop="removeEntry(e.id)">
               <Trash2 :size="12" />
             </button>
           </div>
         </div>
-        <div v-if="!shown.length" class="px-4 py-8 text-center text-[11.5px] text-[var(--text-faint)] leading-6">
+        <div v-if="!shown.length" class="px-4 py-8 text-center text-label text-[var(--text-faint)] leading-6">
           词典还是空的<br />手动新增，或让智能体从正文提取
         </div>
       </div>
 
       <!-- 右：编辑 -->
-      <div class="flex-1 min-w-0 overflow-y-auto px-6 py-5">
-        <div v-if="!selected" class="h-full flex items-center justify-center text-[var(--text-faint)] text-[13px]">
-          选择词条查看与编辑
-        </div>
+      <div class="panel-body px-6 py-5">
+        <EmptyHint v-if="!selected" :icon="BookMarked" title="选择词条查看与编辑" />
         <div v-else class="max-w-xl space-y-4">
           <div class="flex gap-3">
             <div class="flex-1">
-              <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">专名</div>
+              <div class="form-label">专名</div>
               <input v-model="selected.term" class="ink-input" placeholder="如：青云剑诀" @change="persist" />
             </div>
             <div class="w-40 shrink-0">
-              <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">类别</div>
+              <div class="form-label">类别</div>
               <InkSelect v-model="selected.category" class="w-full" :options="CATEGORIES.map((c) => ({ label: c, value: c }))" @change="persist" />
             </div>
           </div>
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">别名 / 旧称（顿号分隔）</div>
+            <div class="form-label">别名 / 旧称（顿号分隔）</div>
             <input :value="selected.aliases.join('、')" class="ink-input" placeholder="如：青莲剑歌、青云诀" @change="onAliasChange" />
           </div>
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">首次出场章节（可空）</div>
+            <div class="form-label">首次出场章节（可空）</div>
             <input v-model="selected.firstChapter" class="ink-input" placeholder="正文/第003章" @change="persist" />
           </div>
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">设定说明</div>
+            <div class="form-label">设定说明</div>
             <textarea v-model="selected.desc" rows="5" class="ink-textarea" placeholder="它是什么、有什么规则、和谁有关联" @change="persist" />
           </div>
         </div>

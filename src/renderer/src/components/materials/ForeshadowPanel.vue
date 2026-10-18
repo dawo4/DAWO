@@ -5,7 +5,8 @@ import { useLibraryStore } from '../../store/library'
 import { useAppStore } from '../../store/app'
 import { inkConfirm } from '../../ui/inkPrompt'
 import InkSelect from '../../ui/InkSelect.vue'
-import { Plus, Trash2, WandSparkles } from 'lucide-vue-next'
+import EmptyHint from '../../ui/EmptyHint.vue'
+import { GitBranch, Plus, Trash2, WandSparkles } from 'lucide-vue-next'
 import type { ForeshadowEntry, ForeshadowStatus } from '../../types'
 
 const lib = useLibraryStore()
@@ -15,8 +16,8 @@ const STATUSES: ForeshadowStatus[] = ['悬置', '已收', '作废']
 
 /** 状态点颜色 */
 const STATUS_COLOR: Record<string, string> = {
-  悬置: '#d9a441',
-  已收: '#6fae6f',
+  悬置: 'var(--warn)',
+  已收: 'var(--ok)',
   作废: 'var(--text-faint)'
 }
 
@@ -101,81 +102,71 @@ onMounted(() => void load())
 
 <template>
   <div class="h-full flex flex-col min-h-0">
-    <div class="h-11 shrink-0 flex items-center gap-3 px-6 border-b border-[var(--border)]">
-      <span class="text-[12.5px]" style="color: var(--accent)">伏笔登记板</span>
-      <span class="text-[11px] text-[var(--text-faint)]">埋下的钩子统一挂账，悬置 / 已收 / 作废一目了然，防遗忘防泄底</span>
+    <div class="panel-head">
+      <span class="panel-head-title">伏笔登记板</span>
+      <span class="panel-head-meta">埋下的钩子统一挂账，悬置 / 已收 / 作废一目了然，防遗忘防泄底</span>
       <div class="flex-1" />
-      <button class="text-[11.5px] flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="askAgent">
+      <button class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="askAgent">
         <WandSparkles :size="12" /> 让智能体排查伏笔
       </button>
-      <button class="text-[11.5px] flex items-center gap-1 text-[var(--accent)] cursor-pointer" @click="addEntry"><Plus :size="13" /> 新增伏笔</button>
+      <button class="ink-chip-btn is-on text-label" @click="addEntry"><Plus :size="13" /> 新增伏笔</button>
     </div>
 
     <div class="flex-1 min-h-0 flex">
       <!-- 左：伏笔列表（按状态筛选） -->
-      <div class="w-80 shrink-0 border-r border-[var(--border)] overflow-y-auto py-2">
+      <div class="panel-list w-80 py-2">
         <div class="px-4 pb-2 flex flex-wrap gap-1">
           <button
             v-for="s in ['全部', ...STATUSES]"
             :key="s"
-            class="px-2 py-0.5 text-[11px] rounded-full cursor-pointer transition-colors"
-            :class="filterStatus === s ? 'bg-[var(--panel-2)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-            :style="filterStatus === s ? { color: 'var(--accent)' } : {}"
+            class="ink-chip-btn"
+            :class="filterStatus === s ? 'is-on' : ''"
             @click="filterStatus = s"
           >
             {{ s }}（{{ countOf(s) }}）
           </button>
         </div>
-        <div
-          v-for="e in shown"
-          :key="e.id"
-          class="group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-l-2"
-          :class="selectedId === e.id ? 'bg-[var(--panel-2)]' : 'border-transparent hover:bg-[var(--hover)]'"
-          :style="selectedId === e.id ? { borderColor: 'var(--accent)' } : {}"
-          @click="selectedId = e.id"
-        >
+        <div v-for="e in shown" :key="e.id" class="panel-item group" :class="selectedId === e.id ? 'is-on' : ''" @click="selectedId = e.id">
           <span class="w-1.5 h-1.5 rounded-full shrink-0" :style="{ background: STATUS_COLOR[e.status] }" />
           <div class="flex-1 min-w-0">
-            <div class="text-[12.5px] truncate" :style="selectedId === e.id ? { color: 'var(--accent)' } : {}">{{ e.content }}</div>
-            <div class="text-[10.5px] text-[var(--text-faint)] truncate">
+            <div class="text-label truncate">{{ e.content }}</div>
+            <div class="text-micro text-[var(--text-faint)] truncate">
               {{ e.plantChapter ? `埋设：${e.plantChapter}` : '未标注埋设章节' }}<template v-if="e.planRecycle"> · 回收：{{ e.planRecycle }}</template>
             </div>
           </div>
-          <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click.stop="removeEntry(e.id)">
+          <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click.stop="removeEntry(e.id)">
             <Trash2 :size="12" />
           </button>
         </div>
-        <div v-if="!shown.length" class="px-4 py-8 text-center text-[11.5px] text-[var(--text-faint)] leading-6">
+        <div v-if="!shown.length" class="px-4 py-8 text-center text-label text-[var(--text-faint)] leading-6">
           还没有登记伏笔<br />手动新增，或让智能体从正文排查
         </div>
       </div>
 
       <!-- 右：编辑 -->
-      <div class="flex-1 min-w-0 overflow-y-auto px-6 py-5">
-        <div v-if="!selected" class="h-full flex items-center justify-center text-[var(--text-faint)] text-[13px]">
-          选择伏笔查看与编辑
-        </div>
+      <div class="panel-body px-6 py-5">
+        <EmptyHint v-if="!selected" :icon="GitBranch" title="选择伏笔查看与编辑" />
         <div v-else class="max-w-xl space-y-4">
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">伏笔内容</div>
+            <div class="form-label">伏笔内容</div>
             <textarea v-model="selected.content" rows="2" class="ink-textarea" placeholder="埋了什么钩子、读者看到了什么" @change="persist" />
           </div>
           <div class="flex gap-3">
             <div class="flex-1">
-              <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">埋设章节</div>
+              <div class="form-label">埋设章节</div>
               <input v-model="selected.plantChapter" class="ink-input" placeholder="正文/第003章" @change="persist" />
             </div>
             <div class="w-36 shrink-0">
-              <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">状态</div>
+              <div class="form-label">状态</div>
               <InkSelect v-model="selected.status" class="w-full" :options="STATUSES.map((s) => ({ label: s, value: s }))" @change="persist" />
             </div>
           </div>
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">计划回收点（可空）</div>
+            <div class="form-label">计划回收点（可空）</div>
             <input v-model="selected.planRecycle" class="ink-input" placeholder="正文/第020章，或「决战时揭晓」" @change="persist" />
           </div>
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">备注</div>
+            <div class="form-label">备注</div>
             <textarea v-model="selected.note" rows="4" class="ink-textarea" placeholder="回收方式、关联线索、注意事项" @change="persist" />
           </div>
         </div>

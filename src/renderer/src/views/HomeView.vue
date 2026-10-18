@@ -420,28 +420,7 @@ onMounted(() => void load())
 </template>
 
 <style scoped>
-/* 卡片头：图标 + 标题 + 渐隐 hairline + 右侧元信息，首页五张卡与区块共用 */
-.card-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 0.875rem;
-}
-.card-head-title {
-  font-size: var(--text-label);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
-.card-head-line {
-  flex: 1;
-  height: 1px;
-  margin-left: 6px;
-  background: linear-gradient(to right, var(--border), transparent);
-}
-.card-head-meta {
-  font-size: var(--text-micro);
-  color: var(--text-faint);
-}
+/* 卡片头统一由全局 .card-head* 提供（style.css @layer components） */
 
 /* 右上「全部作品」入口：次态用文字按钮，hover 才显底 */
 .home-link {

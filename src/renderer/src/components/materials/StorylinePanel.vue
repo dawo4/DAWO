@@ -5,6 +5,9 @@ import { useLibraryStore } from '../../store/library'
 import { useConversationStore } from '../../store/conversation'
 import { inkConfirm } from '../../ui/inkPrompt'
 import InkSelect from '../../ui/InkSelect.vue'
+import InkSegmented from '../../ui/InkSegmented.vue'
+import EmptyHint from '../../ui/EmptyHint.vue'
+import InkButton from '../../ui/InkButton.vue'
 import GraphCanvas, { type CanvasNode, type CanvasEdge } from './GraphCanvas.vue'
 import { Plus, Sparkles, LayoutGrid, Maximize2, Shrink, ZoomIn, ZoomOut, Trash2, Network } from 'lucide-vue-next'
 
@@ -227,65 +230,51 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
 <template>
   <div class="h-full flex flex-col">
     <!-- 视图 -->
-    <div class="flex items-center gap-3 px-6 h-11 border-b border-[var(--border)] shrink-0">
-      <div class="inline-flex items-center gap-0.5 p-0.5 rounded-full bg-[var(--bg-soft)]">
-        <button
-          v-for="v in VIEWS"
-          :key="v.key"
-          class="px-3 py-1 rounded-full text-[12.5px] cursor-pointer transition-colors"
-          :class="view === v.key ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-          :style="view === v.key ? { color: 'var(--accent)' } : {}"
-          @click="view = v.key"
-        >
-          {{ v.label }}
-        </button>
-      </div>
+    <div class="panel-head">
+      <InkSegmented v-model="view" :options="VIEWS.map((v) => ({ value: v.key, label: v.label }))" />
       <div class="flex-1" />
-      <span class="text-[11px] text-[var(--text-faint)]">{{ nodes.length }} 个节点 · {{ edges.length }} 条连接</span>
+      <span class="panel-head-meta">{{ nodes.length }} 个节点 · {{ edges.length }} 条连接</span>
     </div>
 
     <!-- 工具条 -->
     <div class="flex items-center gap-2 px-6 h-11 border-b border-[var(--border)] shrink-0">
-      <button class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer" @click="addNode">
+      <button class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="addNode">
         <Plus :size="13" /> 新建节点
       </button>
       <button
-        class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer hover:bg-[var(--hover)]"
-        :style="{ color: 'var(--accent)' }"
+        class="ink-chip-btn is-on text-label"
         :disabled="busy"
         @click="askAgent('generate')"
       >
         <Sparkles :size="13" /> AI 生成
       </button>
-      <button class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer" @click="autoLayout">
+      <button class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="autoLayout">
         <LayoutGrid :size="13" /> 自动整理
       </button>
-      <button class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer" @click="canvas?.fitView()">
+      <button class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="canvas?.fitView()">
         <Maximize2 :size="13" /> 适应画布
       </button>
       <div class="w-px h-4 bg-[var(--border)]" />
-      <button class="text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer p-1" title="缩小" @click="canvas?.zoomOut()"><ZoomOut :size="14" /></button>
-      <button class="text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer p-1" title="放大" @click="canvas?.zoomIn()"><ZoomIn :size="14" /></button>
+      <button class="ink-icon-btn" title="缩小" @click="canvas?.zoomOut()"><ZoomOut :size="14" /></button>
+      <button class="ink-icon-btn" title="放大" @click="canvas?.zoomIn()"><ZoomIn :size="14" /></button>
       <div class="flex-1" />
-      <label class="flex items-center gap-1.5 text-[11.5px] text-[var(--text-dim)] cursor-pointer select-none">
+      <label class="flex items-center gap-1.5 text-label text-[var(--text-dim)] cursor-pointer select-none">
         <input v-model="onlyMain" type="checkbox" class="accent-[var(--accent)]" /> 仅看主线
       </label>
     </div>
 
     <!-- 内容 -->
-    <div v-if="!nodes.length" class="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text-faint)]">
-      <Network :size="26" />
-      <p class="text-[13px]">还没有故事节点</p>
+    <EmptyHint
+      v-if="!nodes.length"
+      :icon="Network"
+      title="还没有故事节点"
+      desc="也可用右键 / 双击画布新建；从节点四周圆点拖线即可连接"
+    >
       <div class="flex gap-2">
-        <button class="text-[12.5px] px-3.5 py-1.5 rounded-full border border-[var(--border)] hover:border-[var(--accent)] cursor-pointer" @click="addNode">
-          新建第一个节点
-        </button>
-        <button class="text-[12.5px] px-3.5 py-1.5 rounded-full cursor-pointer text-[#1b1712] font-medium" :style="{ background: 'var(--accent)' }" @click="askAgent('generate')">
-          让 AI 根据大纲生成
-        </button>
+        <InkButton variant="ghost" size="sm" @click="addNode">新建第一个节点</InkButton>
+        <InkButton size="sm" @click="askAgent('generate')">让 AI 根据大纲生成</InkButton>
       </div>
-      <p class="text-[11.5px] text-[var(--text-faint)]">也可用右键/双击画布新建；从节点四周圆点拖线即可连接</p>
-    </div>
+    </EmptyHint>
 
     <div v-else class="flex-1 min-h-0 flex">
       <div v-if="view === 'map'" class="flex-1 min-w-0">
@@ -300,37 +289,37 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
       </div>
 
       <!-- 时间轴视图 -->
-      <div v-else-if="view === 'axis'" class="flex-1 min-w-0 overflow-y-auto px-6 py-4">
+      <div v-else-if="view === 'axis'" class="panel-body px-6 py-4">
         <div class="max-w-2xl">
           <div
             v-for="n in orderedNodes"
             :key="n.id"
-            class="relative pl-6 pb-5 cursor-pointer"
+            class="relative pl-6 pb-5 rounded-[var(--r-sm)] cursor-pointer transition-colors"
+            :class="pickedId === n.id ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--hover)]'"
             @click="pickedId = n.id"
           >
             <span class="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full" :style="{ background: n.main ? 'var(--accent)' : 'var(--text-faint)' }" />
             <span class="absolute left-[4px] top-4 bottom-0 w-px bg-[var(--border)]" />
             <div class="flex items-center gap-2">
-              <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--bg-soft)] text-[var(--text-faint)]">{{ KIND_LABEL[n.kind] || n.kind }}</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--bg-soft)] text-[var(--text-faint)]">{{ n.main ? '主线' : '支线' }}</span>
-              <span class="text-[13px]" :style="pickedId === n.id ? { color: 'var(--accent)' } : {}">{{ n.label }}</span>
+              <span class="ink-chip">{{ KIND_LABEL[n.kind] || n.kind }}</span>
+              <span class="ink-chip">{{ n.main ? '主线' : '支线' }}</span>
+              <span class="text-body" :style="pickedId === n.id ? { color: 'var(--accent)' } : {}">{{ n.label }}</span>
             </div>
-            <div v-if="n.desc" class="text-[11.5px] text-[var(--text-faint)] mt-1">{{ n.desc }}</div>
+            <div v-if="n.desc" class="text-meta text-[var(--text-faint)] mt-1">{{ n.desc }}</div>
           </div>
         </div>
       </div>
 
       <!-- 绑定关系视图 -->
-      <div v-else class="flex-1 min-w-0 overflow-y-auto px-6 py-4">
+      <div v-else class="panel-body px-6 py-4">
         <div v-for="[chapter, list] in byChapter" :key="chapter" class="mb-4">
-          <div class="text-[11px] text-[var(--text-faint)] mb-1.5">{{ chapter === '未绑定' ? '未绑定章节' : chapter }}</div>
-          <div class="flex flex-wrap gap-2">
+          <div class="section-title mb-1.5">{{ chapter === '未绑定' ? '未绑定章节' : chapter }}</div>
+          <div class="flex flex-wrap gap-1.5">
             <button
               v-for="n in list"
               :key="n.id"
-              class="text-[12.5px] px-3 py-1.5 rounded-full cursor-pointer"
-              :class="pickedId === n.id ? 'bg-[var(--panel-2)] font-medium' : 'bg-[var(--bg-soft)] text-[var(--text-dim)] hover:text-[var(--text)]'"
-              :style="pickedId === n.id ? { color: 'var(--accent)' } : {}"
+              class="ink-chip-btn"
+              :class="pickedId === n.id ? 'is-on' : ''"
               @click="pickedId = n.id"
             >
               {{ n.label }}
@@ -341,40 +330,37 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
 
       <!-- 右侧详情 -->
       <div class="w-80 shrink-0 border-l border-[var(--border)] overflow-y-auto px-5 py-4">
-        <div v-if="!picked" class="text-[12.5px] text-[var(--text-faint)] py-8 text-center">选择节点查看详情</div>
+        <div v-if="!picked" class="text-label text-[var(--text-faint)] py-8 text-center">选择节点查看详情</div>
         <div v-else class="space-y-3.5">
           <div class="flex items-center gap-2">
-            <span class="text-[11px] text-[var(--text-faint)]">节点详情</span>
+            <span class="section-title">节点详情</span>
             <div class="flex-1" />
-            <button class="text-[11.5px] flex items-center gap-1 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="removeNode(picked.id)">
+            <button class="text-label flex items-center gap-1 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="removeNode(picked.id)">
               <Trash2 :size="12" /> 删除
             </button>
           </div>
           <input v-model="picked.label" class="ink-input" placeholder="节点标题" />
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5">节点类型</div>
+            <div class="form-label">节点类型</div>
             <InkSelect v-model="picked.kind" class="w-full" :options="Object.entries(KIND_LABEL).map(([k, v]) => ({ label: v, value: k }))" />
           </div>
           <div class="flex items-center gap-3">
-            <label class="flex items-center gap-1.5 text-[12px] text-[var(--text-dim)] cursor-pointer">
+            <label class="flex items-center gap-1.5 text-label text-[var(--text-dim)] cursor-pointer">
               <input v-model="picked.main" type="checkbox" class="accent-[var(--accent)]" /> 主线
             </label>
           </div>
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5">绑定章节（可绑多个）</div>
-            <div v-if="picked.chapters.length" class="flex flex-wrap gap-1 mb-1.5">
-              <span
-                v-for="c in picked.chapters"
-                :key="c"
-                class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full group"
-                :style="{ background: 'var(--panel-2)', color: 'var(--accent)' }"
-              >
+            <div class="form-label">绑定章节（可绑多个）</div>
+            <div v-if="picked.chapters.length" class="flex flex-wrap gap-1.5 mb-1.5">
+              <span v-for="c in picked.chapters" :key="c" class="ink-chip ink-chip-accent group">
                 {{ c.replace('正文/', '') }}
                 <button
-                  class="opacity-60 group-hover:opacity-100 hover:text-[#e08a7a] cursor-pointer"
+                  class="opacity-60 group-hover:opacity-100 hover:text-[var(--danger)] cursor-pointer"
                   title="移除该章节绑定"
                   @click="removeChapter(c)"
-                >✕</button>
+                >
+                  ✕
+                </button>
               </span>
             </div>
             <InkSelect
@@ -386,7 +372,7 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
             />
           </div>
           <textarea v-model="picked.desc" rows="4" class="ink-textarea" placeholder="这个节点发生了什么" />
-          <button class="text-[11.5px] flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" :disabled="busy" @click="askAgent('relations')">
+          <button class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer disabled:opacity-45" :disabled="busy" @click="askAgent('relations')">
             <Sparkles :size="12" /> 让故事线智能体顺便整理角色关系图
           </button>
         </div>

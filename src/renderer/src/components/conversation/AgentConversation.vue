@@ -142,7 +142,7 @@ function fmtTime(iso: string): string {
         </button>
         <div
           v-if="agentOpen"
-          class="absolute top-full left-0 mt-1 w-80 pop overflow-hidden z-40 max-h-[70vh] flex flex-col"
+          class="absolute top-full left-0 mt-1 w-80 pop overflow-hidden z-[var(--z-popover)] max-h-[70vh] flex flex-col"
         >
           <div class="overflow-y-auto">
             <template v-for="g in agentGroups" :key="g.key">
@@ -191,7 +191,7 @@ function fmtTime(iso: string): string {
         </button>
         <div
           v-if="historyOpen"
-          class="absolute top-full right-0 mt-1 w-80 pop overflow-hidden z-40"
+          class="absolute top-full right-0 mt-1 w-80 pop overflow-hidden z-[var(--z-popover)]"
         >
           <div class="flex items-center justify-between px-3.5 py-2 border-b border-[var(--border)]">
             <span class="text-meta text-[var(--text-faint)]">会话记录</span>

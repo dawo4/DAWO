@@ -72,9 +72,9 @@ function styleFor(n: CanvasNode): Record<string, string> {
     background: 'var(--panel-2)',
     color: n.tone === 'sub' ? 'var(--text-dim)' : 'var(--text)',
     border: `1px solid ${border}`,
-    borderRadius: '10px',
+    borderRadius: 'var(--r-md)',
     padding: '8px 12px',
-    fontSize: '12.5px',
+    fontSize: 'var(--fs-label)',
     maxWidth: '200px'
   }
 }
@@ -96,7 +96,7 @@ function sync(): void {
     ...edgeShape(),
     label: e.label || undefined,
     style: { stroke: e.color || 'var(--text-faint)' },
-    labelStyle: { fill: 'var(--text-dim)', fontSize: 11 },
+    labelStyle: { fill: 'var(--text-dim)', fontSize: 'var(--fs-meta)' },
     labelBgStyle: { fill: 'var(--panel)' }
   }))
 }
@@ -145,19 +145,15 @@ defineExpose({
     </VueFlow>
     <!-- 连线形状切换：右上角，偏好存 localStorage 全局生效 -->
     <button
-      class="absolute top-3 right-3 z-10 text-[11px] px-2.5 py-1 rounded-full cursor-pointer border transition-colors"
-      :class="edgeType === 'ortho' ? 'font-medium' : 'text-[var(--text-dim)] hover:text-[var(--accent)]'"
-      :style="
-        edgeType === 'ortho'
-          ? { borderColor: 'var(--accent)', color: 'var(--accent)', background: 'var(--panel)' }
-          : { borderColor: 'var(--border)', background: 'var(--panel)' }
-      "
+      class="ink-chip-btn absolute top-3 right-3 z-[var(--z-app)]"
+      :class="edgeType === 'ortho' ? 'is-on' : ''"
+      :style="{ background: 'var(--panel)' }"
       :title="edgeType === 'ortho' ? '当前：直角连线（横平竖直，树状图风格），点击切回曲线' : '当前：曲线连线，点击切换为直角（横平竖直，节点多时更清晰）'"
       @click="toggleEdgeType"
     >
       连线：{{ edgeType === 'ortho' ? '直角' : '曲线' }}
     </button>
-    <div class="absolute bottom-3 left-3 text-[11px] text-[var(--text-faint)] z-10 pointer-events-none">
+    <div class="absolute bottom-3 left-3 text-meta text-[var(--text-faint)] z-[var(--z-app)] pointer-events-none">
       拖动节点调整布局 · 从节点边缘拖线连接 · 双击空白处新建
     </div>
   </div>

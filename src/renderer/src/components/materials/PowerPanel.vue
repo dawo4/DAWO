@@ -5,7 +5,8 @@ import { useLibraryStore } from '../../store/library'
 import { useAppStore } from '../../store/app'
 import { inkConfirm } from '../../ui/inkPrompt'
 import InkSelect from '../../ui/InkSelect.vue'
-import { ArrowDown, ArrowUp, Plus, Trash2, WandSparkles } from 'lucide-vue-next'
+import EmptyHint from '../../ui/EmptyHint.vue'
+import { ArrowDown, ArrowUp, BarChart3, Plus, Trash2, WandSparkles } from 'lucide-vue-next'
 import type { PowerChar, PowerData, PowerRealm } from '../../types'
 
 const lib = useLibraryStore()
@@ -126,77 +127,64 @@ onMounted(() => void load())
 
 <template>
   <div class="h-full flex flex-col min-h-0">
-    <div class="h-11 shrink-0 flex items-center gap-3 px-6 border-b border-[var(--border)]">
-      <span class="text-[12.5px]" style="color: var(--accent)">境界体系板</span>
-      <span class="text-[11px] text-[var(--text-faint)]">力量等级从低到高排清楚，角色境界对号入座，防战力崩坏</span>
+    <div class="panel-head">
+      <span class="panel-head-title">境界体系板</span>
+      <span class="panel-head-meta">力量等级从低到高排清楚，角色境界对号入座，防战力崩坏</span>
       <div class="flex-1" />
-      <button class="text-[11.5px] flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="askAgent">
+      <button class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="askAgent">
         <WandSparkles :size="12" /> 让智能体梳理体系
       </button>
     </div>
 
     <div class="flex-1 min-h-0 flex">
       <!-- 左：角色境界列表 -->
-      <div class="w-80 shrink-0 border-r border-[var(--border)] overflow-y-auto py-2">
+      <div class="panel-list w-80 py-2">
         <div class="px-4 pb-2 flex items-center">
-          <span class="text-[10.5px] tracking-wider text-[var(--text-faint)]">角色当前境界（{{ chars.length }}）</span>
+          <span class="section-title">角色当前境界（{{ chars.length }}）</span>
           <div class="flex-1" />
-          <button class="text-[11px] flex items-center gap-1 text-[var(--accent)] cursor-pointer" @click="addChar"><Plus :size="12" /> 添加</button>
+          <button class="text-label flex items-center gap-1 text-[var(--accent)] cursor-pointer" @click="addChar"><Plus :size="12" /> 添加</button>
         </div>
-        <div
-          v-for="c in shownChars"
-          :key="c.id"
-          class="group flex items-center gap-2 px-4 py-1.5 cursor-pointer border-l-2"
-          :class="selectedId === c.id ? 'bg-[var(--panel-2)]' : 'border-transparent hover:bg-[var(--hover)]'"
-          :style="selectedId === c.id ? { borderColor: 'var(--accent)' } : {}"
-          @click="selectedId = c.id"
-        >
+        <div v-for="c in shownChars" :key="c.id" class="panel-item group" :class="selectedId === c.id ? 'is-on' : ''" @click="selectedId = c.id">
           <div class="flex-1 min-w-0">
-            <div class="text-[12.5px] truncate" :style="selectedId === c.id ? { color: 'var(--accent)' } : {}">{{ c.name }}</div>
-            <div v-if="c.note" class="text-[10.5px] text-[var(--text-faint)] truncate">{{ c.note }}</div>
+            <div class="text-label truncate">{{ c.name }}</div>
+            <div v-if="c.note" class="text-micro text-[var(--text-faint)] truncate">{{ c.note }}</div>
           </div>
-          <span class="text-[11px] px-2 py-0.5 rounded-full bg-[var(--bg-soft)] shrink-0" style="color: var(--accent)">{{ c.realm || '未定' }}</span>
-          <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click.stop="removeChar(c.id)">
+          <span class="ink-chip ink-chip-accent shrink-0">{{ c.realm || '未定' }}</span>
+          <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click.stop="removeChar(c.id)">
             <Trash2 :size="12" />
           </button>
         </div>
-        <div v-if="!chars.length" class="px-4 py-8 text-center text-[11.5px] text-[var(--text-faint)] leading-6">
+        <div v-if="!chars.length" class="px-4 py-8 text-center text-label text-[var(--text-faint)] leading-6">
           还没有登记角色境界<br />手动添加，或让智能体梳理
         </div>
       </div>
 
       <!-- 右：境界阶梯 + 规则 + 选中角色编辑 -->
-      <div class="flex-1 min-w-0 overflow-y-auto px-6 py-5 space-y-6">
+      <div class="panel-body px-6 py-5 space-y-6">
         <!-- 境界阶梯 -->
         <div class="max-w-xl">
           <div class="flex items-center mb-2">
-            <span class="text-[11px] text-[var(--text-faint)] tracking-wider">境界阶梯（低 → 高）</span>
+            <span class="section-title">境界阶梯（低 → 高）</span>
             <div class="flex-1" />
-            <button class="text-[11px] flex items-center gap-1 text-[var(--accent)] cursor-pointer" @click="addRealm"><Plus :size="12" /> 新增境界</button>
+            <button class="text-label flex items-center gap-1 text-[var(--accent)] cursor-pointer" @click="addRealm"><Plus :size="12" /> 新增境界</button>
           </div>
           <div class="space-y-1">
             <div v-for="(r, i) in realms" :key="r.id" class="flex items-center gap-2">
-              <span class="text-[11px] text-[var(--text-faint)] w-5 text-right">{{ i + 1 }}</span>
+              <span class="text-meta text-[var(--text-faint)] w-5 text-right tnum">{{ i + 1 }}</span>
               <input v-model="r.name" class="ink-input flex-1" placeholder="境界名" @change="persist" />
               <div class="flex items-center">
-                <button class="p-1 text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer" title="上移" @click="moveRealm(i, -1)">
-                  <ArrowUp :size="13" />
-                </button>
-                <button class="p-1 text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer" title="下移" @click="moveRealm(i, 1)">
-                  <ArrowDown :size="13" />
-                </button>
-                <button class="p-1 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" title="删除" @click="removeRealm(r.id)">
-                  <Trash2 :size="13" />
-                </button>
+                <button class="ink-icon-btn" title="上移" @click="moveRealm(i, -1)"><ArrowUp :size="13" /></button>
+                <button class="ink-icon-btn" title="下移" @click="moveRealm(i, 1)"><ArrowDown :size="13" /></button>
+                <button class="ink-icon-btn is-danger" title="删除" @click="removeRealm(r.id)"><Trash2 :size="13" /></button>
               </div>
             </div>
-            <div v-if="!realms.length" class="text-[11.5px] text-[var(--text-faint)] py-2">还没有境界，点「新增境界」从低阶开始搭</div>
+            <div v-if="!realms.length" class="text-label text-[var(--text-faint)] py-2">还没有境界，点「新增境界」从低阶开始搭</div>
           </div>
         </div>
 
         <!-- 越级规则 -->
         <div class="max-w-xl">
-          <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">越级 / 战力规则</div>
+          <div class="form-label">越级 / 战力规则</div>
           <textarea v-model="rules" rows="4" class="ink-textarea" placeholder="能否越级挑战？越几级是极限？晋级的代价与条件是什么？" @change="persist" />
         </div>
 
@@ -204,16 +192,16 @@ onMounted(() => void load())
         <div v-if="selected" class="max-w-xl space-y-4 border-t border-[var(--border)] pt-4">
           <div class="flex gap-3">
             <div class="flex-1">
-              <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">角色名</div>
+              <div class="form-label">角色名</div>
               <input v-model="selected.name" class="ink-input" placeholder="角色名" @change="persist" />
             </div>
             <div class="w-44 shrink-0">
-              <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">当前境界</div>
+              <div class="form-label">当前境界</div>
               <InkSelect v-model="selected.realm" class="w-full" :options="realmOptions" @change="persist" />
             </div>
           </div>
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">备注</div>
+            <div class="form-label">备注</div>
             <textarea v-model="selected.note" rows="3" class="ink-textarea" placeholder="功法特点、晋级进度、战力特长" @change="persist" />
           </div>
         </div>

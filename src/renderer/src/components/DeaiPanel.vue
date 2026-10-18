@@ -136,7 +136,7 @@ function applyRewrite() {
     <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-soft)] p-3 mb-3">
       <div class="flex items-center gap-2 mb-2 flex-wrap">
         <span class="text-xs font-medium" :style="{ color: 'var(--accent)' }">人类信号密度</span>
-        <span class="text-[15px] font-bold" :style="{ color: signal.score >= 60 ? 'var(--accent)' : signal.score >= 35 ? '#e0a87a' : '#e08a7a' }">{{ signal.score }}</span>
+        <span class="text-[15px] font-bold" :style="{ color: signal.score >= 60 ? 'var(--accent)' : signal.score >= 35 ? 'var(--warn)' : 'var(--danger)' }">{{ signal.score }}</span>
         <span class="text-[10px] text-[var(--text-faint)]">/100 · 自检指引，非朱雀代理</span>
         <div class="flex-1" />
         <button
@@ -171,7 +171,7 @@ function applyRewrite() {
           {{ signal.stats.chars }} 字 · 均句长 {{ signal.stats.avgLen }} · 句长落差 CV {{ signal.stats.cv }}<template v-if="S.genre === 'fiction'"> · 对话占比 {{ Math.round(signal.stats.dialogueRatio * 100) }}%</template>
         </div>
         <div v-if="signal.warnings.length" class="space-y-1 pt-1 border-t border-[var(--border)]">
-          <div v-for="(w, i) in signal.warnings" :key="i" class="text-[11px] leading-4" :style="{ color: w.startsWith('【红牌】') ? '#e08a7a' : 'var(--text-dim)' }">{{ w }}</div>
+          <div v-for="(w, i) in signal.warnings" :key="i" class="text-[11px] leading-4" :style="{ color: w.startsWith('【红牌】') ? 'var(--danger)' : 'var(--text-dim)' }">{{ w }}</div>
         </div>
       </div>
       <div v-else class="text-[11px] text-[var(--text-faint)]">章节无内容，写点什么再测</div>

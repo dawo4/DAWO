@@ -183,7 +183,7 @@ onBeforeUnmount(close)
   justify-content: center;
   align-self: stretch;
   padding: 0 8px;
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--bg-soft);
   color: var(--text);
@@ -197,13 +197,13 @@ onBeforeUnmount(close)
 
 .ink-combo-panel {
   position: fixed;
-  z-index: 96;
+  z-index: var(--z-dropdown);
   max-height: 300px;
   overflow-y: auto;
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-2);
   padding: 4px;
   display: flex;
   flex-direction: column;
@@ -213,8 +213,8 @@ onBeforeUnmount(close)
   display: flex;
   align-items: center;
   padding: 7px 10px;
-  border-radius: 7px;
-  font-size: 13px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-label);
   color: var(--text);
   cursor: pointer;
   text-align: left;
@@ -229,10 +229,10 @@ onBeforeUnmount(close)
 }
 
 .ink-cmb-enter-active {
-  transition: opacity 0.15s var(--ease-out-quart), transform 0.15s var(--ease-out-quart);
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
 }
 .ink-cmb-leave-active {
-  transition: opacity 0.1s ease;
+  transition: opacity var(--dur-1) ease;
 }
 .ink-cmb-enter-from {
   opacity: 0;

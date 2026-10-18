@@ -8,6 +8,7 @@ import type { LibEntry, LibKind } from '../types'
 import InkButton from '../ui/InkButton.vue'
 import InkSegmented from '../ui/InkSegmented.vue'
 import InkModal from '../ui/InkModal.vue'
+import EmptyHint from '../ui/EmptyHint.vue'
 import PageSubNav from '../ui/PageSubNav.vue'
 import { onHeaderAction } from '../ui/headerActions'
 import { inkPrompt, inkConfirm } from '../ui/inkPrompt'
@@ -548,19 +549,19 @@ watch(
     <PageSubNav v-model="tabValue" :tabs="TABS.map((t) => ({ value: t.k, label: t.l }))">
       <template #right>
         <template v-if="TAB !== 'bindings'">
-          <button class="text-[12px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1" @click="openDraft">
+          <button class="text-label text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1" @click="openDraft">
             <WandSparkles :size="13" /> AI 起草
           </button>
-          <button class="text-[12px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1 ml-3" @click="healthCheck">
+          <button class="text-label text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1 ml-3" @click="healthCheck">
             <Stethoscope :size="13" /> 体检
           </button>
-          <button class="text-[12px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1 ml-3" @click="askLibrarian(`我想给${KIND_LABEL[kind]}补充一些内容，先帮我看看现在缺什么，再问我要什么。`)">
+          <button class="text-label text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1 ml-3" @click="askLibrarian(`我想给${KIND_LABEL[kind]}补充一些内容，先帮我看看现在缺什么，再问我要什么。`)">
             <Bot :size="13" /> AI 管家
           </button>
-          <button class="text-[12px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1 ml-3" @click="addGroup">
+          <button class="text-label text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1 ml-3" @click="addGroup">
             <Plus :size="13" /> 新建分组
           </button>
-          <button class="text-[12px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1 ml-3" @click="libs.open(kind)">
+          <button class="text-label text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1 ml-3" @click="libs.open(kind)">
             <FolderOpen :size="13" /> 打开目录
           </button>
         </template>
@@ -568,7 +569,7 @@ watch(
     </PageSubNav>
 
     <!-- 预置库更新提示：升级安装自动补入新条目后展示（只显示最近一次，7 天内） -->
-    <div v-if="presetUpdate && freshPreset" class="shrink-0 flex items-center gap-2 px-5 py-2 border-b border-[var(--border)] text-[12px]" style="background: color-mix(in srgb, var(--accent) 8%, transparent)">
+    <div v-if="presetUpdate && freshPreset" class="shrink-0 flex items-center gap-2 px-5 py-2 border-b border-[var(--border)] text-label" style="background: var(--accent-soft)">
       <Sparkles :size="13" style="color: var(--accent)" />
       <span class="text-[var(--text-dim)]">预置库更新（{{ presetUpdate.at.slice(5, 10) }}）：补入 {{ presetUpdate.added.length }} 条——{{ presetUpdate.added.slice(0, 4).join('、') }}{{ presetUpdate.added.length > 4 ? ' 等' : '' }}</span>
       <div class="flex-1" />
@@ -580,38 +581,37 @@ watch(
       v-if="TAB !== 'bindings' && selected.length"
       class="shrink-0 flex items-center gap-3 px-5 py-2 border-b border-[var(--border)] bg-[var(--panel)]"
     >
-      <span class="text-[12px]" :style="{ color: 'var(--accent)' }">已选 {{ selected.length }} 项</span>
-      <button class="text-[12px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="selectAll">
+      <span class="text-label" :style="{ color: 'var(--accent)' }">已选 {{ selected.length }} 项</span>
+      <button class="text-label text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="selectAll">
         {{ selected.length === tabEntries.length ? '全不选' : '全选本库' }}
       </button>
       <div class="flex-1" />
       <button
-        class="text-[12px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1 disabled:opacity-40"
+        class="text-label text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer flex items-center gap-1 disabled:opacity-40"
         :disabled="selected.length < 2"
         :title="selected.length < 2 ? '至少选择 2 个条目才能整理' : '让资源管家读全文后合并/拆分/改归类'"
         @click="organizeSelected"
       >
         <ListChecks :size="13" /> AI 整理
       </button>
-      <button class="text-[12px] text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer flex items-center gap-1" @click="removeSelected">
+      <button class="text-label text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer flex items-center gap-1" @click="removeSelected">
         <Trash2 :size="13" /> 批量删除
       </button>
-      <button class="text-[12px] text-[var(--text-faint)] hover:text-[var(--text-dim)] cursor-pointer" @click="selected = []">取消</button>
+      <button class="text-label text-[var(--text-faint)] hover:text-[var(--text-dim)] cursor-pointer" @click="selected = []">取消</button>
     </div>
 
     <!-- 绑定矩阵 -->
-    <div v-if="TAB === 'bindings'" class="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+    <div v-if="TAB === 'bindings'" class="panel-body px-6 py-5">
       <div class="max-w-3xl">
-        <p class="text-[12.5px] text-[var(--text-dim)] leading-6 mb-4">
+        <p class="text-label text-[var(--text-dim)] leading-6 mb-4">
           为每个智能体指定默认引用的技能与素材。新建会话时会自动带上这些引用，也可以在输入框里临时增删。
         </p>
-        <div class="flex flex-wrap gap-1 mb-4">
+        <div class="flex flex-wrap gap-1.5 mb-4">
           <button
             v-for="a in conv.allAgents"
             :key="a.id"
-            class="px-3 py-1.5 text-[12px] rounded-full cursor-pointer transition-colors"
-            :class="bindAgent === a.id ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-            :style="bindAgent === a.id ? { color: 'var(--accent)' } : {}"
+            class="ink-chip-btn"
+            :class="bindAgent === a.id ? 'is-on' : ''"
             @click="bindAgent = a.id"
           >
             {{ a.name }}
@@ -628,19 +628,18 @@ watch(
           />
         </div>
         <div v-for="g in libs.groups(bindKind)" :key="g.name" class="mb-4">
-          <div class="text-[11px] text-[var(--text-faint)] mb-2 tracking-wider">{{ g.name }}</div>
+          <div class="section-title mb-2">{{ g.name }}</div>
           <div class="flex flex-wrap gap-1.5">
             <button
               v-for="e in g.entries"
               :key="e.name"
-              class="px-2.5 py-1.5 text-[12px] rounded-full cursor-pointer transition-colors"
-              :class="isBound(bindKind, g.name, e.name) ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-              :style="isBound(bindKind, g.name, e.name) ? { color: 'var(--accent)' } : { background: 'var(--bg-soft)' }"
+              class="ink-chip-btn"
+              :class="isBound(bindKind, g.name, e.name) ? 'is-on' : ''"
               @click="toggleBind(bindKind, g.name, e.name)"
             >
               {{ isBound(bindKind, g.name, e.name) ? '✓ ' : '' }}{{ e.name }}
             </button>
-            <span v-if="!g.entries.length" class="text-[11.5px] text-[var(--text-faint)]">该分组暂无条目</span>
+            <span v-if="!g.entries.length" class="text-label text-[var(--text-faint)]">该分组暂无条目</span>
           </div>
         </div>
       </div>
@@ -648,20 +647,19 @@ watch(
 
     <!-- 列表 + 编辑 -->
     <div v-else class="flex-1 min-h-0 flex">
-      <aside class="w-72 shrink-0 border-r border-[var(--border)] overflow-y-auto py-2">
+      <aside class="panel-list w-72 py-2">
         <div v-for="g in groups" :key="g.name" class="mb-1">
           <div class="flex items-center gap-1.5 px-3 py-1.5 group">
-            <span class="text-[11px] tracking-wider text-[var(--text-faint)] flex-1">{{ g.name }} · {{ g.entries.length }}</span>
-            <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="delGroup(g.name, g.entries.length)">
+            <span class="section-title flex-1">{{ g.name }} · {{ g.entries.length }}</span>
+            <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="delGroup(g.name, g.entries.length)">
               <Trash2 :size="12" />
             </button>
           </div>
           <div
             v-for="e in g.entries"
             :key="e.name"
-            class="w-full flex items-center gap-2 pl-2 pr-3.5 py-2 cursor-pointer border-l-2 transition-colors"
-            :class="active?.group === g.name && active?.name === e.name ? 'bg-[var(--panel-2)]' : 'border-transparent hover:bg-[var(--hover)]'"
-            :style="active?.group === g.name && active?.name === e.name ? { borderColor: 'var(--accent)' } : {}"
+            class="panel-item"
+            :class="active?.group === g.name && active?.name === e.name ? 'is-on' : ''"
             @click="openEntry(e)"
           >
             <!-- 多选复选框 -->
@@ -674,24 +672,21 @@ watch(
             </button>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
-                <component :is="e.kind === 'skills' ? Sparkles : e.kind === 'notes' ? Lightbulb : BookOpen" :size="12" :style="{ color: 'var(--accent)' }" />
-                <span class="text-[12.5px] truncate">{{ e.name }}</span>
+                <component :is="e.kind === 'skills' ? Sparkles : e.kind === 'notes' ? Lightbulb : BookOpen" :size="12" class="shrink-0 text-[var(--accent)]" />
+                <span class="text-label truncate">{{ e.name }}</span>
               </div>
-              <div class="text-[11px] text-[var(--text-faint)] truncate mt-0.5">{{ e.summary || '无摘要' }}</div>
+              <div class="text-meta text-[var(--text-faint)] truncate mt-0.5">{{ e.summary || '无摘要' }}</div>
             </div>
           </div>
         </div>
-        <div v-if="!groups.length" class="px-3 py-8 text-center text-[12px] text-[var(--text-faint)] leading-6">
+        <div v-if="!groups.length" class="px-3 py-8 text-center text-label text-[var(--text-faint)] leading-6">
           库为空<br />
           <button class="underline hover:text-[var(--accent)] cursor-pointer" @click="openDraft">让 AI 起草一条</button>
         </div>
       </aside>
 
-      <section class="flex-1 min-w-0 overflow-y-auto">
-        <div v-if="!active" class="h-full flex flex-col items-center justify-center gap-3 text-[var(--text-faint)]">
-          <FileText :size="26" />
-          <p class="text-[12.5px]">从左侧选择条目，或新建一个</p>
-        </div>
+      <section class="panel-body">
+        <EmptyHint v-if="!active" :icon="FileText" title="从左侧选择条目" desc="或让 AI 起草一条，再由你润色后保存" action="让 AI 起草一条" @action="openDraft" />
         <div v-else class="max-w-3xl px-7 py-5 space-y-4">
           <div class="flex gap-2">
             <input v-model="form.name" class="ink-input flex-1" placeholder="条目名称" />
@@ -703,22 +698,22 @@ watch(
           <input v-model="form.summary" class="ink-input" placeholder="一句话摘要（智能体据此判断是否引用）" />
           <input v-model="form.tags" class="ink-input" placeholder="标签，用逗号分隔" />
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">正文（Markdown）</div>
-            <textarea v-model="form.body" rows="16" class="ink-textarea font-mono text-[12.5px]" placeholder="技能步骤 / 素材内容…" />
+            <div class="form-label">正文（Markdown）</div>
+            <textarea v-model="form.body" rows="16" class="ink-textarea font-mono text-label" placeholder="技能步骤 / 素材内容…" />
           </div>
           <div class="flex items-center gap-2 flex-wrap">
             <InkButton @click="saveEntry"><Save :size="13" /> 保存</InkButton>
             <InkButton v-if="original.name" variant="ghost" @click="removeEntry"><Trash2 :size="13" /> 删除</InkButton>
             <button
               v-if="original.name"
-              class="text-[12px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer px-1 inline-flex items-center gap-1"
+              class="text-label text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer px-1 inline-flex items-center gap-1"
               @click="openRewrite"
             >
               <WandSparkles :size="12" /> AI 改写
             </button>
             <button
               v-if="original.name"
-              class="text-[12px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer px-1"
+              class="text-label text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer px-1"
               @click="
                 active && active.kind === 'skills'
                   ? conv.addSkillRef({ group: original.group, name: original.name })
@@ -729,7 +724,7 @@ watch(
             >
               引用到当前会话
             </button>
-            <span v-if="savedTip" class="text-[11.5px]" style="color: #7fae7a">已保存</span>
+            <span v-if="savedTip" class="text-label ink-text-ok">已保存</span>
           </div>
         </div>
       </section>
@@ -738,7 +733,7 @@ watch(
     <!-- AI 起草浮层 -->
     <InkModal :open="draftOpen" title="AI 起草条目" wide @close="draftOpen = false">
       <div class="space-y-4">
-        <div class="flex items-center gap-2 text-[12px]">
+        <div class="flex items-center gap-2 text-label">
           <span class="text-[var(--text-faint)]">目标库</span>
           <span style="color: var(--accent)">{{ KIND_LABEL[kind] }}</span>
           <span class="text-[var(--text-faint)]">· 分组</span>
@@ -753,7 +748,7 @@ watch(
             @update:model-value="(v: string) => (draftBatch = v === 'batch')"
           />
         </div>
-        <p class="text-[11px] text-[var(--text-faint)] leading-5">
+        <p class="text-meta text-[var(--text-faint)] leading-5">
           {{ draftBatch ? '批量：AI 会产出一条条独立条目，可逐条勾选入库' : '单条：AI 产出一个完整条目' }}
           ——会参考本库已有条目的命名与摘要风格，避免重复。
         </p>
@@ -761,7 +756,7 @@ watch(
         <textarea
           v-model="draftReq"
           rows="3"
-          class="ink-textarea text-[13px]"
+          class="ink-textarea text-body"
           :placeholder="
             kind === 'skills'
               ? '例如：我想要一个「怎么写出窒息感追妻火葬场」的写作方法，要能直接照着执行'
@@ -776,16 +771,16 @@ watch(
             <WandSparkles :size="13" /> {{ draftRunning ? '生成中…' : '生成' }}
           </InkButton>
           <InkButton v-if="draftRunning" variant="ghost" @click="stopDraft">停止</InkButton>
-          <span v-if="draftError" class="text-[12px] text-[#e08a7a]">{{ draftError }}</span>
+          <span v-if="draftError" class="text-label ink-text-danger">{{ draftError }}</span>
         </div>
 
         <!-- 解析出的条目卡片 -->
-        <div v-if="draftItems.length" class="space-y-2 max-h-72 overflow-y-auto rounded-lg border border-[var(--border)] p-2.5">
+        <div v-if="draftItems.length" class="space-y-2 max-h-72 overflow-y-auto rounded-[var(--r-md)] border border-[var(--border)] p-2.5">
           <div class="flex items-center gap-2">
-            <button class="text-[11.5px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="toggleAllDraft">
+            <button class="text-label text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="toggleAllDraft">
               {{ draftItems.every((i) => i.picked) ? '全不选' : '全选' }}
             </button>
-            <span class="text-[11px] text-[var(--text-faint)]">解析出 {{ draftItems.length }} 条</span>
+            <span class="text-meta text-[var(--text-faint)]">解析出 {{ draftItems.length }} 条</span>
           </div>
           <div v-for="(it, idx) in draftItems" :key="idx" class="flex items-start gap-2.5 py-2 border-t border-[var(--border)] first:border-t-0">
             <button
@@ -796,20 +791,20 @@ watch(
               <component :is="it.picked ? SquareCheckBig : Square" :size="15" />
             </button>
             <div class="flex-1 min-w-0">
-              <div class="text-[12.5px]">{{ it.name }}</div>
-              <div class="text-[11.5px] text-[var(--text-dim)] mt-0.5">{{ it.summary || '无摘要' }}</div>
+              <div class="text-label">{{ it.name }}</div>
+              <div class="text-meta text-[var(--text-dim)] mt-0.5">{{ it.summary || '无摘要' }}</div>
               <div v-if="it.tags.length" class="flex gap-1 mt-1 flex-wrap">
-                <span v-for="t in it.tags" :key="t" class="text-[10px] text-[var(--text-faint)]">#{{ t }}</span>
+                <span v-for="t in it.tags" :key="t" class="text-micro text-[var(--text-faint)]">#{{ t }}</span>
               </div>
             </div>
-            <button class="text-[11px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer shrink-0" @click="fillForm(it)">
+            <button class="text-meta text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer shrink-0" @click="fillForm(it)">
               填入表单
             </button>
           </div>
         </div>
 
         <!-- 流式原文（解析失败时兜底） -->
-        <div v-else-if="draftText" class="max-h-60 overflow-y-auto rounded-lg bg-[var(--bg-soft)] p-3 text-[12px] leading-6 whitespace-pre-wrap select-text">
+        <div v-else-if="draftText" class="max-h-60 overflow-y-auto rounded-[var(--r-md)] bg-[var(--bg-soft)] p-3 text-label leading-6 whitespace-pre-wrap select-text">
           {{ draftText }}
         </div>
 
@@ -825,13 +820,13 @@ watch(
     <!-- AI 改写浮层 -->
     <InkModal :open="rewriteOpen" title="AI 改写条目" @close="rewriteOpen = false">
       <div class="space-y-4">
-        <div class="text-[12px] text-[var(--text-faint)]">
+        <div class="text-label text-[var(--text-faint)]">
           正在改写：<span style="color: var(--accent)">{{ form.name || '未命名' }}</span>
         </div>
         <textarea
           v-model="rewriteReq"
           rows="3"
-          class="ink-textarea text-[13px]"
+          class="ink-textarea text-body"
           placeholder="例如：太短了帮我充实一下 / 精简到一半 / 换成更适合男频的直给风格 / 补上标签和摘要"
         />
         <div class="flex items-center gap-2">
@@ -839,12 +834,12 @@ watch(
             <WandSparkles :size="13" /> {{ rewriteRunning ? '改写中…' : '开始改写' }}
           </InkButton>
           <InkButton v-if="rewriteRunning" variant="ghost" @click="stopRewrite">停止</InkButton>
-          <span v-if="rewriteError" class="text-[12px] text-[#e08a7a]">{{ rewriteError }}</span>
+          <span v-if="rewriteError" class="text-label ink-text-danger">{{ rewriteError }}</span>
         </div>
-        <div v-if="rewriteText" class="max-h-64 overflow-y-auto rounded-lg bg-[var(--bg-soft)] p-3 text-[12px] leading-6 whitespace-pre-wrap select-text">
+        <div v-if="rewriteText" class="max-h-64 overflow-y-auto rounded-[var(--r-md)] bg-[var(--bg-soft)] p-3 text-label leading-6 whitespace-pre-wrap select-text">
           {{ rewriteText }}
         </div>
-        <p class="text-[11px] text-[var(--text-faint)]">
+        <p class="text-meta text-[var(--text-faint)]">
           改写结果会填回表单，不会直接覆盖。你确认后再点「保存」。
         </p>
         <div class="flex items-center justify-end gap-2">

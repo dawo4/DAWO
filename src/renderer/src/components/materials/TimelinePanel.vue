@@ -5,6 +5,9 @@ import { useLibraryStore } from '../../store/library'
 import { useConversationStore } from '../../store/conversation'
 import { inkConfirm } from '../../ui/inkPrompt'
 import InkSelect from '../../ui/InkSelect.vue'
+import InkSegmented from '../../ui/InkSegmented.vue'
+import EmptyHint from '../../ui/EmptyHint.vue'
+import InkButton from '../../ui/InkButton.vue'
 import { Plus, Sparkles, TriangleAlert, ArrowUpDown, Clock, Trash2, WandSparkles } from 'lucide-vue-next'
 
 const app = useAppStore()
@@ -203,49 +206,26 @@ defineExpose({ reload: load })
 <template>
   <div class="h-full flex flex-col">
     <!-- 视图切换 -->
-    <div class="flex items-center gap-3 px-6 h-11 border-b border-[var(--border)] shrink-0">
-      <div class="inline-flex items-center gap-0.5 p-0.5 rounded-full bg-[var(--bg-soft)]">
-        <button
-          v-for="v in VIEWS"
-          :key="v.key"
-          class="px-3 py-1 rounded-full text-[12.5px] cursor-pointer transition-colors"
-          :class="view === v.key ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-          :style="view === v.key ? { color: 'var(--accent)' } : {}"
-          @click="view = v.key"
-        >
-          {{ v.label }}
-        </button>
-      </div>
+    <div class="panel-head">
+      <InkSegmented v-model="view" :options="VIEWS.map((v) => ({ value: v.key, label: v.label }))" />
       <div class="flex-1" />
-      <span class="text-[11px] text-[var(--text-faint)]">共 {{ nodes.length }} 个节点</span>
+      <span class="panel-head-meta">共 {{ nodes.length }} 个节点</span>
     </div>
 
     <!-- 筛选 + 工具条 -->
     <div class="flex items-center gap-2 px-6 h-11 border-b border-[var(--border)] shrink-0 flex-wrap">
-      <div class="inline-flex items-center gap-0.5 p-0.5 rounded-full bg-[var(--bg-soft)]">
-        <button
-          v-for="f in FILTERS"
-          :key="f.key"
-          class="px-2.5 py-0.5 rounded-full text-[11.5px] cursor-pointer transition-colors"
-          :class="filter === f.key ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-faint)] hover:text-[var(--text)]'"
-          :style="filter === f.key ? { color: 'var(--accent)' } : {}"
-          @click="filter = f.key"
-        >
-          {{ f.label }}
-        </button>
-      </div>
+      <InkSegmented v-model="filter" :options="FILTERS.map((f) => ({ value: f.key, label: f.label }))" />
 
       <div class="w-px h-4 bg-[var(--border)]" />
 
       <button
-        class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer"
+        class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer"
         @click="addNode()"
       >
         <Plus :size="13" /> 新建时间节点
       </button>
       <button
-        class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer hover:bg-[var(--hover)]"
-        :style="{ color: 'var(--accent)' }"
+        class="ink-chip-btn is-on text-label"
         :disabled="busy"
         title="让时间线智能体读正文并提取节点"
         @click="askAgent('extract')"
@@ -253,7 +233,7 @@ defineExpose({ reload: load })
         <Sparkles :size="13" /> AI 提取
       </button>
       <button
-        class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer"
+        class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer disabled:opacity-45"
         :disabled="busy"
         title="让智能体补全缺失的时间节点"
         @click="askAgent('complete')"
@@ -261,7 +241,7 @@ defineExpose({ reload: load })
         <WandSparkles :size="13" /> 补全
       </button>
       <button
-        class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer"
+        class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer disabled:opacity-45"
         :disabled="busy"
         title="让智能体检查时间线矛盾"
         @click="askAgent('check')"
@@ -272,7 +252,7 @@ defineExpose({ reload: load })
       <div class="flex-1" />
 
       <button
-        class="text-[11.5px] flex items-center gap-1 text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer"
+        class="text-label flex items-center gap-1 text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer"
         @click="orderDesc = !orderDesc"
       >
         <ArrowUpDown :size="12" /> 排序：{{ orderDesc ? '倒序' : '时间顺序' }}
@@ -280,48 +260,42 @@ defineExpose({ reload: load })
     </div>
 
     <!-- 内容区 -->
-    <div v-if="!nodes.length" class="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text-faint)]">
-      <Clock :size="26" />
-      <p class="text-[13px]">还没有时间节点</p>
+    <EmptyHint
+      v-if="!nodes.length"
+      :icon="Clock"
+      title="还没有时间节点"
+      desc="可以让时间线智能体读正文自动提取，提取结果会先出差异、你确认后才写入"
+    >
       <div class="flex gap-2">
-        <button class="text-[12.5px] px-3.5 py-1.5 rounded-full border border-[var(--border)] hover:border-[var(--accent)] cursor-pointer" @click="addNode()">
-          新建第一个节点
-        </button>
-        <button
-          class="text-[12.5px] px-3.5 py-1.5 rounded-full cursor-pointer text-[#1b1712] font-medium"
-          :style="{ background: 'var(--accent)' }"
-          @click="askAgent('extract')"
-        >
-          让 AI 从正文提取
-        </button>
+        <InkButton variant="ghost" size="sm" @click="addNode()">新建第一个节点</InkButton>
+        <InkButton size="sm" @click="askAgent('extract')">让 AI 从正文提取</InkButton>
       </div>
-      <p class="text-[11.5px] text-[var(--text-faint)]">AI 提取会在写作台的智能体面板里生成差异，你确认后才写入</p>
-    </div>
+    </EmptyHint>
 
     <div v-else class="flex-1 min-h-0 flex">
       <!-- 左：节点列表 -->
-      <div class="w-80 shrink-0 border-r border-[var(--border)] overflow-y-auto">
+      <div class="panel-list w-80">
         <!-- 时间轴视图：竖线 + 节点 -->
-        <div v-if="view === 'axis'" class="px-4 py-3">
+        <div v-if="view === 'axis'" class="px-3 py-3">
           <div
             v-for="n in shown"
             :key="n.id"
-            class="relative pl-5 pb-4 cursor-pointer group"
-            :class="selectedId === n.id ? '' : 'opacity-90'"
+            class="relative pl-4 pr-5 pb-4 rounded-[var(--r-sm)] cursor-pointer group transition-colors"
+            :class="selectedId === n.id ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--hover)]'"
             @click="selectedId = n.id"
           >
             <span class="absolute left-0 top-1.5 w-2 h-2 rounded-full" :style="{ background: n.line === 'main' ? 'var(--accent)' : 'var(--text-faint)' }" />
             <span class="absolute left-[3px] top-3 bottom-0 w-px bg-[var(--border)]" />
             <button
-              class="absolute right-0 top-0 opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer p-0.5 transition-opacity"
+              class="absolute right-1 top-0.5 opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer p-0.5 transition-opacity"
               title="删除该节点"
               @click.stop="removeNode(n.id)"
             >
               <Trash2 :size="12" />
             </button>
-            <div class="text-[12px] text-[var(--text-faint)] pr-5">{{ n.time || '时间未定' }}</div>
-            <div class="text-[13px] truncate" :style="selectedId === n.id ? { color: 'var(--accent)' } : {}">{{ n.title }}</div>
-            <div class="text-[11px] text-[var(--text-faint)] truncate">
+            <div class="text-label text-[var(--text-faint)]">{{ n.time || '时间未定' }}</div>
+            <div class="text-body truncate" :style="selectedId === n.id ? { color: 'var(--accent)' } : {}">{{ n.title }}</div>
+            <div class="text-meta text-[var(--text-faint)] truncate">
               {{ n.line === 'main' ? '主线' : '支线' }}{{ n.chapters.length ? ` · ${n.chapters.map((c) => c.replace('正文/', '')).join('、')}` : ' · 未绑定' }}
             </div>
           </div>
@@ -332,35 +306,34 @@ defineExpose({ reload: load })
           <div
             v-for="n in shown"
             :key="n.id"
-            class="rounded-lg border px-3 py-2 cursor-pointer group relative"
-            :class="selectedId === n.id ? 'border-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--text-faint)]'"
+            class="ink-card px-3 py-2 cursor-pointer group relative"
+            :class="selectedId === n.id ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'hover:border-[var(--border-strong)]'"
             @click="selectedId = n.id"
           >
             <button
-              class="absolute right-1.5 top-1.5 opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer p-0.5 transition-opacity"
+              class="absolute right-1.5 top-1.5 opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer p-0.5 transition-opacity"
               title="删除该节点"
               @click.stop="removeNode(n.id)"
             >
               <Trash2 :size="12" />
             </button>
             <div class="flex items-center gap-1.5">
-              <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--bg-soft)] text-[var(--text-faint)]">{{ n.line === 'main' ? '主线' : '支线' }}</span>
-              <span class="text-[12.5px] truncate pr-5">{{ n.title }}</span>
+              <span class="ink-chip">{{ n.line === 'main' ? '主线' : '支线' }}</span>
+              <span class="text-label truncate pr-5">{{ n.title }}</span>
             </div>
-            <div class="text-[11px] text-[var(--text-faint)] mt-1 truncate">{{ n.time || '时间未定' }}{{ n.desc ? ` · ${n.desc}` : '' }}</div>
+            <div class="text-meta text-[var(--text-faint)] mt-1 truncate">{{ n.time || '时间未定' }}{{ n.desc ? ` · ${n.desc}` : '' }}</div>
           </div>
         </div>
 
         <!-- 关联章节 -->
         <div v-else class="p-3 space-y-3">
           <div v-for="[chapter, list] in byChapter" :key="chapter">
-            <div class="text-[11px] text-[var(--text-faint)] mb-1">{{ chapter === '未绑定' ? '未绑定章节' : chapter }}</div>
+            <div class="section-title mb-1">{{ chapter === '未绑定' ? '未绑定章节' : chapter }}</div>
             <button
               v-for="n in list"
               :key="n.id"
-              class="w-full text-left px-2.5 py-1.5 rounded-md text-[12.5px] cursor-pointer"
-              :class="selectedId === n.id ? 'bg-[var(--panel-2)]' : 'hover:bg-[var(--hover)] text-[var(--text-dim)]'"
-              :style="selectedId === n.id ? { color: 'var(--accent)' } : {}"
+              class="w-full text-left px-2.5 py-1.5 rounded-[var(--r-sm)] text-label cursor-pointer transition-colors"
+              :class="selectedId === n.id ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'hover:bg-[var(--hover)] text-[var(--text-dim)]'"
               @click="selectedId = n.id"
             >
               {{ n.time ? `${n.time} · ` : '' }}{{ n.title }}
@@ -370,62 +343,52 @@ defineExpose({ reload: load })
       </div>
 
       <!-- 右：详情 -->
-      <div class="flex-1 min-w-0 overflow-y-auto px-6 py-5">
-        <div v-if="!selected" class="h-full flex items-center justify-center text-[var(--text-faint)] text-[13px]">
-          选择时间节点查看详情
-        </div>
+      <div class="panel-body px-6 py-5">
+        <EmptyHint v-if="!selected" :icon="Clock" title="选择时间节点查看详情" />
         <div v-else class="max-w-xl space-y-4">
           <div class="flex items-center gap-2">
-            <button class="text-[11.5px] text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer" @click="move(selected.id, -1)">↑ 上移</button>
-            <button class="text-[11.5px] text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer" @click="move(selected.id, 1)">↓ 下移</button>
+            <button class="text-label text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer" @click="move(selected.id, -1)">↑ 上移</button>
+            <button class="text-label text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer" @click="move(selected.id, 1)">↓ 下移</button>
             <div class="flex-1" />
-            <button class="text-[11.5px] flex items-center gap-1 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="removeNode(selected.id)">
+            <button class="text-label flex items-center gap-1 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="removeNode(selected.id)">
               <Trash2 :size="12" /> 删除
             </button>
           </div>
 
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">事件标题</div>
+            <div class="form-label">事件标题</div>
             <input v-model="selected.title" class="ink-input" placeholder="例如：许七安入打更人" />
           </div>
 
           <div class="flex gap-3">
             <div class="flex-1">
-              <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">时间</div>
+              <div class="form-label">时间</div>
               <input v-model="selected.time" class="ink-input" placeholder="入冬第三日 / 三年前" />
             </div>
             <div class="w-40 shrink-0">
-              <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">主线 / 支线</div>
-              <div class="inline-flex items-center gap-0.5 p-0.5 rounded-full bg-[var(--bg-soft)]">
-                <button
-                  v-for="l in [{ k: 'main', t: '主线' }, { k: 'sub', t: '支线' }]"
-                  :key="l.k"
-                  class="px-3 py-1 rounded-full text-[12px] cursor-pointer"
-                  :class="selected.line === l.k ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)]'"
-                  :style="selected.line === l.k ? { color: 'var(--accent)' } : {}"
-                  @click="selected.line = l.k as 'main' | 'sub'"
-                >
-                  {{ l.t }}
-                </button>
-              </div>
+              <div class="form-label">主线 / 支线</div>
+              <InkSegmented
+                v-model="selected.line"
+                :options="[
+                  { value: 'main', label: '主线' },
+                  { value: 'sub', label: '支线' }
+                ]"
+              />
             </div>
           </div>
 
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">绑定章节（可绑多个，大线可跨十几章）</div>
-            <div v-if="selected.chapters.length" class="flex flex-wrap gap-1 mb-1.5">
-              <span
-                v-for="c in selected.chapters"
-                :key="c"
-                class="inline-flex items-center gap-1 text-[11.5px] px-2.5 py-1 rounded-full group"
-                :style="{ background: 'var(--panel-2)', color: 'var(--accent)' }"
-              >
+            <div class="form-label">绑定章节（可绑多个，大线可跨十几章）</div>
+            <div v-if="selected.chapters.length" class="flex flex-wrap gap-1.5 mb-1.5">
+              <span v-for="c in selected.chapters" :key="c" class="ink-chip ink-chip-accent group">
                 {{ c.replace('正文/', '') }}
                 <button
-                  class="opacity-60 group-hover:opacity-100 hover:text-[#e08a7a] cursor-pointer"
+                  class="opacity-60 group-hover:opacity-100 hover:text-[var(--danger)] cursor-pointer"
                   title="移除该章节绑定"
                   @click="removeChapter(c)"
-                >✕</button>
+                >
+                  ✕
+                </button>
               </span>
             </div>
             <InkSelect
@@ -438,12 +401,12 @@ defineExpose({ reload: load })
           </div>
 
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">事件说明</div>
+            <div class="form-label">事件说明</div>
             <textarea v-model="selected.desc" rows="5" class="ink-textarea" placeholder="发生了什么、牵扯到谁、后续影响" />
           </div>
 
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5 tracking-wider">涉及角色（逗号分隔）</div>
+            <div class="form-label">涉及角色（逗号分隔）</div>
             <input
               :value="selected.characters.join('，')"
               class="ink-input"
@@ -452,7 +415,7 @@ defineExpose({ reload: load })
             />
           </div>
 
-          <p class="text-[11px] text-[var(--text-faint)]">改动会自动保存到「时间线.json」</p>
+          <p class="text-meta text-[var(--text-faint)]">改动会自动保存到「时间线.json」</p>
         </div>
       </div>
     </div>

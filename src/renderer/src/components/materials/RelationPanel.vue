@@ -4,6 +4,8 @@ import { useAppStore } from '../../store/app'
 import { useLibraryStore } from '../../store/library'
 import { useConversationStore } from '../../store/conversation'
 import { inkPrompt, inkConfirm } from '../../ui/inkPrompt'
+import EmptyHint from '../../ui/EmptyHint.vue'
+import InkButton from '../../ui/InkButton.vue'
 import GraphCanvas, { type CanvasNode, type CanvasEdge } from './GraphCanvas.vue'
 import { Plus, Sparkles, LayoutGrid, Maximize2, ZoomIn, ZoomOut, Trash2, Users } from 'lucide-vue-next'
 
@@ -27,11 +29,12 @@ interface CharEdge {
   label: string
 }
 
+/** 关系类型配色：亲情/敌对走语义 token，其余为关系专属色（仅本面板使用） */
 const RELATIONS: { key: RelationKind; label: string; color: string }[] = [
-  { key: 'family', label: '亲情', color: '#c9a15f' },
+  { key: 'family', label: '亲情', color: 'var(--accent)' },
   { key: 'love', label: '爱情', color: '#c96f8a' },
   { key: 'friend', label: '友情', color: '#6f9ac9' },
-  { key: 'enemy', label: '敌对', color: '#c96f5f' },
+  { key: 'enemy', label: '敌对', color: 'var(--danger)' },
   { key: 'other', label: '其他', color: '#8a8378' }
 ]
 
@@ -197,13 +200,13 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
 <template>
   <div class="h-full flex flex-col">
     <!-- 关系类型筛选 + 工具条 -->
-    <div class="flex items-center gap-2 px-6 h-11 border-b border-[var(--border)] shrink-0 flex-wrap">
+    <div class="panel-head">
       <div class="flex items-center gap-1.5">
         <button
           v-for="r in RELATIONS"
           :key="r.key"
-          class="flex items-center gap-1 text-[11.5px] px-2 py-0.5 rounded-full cursor-pointer transition-colors"
-          :class="activeRelations.includes(r.key) ? 'bg-[var(--bg-soft)]' : 'opacity-45'"
+          class="ink-chip-btn"
+          :class="activeRelations.includes(r.key) ? 'is-on' : ''"
           @click="
             activeRelations.includes(r.key)
               ? (activeRelations = activeRelations.filter((x) => x !== r.key))
@@ -217,42 +220,30 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
 
       <div class="w-px h-4 bg-[var(--border)]" />
 
-      <button class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer" @click="addNode">
+      <button class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="addNode">
         <Plus :size="13" /> 新建角色
       </button>
-      <button
-        class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer hover:bg-[var(--hover)]"
-        :style="{ color: 'var(--accent)' }"
-        :disabled="busy"
-        @click="askAgent"
-      >
+      <button class="ink-chip-btn is-on text-label" :disabled="busy" @click="askAgent">
         <Sparkles :size="13" /> AI 生成关系
       </button>
-      <button class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer" @click="autoLayout">
+      <button class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="autoLayout">
         <LayoutGrid :size="13" /> 自动整理
       </button>
-      <button class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer" @click="canvas?.fitView()">
+      <button class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="canvas?.fitView()">
         <Maximize2 :size="13" /> 适应画布
       </button>
-      <button class="text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer p-1" title="缩小" @click="canvas?.zoomOut()"><ZoomOut :size="14" /></button>
-      <button class="text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer p-1" title="放大" @click="canvas?.zoomIn()"><ZoomIn :size="14" /></button>
+      <button class="ink-icon-btn" title="缩小" @click="canvas?.zoomOut()"><ZoomOut :size="14" /></button>
+      <button class="ink-icon-btn" title="放大" @click="canvas?.zoomIn()"><ZoomIn :size="14" /></button>
       <div class="flex-1" />
-      <span class="text-[11px] text-[var(--text-faint)]">{{ nodes.length }} 个角色 · {{ edges.length }} 条关系</span>
+      <span class="panel-head-meta">{{ nodes.length }} 个角色 · {{ edges.length }} 条关系</span>
     </div>
 
-    <div v-if="!nodes.length" class="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text-faint)]">
-      <Users :size="26" />
-      <p class="text-[13px]">还没有角色</p>
+    <EmptyHint v-if="!nodes.length" :icon="Users" title="还没有角色" desc="从节点边缘拖线即可建立关系">
       <div class="flex gap-2">
-        <button class="text-[12.5px] px-3.5 py-1.5 rounded-full border border-[var(--border)] hover:border-[var(--accent)] cursor-pointer" @click="addNode">
-          新建角色
-        </button>
-        <button class="text-[12.5px] px-3.5 py-1.5 rounded-full cursor-pointer text-[#1b1712] font-medium" :style="{ background: 'var(--accent)' }" @click="askAgent">
-          让 AI 生成关系图
-        </button>
+        <InkButton variant="ghost" size="sm" @click="addNode">新建角色</InkButton>
+        <InkButton size="sm" @click="askAgent">让 AI 生成关系图</InkButton>
       </div>
-      <p class="text-[11.5px] text-[var(--text-faint)]">从节点边缘拖线即可建立关系</p>
-    </div>
+    </EmptyHint>
 
     <div v-else class="flex-1 min-h-0 flex">
       <div class="flex-1 min-w-0">
@@ -267,12 +258,12 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
       </div>
 
       <div class="w-72 shrink-0 border-l border-[var(--border)] overflow-y-auto px-5 py-4">
-        <div v-if="!picked" class="text-[12.5px] text-[var(--text-faint)] py-8 text-center">选择角色查看详情</div>
+        <div v-if="!picked" class="text-label text-[var(--text-faint)] py-8 text-center">选择角色查看详情</div>
         <div v-else class="space-y-3.5">
           <div class="flex items-center gap-2">
-            <span class="text-[11px] text-[var(--text-faint)]">角色详情</span>
+            <span class="section-title">角色详情</span>
             <div class="flex-1" />
-            <button class="text-[11.5px] flex items-center gap-1 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="removeNode(picked.id)">
+            <button class="text-label flex items-center gap-1 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="removeNode(picked.id)">
               <Trash2 :size="12" /> 删除
             </button>
           </div>
@@ -280,14 +271,14 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
           <input v-model="picked.role" class="ink-input" placeholder="身份定位，如「打更人·主角」" />
 
           <div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-1.5">相关关系</div>
-            <div v-if="!relationsOf(picked?.id || '').length" class="text-[11.5px] text-[var(--text-faint)]">暂无关系</div>
+            <div class="form-label">相关关系</div>
+            <div v-if="!relationsOf(picked?.id || '').length" class="text-label text-[var(--text-faint)]">暂无关系</div>
             <div v-for="e in relationsOf(picked?.id || '')" :key="e.id" class="flex items-center gap-2 mb-1.5">
               <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: relationOf(e.relation).color }" />
-              <span class="text-[11.5px] text-[var(--text-dim)] flex-1 truncate">
+              <span class="text-label text-[var(--text-dim)] flex-1 truncate">
                 {{ otherName(e, picked?.id || '') }} · {{ relationOf(e.relation).label }}{{ e.label ? ` ${e.label}` : '' }}
               </span>
-              <button class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="edges = edges.filter((x) => x.id !== e.id)">
+              <button class="text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="edges = edges.filter((x) => x.id !== e.id)">
                 ✕
               </button>
             </div>

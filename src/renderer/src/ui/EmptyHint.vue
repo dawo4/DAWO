@@ -30,5 +30,7 @@ const emit = defineEmits<{ (e: 'action'): void }>()
     <div v-if="action" class="mt-1">
       <InkButton variant="ghost" size="sm" @click="emit('action')">{{ action }}</InkButton>
     </div>
+    <!-- 额外动作：需要第二个入口（如「让 AI 提取」）时由使用方塞进来 -->
+    <slot />
   </div>
 </template>

@@ -124,7 +124,7 @@ onMounted(() => void libs.refresh())
       </div>
       <div class="flex items-center justify-between">
         <span class="text-[11px] text-[var(--text-faint)]">已选 {{ modelValue.length }} 项，内容将随每次生成注入提示词</span>
-        <button class="text-[12px] px-3 py-1.5 rounded-lg cursor-pointer text-[#1b1712]" :style="{ background: 'var(--accent)' }" @click="open = false">完成</button>
+        <button class="text-label px-3 py-1.5 rounded-[var(--r-sm)] cursor-pointer" :style="{ background: 'var(--accent)', color: 'var(--accent-ink)' }" @click="open = false">完成</button>
       </div>
     </div>
   </InkModal>

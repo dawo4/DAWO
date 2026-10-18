@@ -6,6 +6,7 @@ import { useConversationStore } from '../store/conversation'
 import { aiRun } from '../ai'
 import { renderMarkdown } from '../ui/markdown'
 import InkButton from '../ui/InkButton.vue'
+import EmptyHint from '../ui/EmptyHint.vue'
 import { inkConfirm } from '../ui/inkPrompt'
 import { FileSearch, Play, Square, Trash2, FileText, FileUp, Sparkles, CircleCheck } from 'lucide-vue-next'
 
@@ -250,53 +251,54 @@ watch(
 <template>
   <div class="h-full flex">
     <!-- 左侧：历史拆解 -->
-    <aside class="w-64 shrink-0 border-r border-[var(--border)] overflow-y-auto py-3">
-      <div class="px-4 pb-2 text-[11px] tracking-widest text-[var(--text-faint)]">历史拆解</div>
+    <aside class="panel-list w-64 py-3">
+      <div class="section-title px-4 pb-2">历史拆解</div>
       <div
         v-for="r in reports"
         :key="r.path"
-        class="w-full text-left px-4 py-2 cursor-pointer transition-colors group flex items-center gap-2 border-l-2"
-        :class="activePath === r.path ? '' : 'border-transparent hover:bg-[var(--hover)]'"
-        :style="activePath === r.path ? { borderColor: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 8%, transparent)' } : {}"
+        class="panel-item group"
+        :class="activePath === r.path ? 'is-on' : ''"
         @click="openReport(r)"
       >
-        <FileText :size="13" :style="{ color: 'var(--accent)' }" class="shrink-0" />
-        <span class="text-[12.5px] truncate flex-1">{{ r.name }}</span>
-        <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click.stop="removeReport(r)">
+        <FileText :size="13" class="shrink-0" :style="{ color: activePath === r.path ? 'var(--accent)' : 'var(--text-faint)' }" />
+        <span class="text-label truncate flex-1">{{ r.name }}</span>
+        <button class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click.stop="removeReport(r)">
           <Trash2 :size="12" />
         </button>
       </div>
-      <div v-if="!reports.length" class="px-4 py-8 text-center text-[12px] text-[var(--text-faint)] leading-6">
+      <div v-if="!reports.length" class="px-4 py-8 text-center text-label text-[var(--text-faint)] leading-6">
         还没有拆解存档<br />导入或粘贴竞品文本到右侧试试
       </div>
     </aside>
 
     <!-- 右侧：拆解工作区 -->
-    <div class="flex-1 min-w-0 overflow-y-auto">
-      <div v-if="!lib.current" class="h-full flex flex-col items-center justify-center gap-3 text-[var(--text-faint)]">
-        <FileSearch :size="28" />
-        <p class="text-[12.5px]">先到书架打开一部作品，拆解报告才会存进它的资料里</p>
-      </div>
+    <div class="panel-body">
+      <EmptyHint
+        v-if="!lib.current"
+        :icon="FileSearch"
+        title="先打开一部作品"
+        desc="拆解报告会存进它的「拆书/」目录，并沉淀到素材库"
+        action="去书架"
+        @action="app.go('bookshelf')"
+      />
 
-      <div v-else class="prose-ink max-w-[900px] mx-auto space-y-5 py-6">
+      <div v-else class="mx-auto w-full max-w-[920px] flex flex-col gap-5 px-7 py-7">
         <!-- 新建拆解 -->
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 space-y-4">
-          <div class="flex items-center justify-between">
-            <div class="text-sm font-medium">新建拆解</div>
-            <span class="text-[11px] text-[var(--text-faint)]">报告自动存入本书「拆书/」目录</span>
+        <div class="ink-card p-5 flex flex-col gap-4">
+          <div class="card-head is-flush">
+            <span class="card-head-title">新建拆解</span>
+            <span class="card-head-line" />
+            <span class="card-head-meta">报告自动存入本书「拆书/」目录</span>
           </div>
 
-          <div class="flex gap-2">
-            <input v-model="reportTitle" class="ink-input flex-1" placeholder="报告标题，如《诡秘之主》开篇（留空自动命名）" />
-          </div>
+          <input v-model="reportTitle" class="ink-input" placeholder="报告标题，如《诡秘之主》开篇（留空自动命名）" />
 
           <div class="flex flex-wrap gap-1.5">
             <button
               v-for="d in DIMENSIONS"
               :key="d.key"
-              class="px-3 py-1.5 text-[12px] rounded-full cursor-pointer transition-colors"
-              :class="picked.includes(d.key) ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-              :style="picked.includes(d.key) ? { color: 'var(--accent)' } : { background: 'var(--bg-soft)' }"
+              class="ink-chip-btn"
+              :class="picked.includes(d.key) ? 'is-on' : ''"
               @click="toggleDim(d.key)"
             >
               {{ picked.includes(d.key) ? '✓ ' : '' }}{{ d.label }}
@@ -305,7 +307,7 @@ watch(
 
           <!-- 自定义维度：想拆什么就加什么 -->
           <div class="space-y-1.5">
-            <div class="text-[11px] text-[var(--text-faint)]">自定义维度（输入后回车添加，想拆什么拆什么）</div>
+            <div class="form-label">自定义维度（输入后回车添加，想拆什么拆什么）</div>
             <div class="flex gap-2">
               <input
                 v-model="newDim"
@@ -319,87 +321,84 @@ watch(
               <span
                 v-for="d in customDims"
                 :key="d"
-                class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] rounded-full cursor-pointer transition-colors group"
-                :class="customPicked.includes(d) ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-                :style="customPicked.includes(d) ? { color: 'var(--accent)' } : { background: 'var(--bg-soft)' }"
+                class="ink-chip-btn group"
+                :class="customPicked.includes(d) ? 'is-on' : ''"
                 :title="customPicked.includes(d) ? '点击取消勾选，按住 ✕ 删除' : '点击勾选'"
                 @click="toggleCustomDim(d)"
               >
                 {{ customPicked.includes(d) ? '✓ ' : '' }}{{ d }}
                 <button
-                  class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer"
+                  class="opacity-0 group-hover:opacity-100 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer"
                   @click.stop="customDims = customDims.filter((x) => x !== d); customPicked = customPicked.filter((x) => x !== d)"
-                >✕</button>
+                >
+                  ✕
+                </button>
               </span>
             </div>
           </div>
 
           <!-- 补充要求 -->
           <div class="space-y-1.5">
-            <div class="text-[11px] text-[var(--text-faint)]">补充要求（可选，随维度一起交给 AI）</div>
-            <textarea v-model="extraReq" class="ink-textarea h-16 text-[12.5px]" placeholder="例如：重点对比我的第一章和它的差距；只拆打斗场面的写法；用表格输出…" />
+            <div class="form-label">补充要求（可选，随维度一起交给 AI）</div>
+            <textarea v-model="extraReq" class="ink-textarea h-16" placeholder="例如：重点对比我的第一章和它的差距；只拆打斗场面的写法；用表格输出…" />
           </div>
 
           <!-- 拆解规模：章数越多越简略，10 章以下最精细 -->
           <div class="space-y-1.5">
-            <div class="text-[11px] text-[var(--text-faint)]">拆解规模（章数越多拆得越简略，5 章以下逐章精拆）</div>
+            <div class="form-label">拆解规模（章数越多拆得越简略，5 章以下逐章精拆）</div>
             <div class="flex items-center gap-1.5 flex-wrap">
               <button
                 v-for="n in CHAPTER_PRESETS"
                 :key="n"
-                class="px-3 py-1.5 text-[12px] rounded-full cursor-pointer transition-colors"
-                :class="chapterCount === n ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-                :style="chapterCount === n ? { color: 'var(--accent)' } : { background: 'var(--bg-soft)' }"
+                class="ink-chip-btn"
+                :class="chapterCount === n ? 'is-on' : ''"
                 @click="chapterCount = n"
               >
                 {{ chapterCount === n ? '✓ ' : '' }}{{ n }} 章
               </button>
-              <span class="text-[11px] text-[var(--text-faint)] ml-1">自定义</span>
+              <span class="text-meta text-[var(--text-faint)] ml-1">自定义</span>
               <input v-model.number="chapterCount" type="number" min="1" max="100" class="ink-input w-16 text-center py-1" />
-              <span class="text-[11px] text-[var(--text-faint)]">{{ scaleText.split('：')[1] || '' }}</span>
+              <span class="text-meta text-[var(--text-faint)]">{{ scaleText.split('：')[1] || '' }}</span>
             </div>
           </div>
 
           <textarea
             v-model="sourceText"
-            class="ink-textarea h-56 text-[13px]"
+            class="ink-textarea h-56 text-body"
             placeholder="粘贴竞品文本，或点上方「导入文件」直接选 TXT/MD（自动识别 GBK 编码）。报告只依据这段文本，结论会附原文证据。"
           />
           <div class="flex items-center gap-3 flex-wrap">
             <InkButton variant="ghost" :disabled="running" @click="importSource"><FileUp :size="13" /> 导入文件</InkButton>
             <InkButton :disabled="!canStart" @click="start"><Play :size="13" /> 开始拆解</InkButton>
             <InkButton v-if="running" variant="ghost" @click="stop"><Square :size="12" /> 停止</InkButton>
-            <span class="text-[11px] text-[var(--text-faint)]">已载入 {{ sourceChars }} 字 · 拆 {{ chapterCount }} 章 · 已选 {{ pickedCount }} 个维度</span>
+            <span class="text-meta text-[var(--text-faint)]">已载入 {{ sourceChars }} 字 · 拆 {{ chapterCount }} 章 · 已选 {{ pickedCount }} 个维度</span>
           </div>
-          <div v-if="error" class="text-sm text-[#e08a7a]">{{ error }}</div>
+          <div v-if="error" class="text-body ink-text-danger">{{ error }}</div>
         </div>
 
         <!-- 报告区 -->
-        <div v-if="reportText || running" class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5">
-          <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
-            <div class="text-sm font-medium">
-              {{ activePath ? `存档：${activePath}` : running ? '拆解中…' : '拆解报告' }}
-            </div>
-            <div class="flex items-center gap-2">
-              <button
-                v-if="activePath && !running"
-                class="text-[11.5px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer inline-flex items-center gap-1"
-                title="让资源管家把「可复用套路」提炼成写作技能条目，存进技能库"
-                @click="refineToSkills"
-              >
-                <Sparkles :size="12" /> 提炼为写作技巧
-              </button>
-              <span v-if="running" class="text-[11px] text-[var(--text-faint)]">流式生成中，完成后自动存档</span>
-            </div>
+        <div v-if="reportText || running" class="ink-card p-5">
+          <div class="card-head is-flush">
+            <span class="card-head-title min-w-0 truncate">{{ activePath ? `存档：${activePath}` : running ? '拆解中…' : '拆解报告' }}</span>
+            <span class="card-head-line" />
+            <span v-if="running" class="card-head-meta">流式生成中，完成后自动存档</span>
+            <button
+              v-if="activePath && !running"
+              class="text-label text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer inline-flex items-center gap-1 shrink-0"
+              title="让资源管家把「可复用套路」提炼成写作技能条目，存进技能库"
+              @click="refineToSkills"
+            >
+              <Sparkles :size="12" /> 提炼为写作技巧
+            </button>
           </div>
-          <div class="markdown-body text-[13px] leading-7 select-text" v-html="reportHtml" /><span v-if="running" class="animate-pulse">▍</span>
-          <div v-if="savedTip" class="mt-3 pt-3 border-t border-[var(--border)] text-[11.5px] inline-flex items-center gap-1.5" style="color: var(--accent)">
+          <div class="markdown-body text-body leading-7 select-text" v-html="reportHtml" /><span v-if="running" class="stream-caret" />
+          <div v-if="savedTip" class="mt-3 pt-3 border-t border-[var(--border)] text-label inline-flex items-center gap-1.5 ink-text-ok">
             <CircleCheck :size="13" /> {{ savedTip }}
             <button class="underline hover:opacity-80 cursor-pointer" @click="app.goLibrary('materials')">去看素材库</button>
           </div>
         </div>
 
-        <p class="text-[11px] text-[var(--text-faint)] leading-5">
+        <p class="text-meta text-[var(--text-faint)] leading-5">
           拆解完成会自动存进本书「拆书/」目录，并同步沉淀到素材库的「拆书报告」分组；点报告上方的「提炼为写作技巧」可让资源管家把可复用套路抽成技能条目。
           想要更深入的交互式拆解（追问、对照自己的大纲），可以在「妙笔」里找拆书智能体，把同样的文本粘贴给它。
         </p>

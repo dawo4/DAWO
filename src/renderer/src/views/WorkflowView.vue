@@ -4,11 +4,12 @@ import { useAppStore } from '../store/app'
 import { useLibraryStore } from '../store/library'
 import InkButton from '../ui/InkButton.vue'
 import PageSubNav from '../ui/PageSubNav.vue'
+import EmptyHint from '../ui/EmptyHint.vue'
 import { inkConfirm } from '../ui/inkPrompt'
 import { aiRun } from '../ai'
 import { renderMarkdown } from '../ui/markdown'
 import RefPicker, { type RefItem } from '../ui/RefPicker.vue'
-import { CircleCheck, Play, Pause, RotateCcw } from 'lucide-vue-next'
+import { BookOpen, CircleCheck, Play, Pause, RotateCcw } from 'lucide-vue-next'
 
 const app = useAppStore()
 const lib = useLibraryStore()
@@ -653,10 +654,14 @@ async function resetWorkflow() {
 </script>
 
 <template>
-  <div v-if="!lib.current" class="h-full flex flex-col items-center justify-center text-[var(--text-faint)] gap-4">
-    <p>先在书架新建或打开一部作品，再使用工作流一键建书</p>
-    <InkButton @click="app.go('bookshelf')">去书架</InkButton>
-  </div>
+  <EmptyHint
+    v-if="!lib.current"
+    :icon="BookOpen"
+    title="先打开一部作品"
+    desc="工作流从一句灵感开始，逐步生成大纲、角色卡与设定集，再逐章生文"
+    action="去书架"
+    @action="app.go('bookshelf')"
+  />
 
   <div v-else class="h-full flex flex-col">
     <!-- 统一二级导航：六步进度 -->
@@ -664,13 +669,12 @@ async function resetWorkflow() {
       <template #left>
         <div class="flex items-center gap-1">
           <template v-for="(s, i) in STEPS" :key="s">
-            <button
-              class="flex items-center gap-1.5 px-3 py-1 rounded-full text-[12.5px] cursor-pointer transition-colors"
-              :class="i === cur ? 'font-medium bg-[var(--panel-2)]' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)]'"
-              :style="i === cur ? { color: 'var(--accent)' } : {}"
-              @click="jumpStep(i)"
-            >
-              <CircleCheck v-if="wf.completed?.[i] || i < cur || (i <= 3 && existing[i])" :size="13" style="color: var(--accent)" />
+            <button class="ink-chip-btn text-label" :class="i === cur ? 'is-on' : ''" @click="jumpStep(i)">
+              <CircleCheck
+                v-if="wf.completed?.[i] || i < cur || (i <= 3 && existing[i])"
+                :size="13"
+                class="shrink-0 text-[var(--accent)]"
+              />
               <span>{{ i + 1 }}. {{ s }}</span>
             </button>
             <div v-if="i < STEPS.length - 1" class="w-3 h-px bg-[var(--border)]" />
@@ -678,7 +682,7 @@ async function resetWorkflow() {
         </div>
       </template>
       <template #right>
-        <button class="text-[12px] flex items-center gap-1 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="resetWorkflow">
+        <button class="text-label flex items-center gap-1 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="resetWorkflow">
           <RotateCcw :size="12" /> 重置进度
         </button>
       </template>
@@ -691,14 +695,14 @@ async function resetWorkflow() {
         <RefPicker v-model="wfRefs" />
       </div>
       <!-- 步骤落盘提示：确认保存后步骤会自动前进，提示放在向导级常显，不随步骤切走 -->
-      <div v-if="charStepNote" class="max-w-3xl mx-auto mb-4 rounded-lg border px-4 py-2.5 text-[12.5px]" style="border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent)">
+      <div v-if="charStepNote" class="max-w-3xl mx-auto mb-4 rounded-[var(--r-md)] border px-4 py-2.5 text-label" style="border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent)">
         {{ charStepNote }}
         <button class="ml-2 text-[var(--text-faint)] hover:text-[var(--text-dim)] cursor-pointer" @click="charStepNote = ''">×关闭</button>
       </div>
       <!-- Step 0 灵感 -->
       <div v-if="cur === 0" class="max-w-3xl mx-auto space-y-4">
         <div>
-          <div class="text-sm mb-1.5 text-[var(--text-dim)]">写下你的灵感（一句话、一段话都可以）</div>
+          <div class="form-label text-[var(--text-dim)]">写下你的灵感（一句话、一段话都可以）</div>
           <textarea v-model="stepInput" class="ink-textarea h-24" placeholder="例如：一个失忆的灯塔守护人，每晚梦到不属于自己的记忆…" />
         </div>
         <div class="flex items-center gap-2">
@@ -708,7 +712,7 @@ async function resetWorkflow() {
           <InkButton variant="ghost" :disabled="running" @click="skipStep">已有方案，跳过</InkButton>
         </div>
         <div v-if="genText">
-          <div class="text-sm mb-1.5 text-[var(--text-dim)]">灵感方案（可修改）</div>
+          <div class="form-label text-[var(--text-dim)]">灵感方案（可修改）</div>
           <textarea v-model="genText" class="ink-textarea h-72 text-[15px] leading-8" />
           <div class="flex justify-end mt-3"><InkButton @click="confirmIdea">确认，进入大纲</InkButton></div>
         </div>
@@ -726,25 +730,25 @@ async function resetWorkflow() {
             </InkButton>
             <InkButton variant="ghost" :disabled="running" @click="skipStep">已有{{ ['', '大纲', '角色卡', '设定集'][cur] }}，跳过</InkButton>
           </div>
-          <div v-if="cur === 1" class="flex items-center gap-2 flex-wrap text-sm text-[var(--text-dim)]">
+          <div v-if="cur === 1" class="flex items-center gap-2 flex-wrap text-body text-[var(--text-dim)]">
             <span class="inline-flex items-center gap-1">
               全书约 <input v-model.number="chapterTotal" type="number" min="4" max="2000" class="ink-input w-20 text-center py-1" /> 章
             </span>
-            <span class="text-[11px] text-[var(--text-faint)]">或按字数估算：</span>
-            <span class="inline-flex items-center gap-1 text-[12px]">
+            <span class="text-meta text-[var(--text-faint)]">或按字数估算：</span>
+            <span class="inline-flex items-center gap-1 text-label">
               <input v-model.number="estWan" type="number" min="0" step="10" placeholder="300" class="ink-input w-16 text-center py-1" /> 万字
               <span class="text-[var(--text-faint)]">÷</span>
               单章 <input v-model.number="estK" type="number" min="0.5" step="0.5" class="ink-input w-14 text-center py-1" /> 千字
             </span>
           </div>
         </div>
-        <div v-if="running" class="py-2 flex items-center gap-2 text-[12px] text-[var(--text-dim)]">
+        <div v-if="running" class="py-2 flex items-center gap-2 text-label text-[var(--text-dim)]">
           <span class="ink-dots"><span /><span /><span /></span>
           <span>已用 {{ elapsed }} 秒{{ liveLabel ? ` · ${liveLabel}` : ' · 生成中' }}，推理模型思考期可能较长</span>
         </div>
-        <div v-if="error" class="text-sm text-[#e08a7a]">{{ error }}</div>
+        <div v-if="error" class="text-body ink-text-danger">{{ error }}</div>
         <div v-if="genText">
-          <div class="text-sm mb-1.5 text-[var(--text-dim)]">{{ ['', '大纲', '角色卡', '设定集'][cur] }}（可修改）</div>
+          <div class="form-label text-[var(--text-dim)]">{{ ['', '大纲', '角色卡', '设定集'][cur] }}（可修改）</div>
           <textarea v-model="genText" class="ink-textarea h-[420px] text-[15px] leading-8" />
           <div class="flex justify-end mt-3">
             <InkButton @click="[confirmOutline, confirmCharacters, confirmSettings][cur - 1]()">确认保存</InkButton>
@@ -754,15 +758,18 @@ async function resetWorkflow() {
 
       <!-- Step 4 建书确认 -->
       <div v-else-if="cur === 4" class="max-w-3xl mx-auto space-y-5">
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6" style="box-shadow: var(--shadow)">
-          <div class="font-serif-ink text-lg mb-3">《{{ lib.current.title }}》书籍结构已就绪</div>
-          <ul class="text-sm text-[var(--text-dim)] space-y-1.5">
+        <div class="ink-card p-6">
+          <div class="card-head">
+            <span class="card-head-title">《{{ lib.current.title }}》书籍结构已就绪</span>
+            <span class="card-head-line" />
+          </div>
+          <ul class="text-body text-[var(--text-dim)] space-y-1.5">
             <li>· 大纲 / 大纲.md（{{ (existing[1] || wf.completed?.[1]) ? '已生成' : '未生成' }}）</li>
             <li>· 角色 / 一人一档（{{ (existing[2] || wf.completed?.[2]) ? '已生成' : '未生成' }}）</li>
             <li>· 设定 / 世界观.md（{{ (existing[3] || wf.completed?.[3]) ? '已生成' : '未生成' }}）</li>
             <li>· 全书 {{ wf.chapterTotal }} 章，将从第 {{ wf.chapterCursor }} 章开始生文</li>
           </ul>
-          <p class="text-xs text-[var(--text-faint)] mt-3">前三章已按「黄金三章」规则设计：第一章抛出核心冲突与金手指，第二章放大危机，第三章给出第一次小高潮。</p>
+          <p class="text-meta text-[var(--text-faint)] mt-3">前三章已按「黄金三章」规则设计：第一章抛出核心冲突与金手指，第二章放大危机，第三章给出第一次小高潮。</p>
         </div>
         <InkButton @click="confirmCreate">完成建书，进入逐章生文</InkButton>
       </div>
@@ -774,37 +781,35 @@ async function resetWorkflow() {
             <Play :size="14" /> {{ wf.chapterCursor > 1 ? `继续生成（第 ${wf.chapterCursor} 章起）` : '开始逐章生文' }}
           </InkButton>
           <InkButton v-else variant="ghost" @click="pauseChapters"><Pause :size="14" /> 暂停</InkButton>
-          <span class="text-sm text-[var(--text-dim)]">进度：{{ wf.chapterCursor - 1 }} / {{ wf.chapterTotal }} 章</span>
+          <span class="text-body text-[var(--text-dim)]">进度：{{ wf.chapterCursor - 1 }} / {{ wf.chapterTotal }} 章</span>
           <button
-            class="px-3 py-1 text-[11.5px] rounded-full cursor-pointer transition-colors border"
-            :class="trimEnabled ? 'font-medium' : 'text-[var(--text-faint)]'"
-            :style="trimEnabled ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : { borderColor: 'var(--border)' }"
+            class="ink-chip-btn text-label"
+            :class="trimEnabled ? 'is-on' : ''"
             title="开启后按卷裁大纲、按出场裁角色卡（词典匹配+主角强制保留，失败自动回退全量）；设定集始终全量，伏笔板全量注入"
             @click="trimEnabled = !trimEnabled"
           >
             {{ trimEnabled ? '✓' : '' }} 裁剪注入
           </button>
           <button
-            class="px-3 py-1 text-[11.5px] rounded-full cursor-pointer transition-colors border"
-            :class="registerEnabled ? 'font-medium' : 'text-[var(--text-faint)]'"
-            :style="registerEnabled ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : { borderColor: 'var(--border)' }"
+            class="ink-chip-btn text-label"
+            :class="registerEnabled ? 'is-on' : ''"
             title="每章写完后资料登记员自动提取新专名/境界/关系/地图增量入库，并生成章末摘要（报告/章末摘要.md）"
             @click="registerEnabled = !registerEnabled"
           >
             {{ registerEnabled ? '✓' : '' }} 章末登记
           </button>
-          <span v-if="liveLabel" class="text-sm" style="color: var(--accent)">{{ liveLabel }}</span>
+          <span v-if="liveLabel" class="text-body" style="color: var(--accent)">{{ liveLabel }}</span>
         </div>
-        <div class="w-full h-2 rounded-full bg-[var(--bg-soft)] overflow-hidden">
-          <div class="h-full rounded-full transition-all" :style="{ width: ((wf.chapterCursor - 1) / wf.chapterTotal) * 100 + '%', background: 'var(--accent)' }" />
+        <div class="score-bar w-full">
+          <div :style="{ width: ((wf.chapterCursor - 1) / wf.chapterTotal) * 100 + '%' }" />
         </div>
-        <div v-if="registering" class="text-[12px] flex items-center gap-2" :style="{ color: 'var(--accent)' }">
+        <div v-if="registering" class="text-label flex items-center gap-2" :style="{ color: 'var(--accent)' }">
           <span v-if="registering.includes('…')" class="ink-dots"><span /><span /><span /></span>
           {{ registering }}
         </div>
-        <div v-if="error" class="text-sm text-[#e08a7a]">{{ error }}</div>
-        <div v-if="genText" class="markdown-body rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 text-[15px] leading-8 max-h-[440px] overflow-y-auto" v-html="genHtml" />
-        <p class="text-xs text-[var(--text-faint)]">生成完成的章节自动写入「正文」目录，可在写作台继续修改。随时暂停，下次从断点继续。</p>
+        <div v-if="error" class="text-body ink-text-danger">{{ error }}</div>
+        <div v-if="genText" class="markdown-body ink-card p-5 text-[15px] leading-8 max-h-[440px] overflow-y-auto" v-html="genHtml" />
+        <p class="text-meta text-[var(--text-faint)]">生成完成的章节自动写入「正文」目录，可在写作台继续修改。随时暂停，下次从断点继续。</p>
       </div>
     </div>
   </div>

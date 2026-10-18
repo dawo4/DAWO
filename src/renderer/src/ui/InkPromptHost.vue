@@ -17,7 +17,7 @@ const confirmVariant = computed(() => (confirmState.opts.danger ? 'danger' : 'pr
       <div v-if="confirmState.open" class="fixed inset-0 z-[90] flex items-center justify-center">
         <div class="absolute inset-0 bg-black/50" @click="settleConfirm(false)" />
         <div
-          class="relative rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)] w-[380px] p-5"
+          class="relative rounded-[var(--r-lg)] border border-[var(--border)] bg-[var(--panel)] shadow-[var(--sh-3)] w-[380px] p-5"
           tabindex="-1"
           @keyup.enter="settleConfirm(true)"
           @keyup.esc="settleConfirm(false)"
@@ -38,7 +38,7 @@ const confirmVariant = computed(() => (confirmState.opts.danger ? 'danger' : 'pr
     <Transition name="fade">
       <div v-if="promptState.open" class="fixed inset-0 z-[90] flex items-center justify-center">
         <div class="absolute inset-0 bg-black/50" @click="settle(null)" />
-        <div class="relative rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)] w-[380px] p-5">
+        <div class="relative rounded-[var(--r-lg)] border border-[var(--border)] bg-[var(--panel)] shadow-[var(--sh-3)] w-[380px] p-5">
           <div class="text-sm mb-3">{{ promptState.title }}</div>
           <input
             v-model="promptState.value"

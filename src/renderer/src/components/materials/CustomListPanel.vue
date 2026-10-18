@@ -103,48 +103,44 @@ onUnmounted(() => {
 
 <template>
   <div class="h-full flex flex-col">
-    <div class="h-11 shrink-0 flex items-center gap-2 px-6 border-b border-[var(--border)]">
-      <span class="font-serif-ink text-[13.5px]" :style="{ color: 'var(--accent)' }">{{ inst?.name || '…' }}</span>
-      <span class="text-[11px] text-[var(--text-faint)]">自定义面板 · {{ entries.length }} 条</span>
+    <div class="panel-head">
+      <span class="panel-head-title">{{ inst?.name || '…' }}</span>
+      <span class="panel-head-meta">自定义面板 · {{ entries.length }} 条</span>
       <div class="flex-1" />
-      <button class="text-[11.5px] flex items-center gap-1 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="removePanel">
+      <button class="text-label flex items-center gap-1 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="removePanel">
         <Trash2 :size="12" /> 删除面板
       </button>
     </div>
 
-    <div class="flex-1 min-h-0 overflow-y-auto">
+    <div class="panel-body">
       <div class="max-w-[900px] mx-auto p-5 space-y-3">
-        <div v-if="loadErr" class="text-[12.5px] text-[#e08a7a]">{{ loadErr }}</div>
+        <div v-if="loadErr" class="text-label ink-text-danger">{{ loadErr }}</div>
 
-        <div
-          v-for="(e, i) in entries"
-          :key="e.id"
-          class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4 space-y-2.5"
-        >
+        <div v-for="(e, i) in entries" :key="e.id" class="ink-card p-4 space-y-2.5">
           <div class="flex items-center justify-between">
-            <span class="text-[11px] text-[var(--text-faint)]">#{{ entries.length - i }}</span>
-            <button class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" title="删除此条" @click="removeEntry(i)">
+            <span class="text-meta text-[var(--text-faint)] tnum">#{{ entries.length - i }}</span>
+            <button class="ink-icon-btn is-danger" title="删除此条" @click="removeEntry(i)">
               <Trash2 :size="13" />
             </button>
           </div>
           <div v-for="f in inst?.fields || []" :key="f.key" class="space-y-1">
-            <div class="text-[11px] text-[var(--text-faint)]">{{ f.label }}</div>
+            <div class="form-label">{{ f.label }}</div>
             <textarea
               v-if="f.type === 'longtext'"
               v-model="e[f.key]"
-              class="ink-textarea h-20 text-[13px] leading-6"
+              class="ink-textarea h-20 text-body leading-6"
               @input="scheduleSave"
             />
-            <input v-else v-model="e[f.key]" class="ink-input text-[13px]" @input="scheduleSave" />
+            <input v-else v-model="e[f.key]" class="ink-input text-body" @input="scheduleSave" />
           </div>
         </div>
 
-        <div v-if="inst && !entries.length" class="py-10 text-center text-[12.5px] text-[var(--text-faint)]">
+        <div v-if="inst && !entries.length" class="py-10 text-center text-label text-[var(--text-faint)]">
           空面板，点下方按钮添加第一条
         </div>
 
         <button
-          class="w-full py-2.5 rounded-xl border border-dashed border-[var(--border)] text-[12.5px] text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent)] cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+          class="w-full py-2.5 rounded-[var(--r-md)] border border-dashed border-[var(--border)] text-label text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent)] cursor-pointer transition-colors flex items-center justify-center gap-1.5"
           @click="addEntry"
         >
           <Plus :size="14" /> 添加一条

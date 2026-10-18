@@ -213,10 +213,9 @@ defineExpose({ reload })
         <div
           v-for="g in ghostWarnings"
           :key="g.id"
-          class="rounded-lg border p-2.5 text-[11.5px] leading-5"
-          style="border-color: #e08a7a55; background: color-mix(in srgb, #e08a7a 10%, transparent)"
+          class="rounded-lg border p-2.5 text-[11.5px] leading-5 ink-soft-danger"
         >
-          <span style="color: #e08a7a">疑似吃书</span>　「{{ g.name }}」登记状态是<b>{{ g.status }}</b>，却出现在本章。若为回忆 / 闪回 / 遗言可忽略，否则需要处理。
+          <span class="ink-text-danger">疑似吃书</span>　「{{ g.name }}」登记状态是<b>{{ g.status }}</b>，却出现在本章。若为回忆 / 闪回 / 遗言可忽略，否则需要处理。
         </div>
       </div>
 
@@ -332,8 +331,7 @@ defineExpose({ reload })
           <div
             v-for="(r, i) in redCards"
             :key="i"
-            class="rounded-lg border p-2.5 text-[11.5px] leading-5"
-            style="border-color: #e08a7a55; background: color-mix(in srgb, #e08a7a 8%, transparent)"
+            class="rounded-lg border p-2.5 text-[11.5px] leading-5 ink-soft-danger"
           >
             <b>{{ r.label }}</b>　<span class="text-[var(--text-faint)]">{{ r.sample }}…</span>
             <div class="text-[10.5px] text-[var(--text-faint)] mt-0.5">{{ r.hint }}</div>

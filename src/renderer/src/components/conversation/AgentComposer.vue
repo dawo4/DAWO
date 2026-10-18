@@ -269,7 +269,7 @@ async function toggleApproval() {
     </div>
 
     <!-- 章节引用选择器 -->
-    <div v-if="chapterOpen" class="pop absolute bottom-full left-0 w-[420px] max-w-[90vw] mb-2 overflow-hidden z-40">
+    <div v-if="chapterOpen" class="pop absolute bottom-full left-0 w-[420px] max-w-[90vw] mb-2 overflow-hidden z-[var(--z-popover)]">
       <div class="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)]">
         <Search :size="13" class="text-[var(--text-faint)]" />
         <input v-model="pickQuery" class="flex-1 bg-transparent outline-none text-label" placeholder="搜索章节…" autofocus />
@@ -298,7 +298,7 @@ async function toggleApproval() {
     </div>
 
     <!-- 圆桌成员选择器 -->
-    <div v-if="teamOpen" class="pop absolute bottom-full left-0 w-[420px] max-w-[90vw] mb-2 overflow-hidden z-40">
+    <div v-if="teamOpen" class="pop absolute bottom-full left-0 w-[420px] max-w-[90vw] mb-2 overflow-hidden z-[var(--z-popover)]">
       <div class="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
         <span class="text-label font-medium">圆桌模式</span>
         <button class="text-meta text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer" @click="teamOpen = false">关闭</button>
@@ -339,7 +339,7 @@ async function toggleApproval() {
     </div>
 
     <!-- 选择器 -->
-    <div v-if="pickMode" class="pop absolute bottom-full left-0 right-0 mb-2 overflow-hidden z-40">
+    <div v-if="pickMode" class="pop absolute bottom-full left-0 right-0 mb-2 overflow-hidden z-[var(--z-popover)]">
       <div class="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)]">
         <Search :size="13" class="text-[var(--text-faint)]" />
         <input
@@ -367,7 +367,7 @@ async function toggleApproval() {
     </div>
 
     <!-- 模型参数浮层 -->
-    <div v-if="paramsOpen" class="pop absolute bottom-full right-0 mb-2 w-80 p-3.5 space-y-3.5 z-40">
+    <div v-if="paramsOpen" class="pop absolute bottom-full right-0 mb-2 w-80 p-3.5 space-y-3.5 z-[var(--z-popover)]">
       <div class="text-meta text-[var(--text-faint)]">
         当前模型：<span style="color: var(--accent)">{{ providerName }} · {{ modelName }}</span>
       </div>

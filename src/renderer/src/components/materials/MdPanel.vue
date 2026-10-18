@@ -383,15 +383,11 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
       <div class="px-3 py-2.5 border-b border-[var(--border)] space-y-2">
         <div class="flex items-center gap-1.5 h-7 px-2 rounded-full bg-[var(--bg-soft)]">
           <Search :size="12" class="text-[var(--text-faint)] shrink-0" />
-          <input v-model="query" class="flex-1 min-w-0 bg-transparent outline-none text-[12px]" :placeholder="`搜索${props.dir}…`" />
+          <input v-model="query" class="flex-1 min-w-0 bg-transparent outline-none text-label" :placeholder="`搜索${props.dir}…`" />
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-[11px] text-[var(--text-faint)] flex-1">{{ props.dir }}文件 · {{ files.length }}</span>
-          <button
-            class="text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer"
-            :title="isSetting ? '按模板新建' : '新建文件'"
-            @click="newFile"
-          >
+          <span class="text-meta text-[var(--text-faint)] flex-1">{{ props.dir }}文件 · {{ files.length }}</span>
+          <button class="ink-icon-btn" :title="isSetting ? '按模板新建' : '新建文件'" @click="newFile">
             <FilePlus2 v-if="isSetting" :size="14" />
             <Plus v-else :size="14" />
           </button>
@@ -400,25 +396,25 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
       <!-- 模板选择浮层（设定板块） -->
       <div
         v-if="tplMenu && isSetting"
-        class="absolute z-20 left-2 right-2 top-[86px] rounded-lg border border-[var(--border)] bg-[var(--panel)] shadow-lg p-2 space-y-0.5"
+        class="absolute z-[var(--z-popover)] left-2 right-2 top-[86px] rounded-[var(--r-md)] border border-[var(--border)] bg-[var(--panel)] shadow-[var(--sh-2)] p-2 space-y-0.5"
       >
-        <div class="text-[10.5px] text-[var(--text-faint)] px-1.5 pt-0.5 pb-1">选一个模板（分组可自定义，也能自己写组名）</div>
+        <div class="text-micro text-[var(--text-faint)] px-1.5 pt-0.5 pb-1">选一个模板（分组可自定义，也能自己写组名）</div>
         <button
           v-for="t in SETTING_TEMPLATES"
           :key="t.label"
-          class="w-full text-left px-2.5 py-1.5 rounded-md text-[12.5px] text-[var(--text-dim)] hover:bg-[var(--hover)] hover:text-[var(--text)] cursor-pointer flex items-center justify-between gap-2"
+          class="w-full text-left px-2.5 py-1.5 rounded-[var(--r-sm)] text-label text-[var(--text-dim)] hover:bg-[var(--hover)] hover:text-[var(--text)] cursor-pointer flex items-center justify-between gap-2"
           @click="newFromTemplate(t)"
         >
           <span>{{ t.label }}</span>
-          <span class="text-[10.5px] text-[var(--text-faint)]">{{ t.group }}</span>
+          <span class="text-micro text-[var(--text-faint)]">{{ t.group }}</span>
         </button>
         <button
-          class="w-full text-left px-2.5 py-1.5 rounded-md text-[12.5px] text-[var(--text-faint)] hover:bg-[var(--hover)] cursor-pointer border-t border-[var(--border)] mt-1 pt-2"
+          class="w-full text-left px-2.5 py-1.5 rounded-[var(--r-sm)] text-label text-[var(--text-faint)] hover:bg-[var(--hover)] cursor-pointer border-t border-[var(--border)] mt-1 pt-2"
           @click="newFromTemplate(null)"
         >
           空白文档
         </button>
-        <div class="px-1.5 pt-2 pb-0.5 text-[10.5px] text-[var(--text-faint)] leading-5">
+        <div class="px-1.5 pt-2 pb-0.5 text-micro text-[var(--text-faint)] leading-5">
           条目型设定（势力 / 地点 / 物品 / 境界）直接登记到工具面板更防吃书：
           <button class="underline cursor-pointer hover:text-[var(--accent)]" @click="app.goMaterials('词典')">词典</button> ·
           <button class="underline cursor-pointer hover:text-[var(--accent)]" @click="app.goMaterials('境界')">境界</button> ·
@@ -426,24 +422,21 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
           <button class="underline cursor-pointer hover:text-[var(--accent)]" @click="app.goMaterials('关系图')">关系图</button>
         </div>
       </div>
-      <div class="flex-1 overflow-y-auto py-1">
+      <div class="flex-1 overflow-y-auto py-1 panel-rail-scroll">
         <div v-for="g in groups" :key="g.name || '_all'">
-          <div v-if="isSetting && g.name" class="px-3.5 pt-2.5 pb-1 text-[10.5px] tracking-widest text-[var(--text-faint)]">
-            {{ g.name }}
-          </div>
+          <div v-if="isSetting && g.name" class="section-title px-3.5 pt-2.5 pb-1">{{ g.name }}</div>
           <div
             v-for="f in g.files"
             :key="f.path"
-            class="px-3.5 py-1.5 text-[12.5px] cursor-pointer truncate"
-            :class="current === f.path ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:bg-[var(--hover)]'"
-            :style="current === f.path ? { color: 'var(--accent)' } : {}"
+            class="panel-item text-label"
+            :class="current === f.path ? 'is-on' : 'text-[var(--text-dim)]'"
             :title="isSetting && f.group ? `${f.group} / ${f.name}` : f.name"
             @click="current = f.path"
           >
-            {{ f.name }}
+            <span class="flex-1 min-w-0 truncate">{{ f.name }}</span>
           </div>
         </div>
-        <div v-if="!groups.some((g) => g.files.length)" class="px-3.5 py-6 text-center text-[11.5px] text-[var(--text-faint)]">
+        <div v-if="!groups.some((g) => g.files.length)" class="px-3.5 py-6 text-center text-label text-[var(--text-faint)]">
           {{ query ? '没有匹配的文件' : '还没有文件' }}
         </div>
       </div>
@@ -451,17 +444,17 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
 
     <!-- 中：编辑器 -->
     <section class="flex-1 min-w-0 flex flex-col">
-      <div class="h-11 shrink-0 flex items-center gap-2 px-5 border-b border-[var(--border)]">
-        <span class="font-serif-ink text-[13.5px] truncate">{{ current || '未选择文件' }}</span>
-        <span class="text-[11px] text-[var(--text-faint)]">{{ content.length }} 字</span>
+      <div class="panel-head">
+        <span class="panel-head-title min-w-0 truncate">{{ current || '未选择文件' }}</span>
+        <span class="panel-head-meta">{{ content.length }} 字</span>
         <div class="flex-1" />
         <!-- 词典关联速览（设定板块）：当前文件里提到的专名 → 词典现状 -->
         <div v-if="isSetting && matchedTerms.length" class="flex items-center gap-1 min-w-0 max-w-[45%] overflow-hidden">
-          <span class="text-[10.5px] text-[var(--text-faint)] shrink-0">关联</span>
+          <span class="text-micro text-[var(--text-faint)] shrink-0">关联</span>
           <span
             v-for="m in matchedTerms"
             :key="m.term"
-            class="px-2 py-0.5 rounded-full bg-[var(--bg-soft)] text-[10.5px] text-[var(--text-dim)] cursor-default shrink-0 truncate max-w-[120px]"
+            class="ink-chip cursor-default shrink-0 max-w-[120px]"
             :title="`${m.term}：${m.desc}`"
           >
             {{ m.term }}
@@ -469,7 +462,7 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
         </div>
         <button
           v-if="isSetting && current"
-          class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer hover:bg-[var(--hover)] text-[var(--text-dim)] shrink-0"
+          class="text-label flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer shrink-0"
           title="把当前文件移动到其他分组（可输入新组名）"
           @click="moveFile"
         >
@@ -477,8 +470,7 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
         </button>
         <button
           v-if="isSetting"
-          class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer hover:bg-[var(--hover)] shrink-0"
-          :style="{ color: 'var(--accent)' }"
+          class="ink-chip-btn is-on text-label"
           :disabled="checkup.running || !current"
           title="对照词典 / 境界 / 地图现状，全面检查设定一致性"
           @click="runCheckup"
@@ -486,38 +478,37 @@ onUnmounted(() => window.removeEventListener('inkdesk:file-changed', onFileChang
           <ShieldCheck :size="13" /> 设定体检
         </button>
         <button
-          class="text-[12px] flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer hover:bg-[var(--hover)]"
-          :style="{ color: 'var(--accent)' }"
+          class="ink-chip-btn is-on text-label"
           :disabled="busy"
           title="让智能体审阅并优化这个文件"
           @click="askAgent"
         >
           <Sparkles :size="13" /> 让智能体帮忙
         </button>
-        <button v-if="current" class="text-[11.5px] flex items-center gap-1 text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="deleteFile">
+        <button v-if="current" class="text-label flex items-center gap-1 text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="deleteFile">
           <Trash2 :size="12" /> 删除
         </button>
       </div>
-      <div class="flex-1 min-h-0 overflow-y-auto">
+      <div class="panel-body">
         <!-- 体检报告卡 -->
         <div v-if="checkup.visible" class="p-5">
-          <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5">
-            <div class="flex items-center gap-2 mb-3">
-              <ShieldCheck :size="15" :style="{ color: 'var(--accent)' }" />
-              <span class="text-sm font-medium">设定体检报告</span>
-              <span v-if="checkup.running" class="text-[11px] text-[var(--text-faint)]">对照词典 / 境界 / 地图检查中…</span>
-              <div class="flex-1" />
-              <button v-if="checkup.running" class="text-[11.5px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="stopCheckup">停止</button>
-              <button v-else class="text-[11.5px] text-[var(--text-faint)] hover:text-[var(--text)] cursor-pointer" @click="closeCheckup">关闭</button>
+          <div class="ink-card p-5">
+            <div class="card-head">
+              <ShieldCheck :size="15" class="text-[var(--accent)]" />
+              <span class="card-head-title">设定体检报告</span>
+              <span class="card-head-line" />
+              <span v-if="checkup.running" class="card-head-meta">对照词典 / 境界 / 地图检查中…</span>
+              <button v-if="checkup.running" class="text-label text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="stopCheckup">停止</button>
+              <button v-else class="text-label text-[var(--text-faint)] hover:text-[var(--text)] cursor-pointer" @click="closeCheckup">关闭</button>
             </div>
-            <div v-if="checkup.error" class="text-[12.5px] text-[#e08a7a] mb-2">{{ checkup.error }}</div>
-            <div v-if="checkup.report" class="markdown-body text-[13px] leading-7 select-text" v-html="checkupHtml" />
+            <div v-if="checkup.error" class="text-label ink-text-danger mb-2">{{ checkup.error }}</div>
+            <div v-if="checkup.report" class="markdown-body text-body leading-7 select-text" v-html="checkupHtml" />
             <div v-else-if="checkup.running" class="ink-dots py-3"><span /><span /><span /></div>
           </div>
         </div>
         <div v-else class="prose-ink">
           <InkEditor v-if="current" :key="current" v-model="content" :ghost="''" :placeholder="`编辑${props.dir}…`" />
-          <div v-else class="text-[13px] text-[var(--text-faint)] text-center pt-20">选择或新建一个文件</div>
+          <div v-else class="text-body text-[var(--text-faint)] text-center pt-20">选择或新建一个文件</div>
         </div>
       </div>
     </section>

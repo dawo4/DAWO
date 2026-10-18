@@ -491,7 +491,7 @@ onUnmounted(() => {
       v-if="open && canSearch"
       :id="PANEL_ID"
       :style="panelStyle"
-      class="fixed rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)] overflow-hidden z-[70]"
+      class="fixed rounded-[var(--r-lg)] border border-[var(--border)] bg-[var(--panel)] shadow-[var(--sh-3)] overflow-hidden z-[var(--z-search)]"
     >
       <div v-if="!mergedHits.length" class="px-4 py-5 text-center text-[12px] text-[var(--text-faint)]">
         {{ semLoading ? `正在语义检索「${q}」…` : `「${q}」没有找到匹配的作品、文稿、资料或功能` }}

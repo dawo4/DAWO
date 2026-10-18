@@ -2,7 +2,8 @@
 import { computed, onActivated, ref, watch } from 'vue'
 import { useAppStore } from '../store/app'
 import { useLibraryStore } from '../store/library'
-import InkButton from '../ui/InkButton.vue'
+import EmptyHint from '../ui/EmptyHint.vue'
+import InkSegmented from '../ui/InkSegmented.vue'
 import MdPanel from '../components/materials/MdPanel.vue'
 import TimelinePanel from '../components/materials/TimelinePanel.vue'
 import StorylinePanel from '../components/materials/StorylinePanel.vue'
@@ -16,6 +17,7 @@ import MapPanel from '../components/materials/MapPanel.vue'
 import CustomListPanel from '../components/materials/CustomListPanel.vue'
 import AddPanelModal from '../components/materials/AddPanelModal.vue'
 import MaterialRail from '../components/materials/MaterialRail.vue'
+import { BookOpen } from 'lucide-vue-next'
 
 const app = useAppStore()
 const lib = useLibraryStore()
@@ -82,31 +84,30 @@ const AGENT_OF: Record<string, string> = { 大纲: 'outline', 角色: 'character
 </script>
 
 <template>
-  <div v-if="!lib.current" class="h-full flex flex-col items-center justify-center text-[var(--text-faint)] gap-4">
-    <p>先打开一部作品</p>
-    <InkButton @click="app.go('bookshelf')">去书架</InkButton>
-  </div>
+  <EmptyHint
+    v-if="!lib.current"
+    :icon="BookOpen"
+    title="先打开一部作品"
+    desc="资料区汇总大纲、角色、设定、时间线等，写书时随手可查"
+    action="去书架"
+    @action="app.go('bookshelf')"
+  />
 
   <div v-else class="h-full flex">
     <!-- 中：板块内容 -->
     <div class="flex-1 min-w-0">
       <!-- 角色：先选资料 / 关系图 -->
       <div v-if="section === '角色'" class="h-full flex flex-col">
-        <div class="h-11 shrink-0 flex items-center gap-3 px-6 border-b border-[var(--border)]">
-          <div class="inline-flex items-center gap-0.5 p-0.5 rounded-full bg-[var(--bg-soft)]">
-            <button
-              v-for="v in (['资料', '关系图'] as const)"
-              :key="v"
-              class="px-3 py-1 rounded-full text-[12.5px] cursor-pointer transition-colors"
-              :class="charView === v ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-              :style="charView === v ? { color: 'var(--accent)' } : {}"
-              @click="charView = v"
-            >
-              {{ v }}
-            </button>
-          </div>
+        <div class="panel-head">
+          <InkSegmented
+            v-model="charView"
+            :options="[
+              { value: '资料', label: '资料' },
+              { value: '关系图', label: '关系图' }
+            ]"
+          />
           <div class="flex-1" />
-          <span class="text-[11px] text-[var(--text-faint)]">
+          <span class="panel-head-meta">
             {{ charView === '资料' ? '角色卡：欲望 / 需要 / 缺点 / 弧光' : '关系图：亲情 / 爱情 / 友情 / 敌对 / 其他' }}
           </span>
         </div>

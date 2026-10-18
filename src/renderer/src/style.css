@@ -87,15 +87,19 @@
   /* 焦点环 */
   --ring: color-mix(in srgb, var(--accent) 45%, transparent);
 
-  /* z-index 规范（统一，杜绝各处乱写） */
+  /* z-index 规范（统一，杜绝各处乱写）。
+     下拉/提示需高于弹窗（80），因此单独给了 95/96 两档。 */
   --z-orb: 0;
   --z-glow: 1;
   --z-app: 10;
   --z-resizer: 30;
   --z-popover: 50;
   --z-particles: 60;
+  --z-search: 70;
   --z-modal: 80;
   --z-toast: 90;
+  --z-tooltip: 95;
+  --z-dropdown: 96;
 }
 
 /* ---------------------------------------------------------------------------
@@ -493,10 +497,90 @@ body {
     color: var(--text-faint);
     white-space: nowrap;
   }
+  /* 父容器已用 gap 控制纵向节奏时，头部不再自带下边距，避免间距翻倍 */
+  .card-head.is-flush {
+    margin-bottom: 0;
+  }
   /* 分隔线：极细 hairline */
   .ink-hairline {
     height: 1px;
     background: var(--border);
+  }
+
+  /* ---- 资料面板三段结构：头（固定）/ 体（滚动）/ 列表 ----
+     资料区 14 个面板、拆书页、资源库共用，避免各写一套。 */
+  .panel-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    flex-shrink: 0;
+    padding: 0 var(--sp-gutter);
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-head-title {
+    font-family: var(--font-serif);
+    font-size: var(--fs-heading);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .panel-head-meta {
+    font-size: var(--fs-meta);
+    color: var(--text-faint);
+    white-space: nowrap;
+  }
+  /* 面板主体：占满剩余高度并自行滚动 */
+  .panel-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  /* 面板左侧导航列表：定宽 + hairline 分隔 + 滚动条平时隐身、悬停浮现 3px */
+  .panel-list {
+    flex-shrink: 0;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    scrollbar-color: transparent transparent;
+  }
+  .panel-list::-webkit-scrollbar {
+    width: 3px;
+  }
+  .panel-list::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 2px;
+  }
+  .panel-list:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.14);
+  }
+  .panel-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  /* 列表项：左缘 2px 标记条，选中走强调色淡底 + 强调色文字 */
+  .panel-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    transition: background-color var(--dur-2), border-color var(--dur-2), color var(--dur-2);
+  }
+  .panel-item:hover {
+    background: var(--hover);
+  }
+  .panel-item.is-on {
+    border-left-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  /* 表单字段标签：面板内 label 统一用小号 + 字距 + 淡色 */
+  .form-label {
+    font-size: var(--fs-meta);
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    margin-bottom: 6px;
   }
 
   /* 语义色浅底/浅边：错误、警告、成功。

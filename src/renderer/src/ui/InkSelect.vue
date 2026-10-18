@@ -193,9 +193,9 @@ onBeforeUnmount(close)
   background: var(--bg-soft);
   border: 1px solid var(--border);
   color: var(--text);
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
   padding: 8px 12px;
-  font-size: 14px;
+  font-size: var(--fs-body);
   text-align: left;
   cursor: pointer;
   outline: none;
@@ -215,13 +215,13 @@ onBeforeUnmount(close)
 
 .ink-select-panel {
   position: fixed;
-  z-index: 96;
+  z-index: var(--z-dropdown);
   max-height: 300px;
   overflow-y: auto;
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-2);
   padding: 4px;
   display: flex;
   flex-direction: column;
@@ -233,8 +233,8 @@ onBeforeUnmount(close)
   justify-content: space-between;
   gap: 10px;
   padding: 7px 10px;
-  border-radius: 7px;
-  font-size: 13px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-label);
   color: var(--text);
   cursor: pointer;
   text-align: left;
@@ -249,10 +249,10 @@ onBeforeUnmount(close)
 }
 
 .ink-sel-enter-active {
-  transition: opacity 0.15s var(--ease-out-quart), transform 0.15s var(--ease-out-quart);
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
 }
 .ink-sel-leave-active {
-  transition: opacity 0.1s ease;
+  transition: opacity var(--dur-1) ease;
 }
 .ink-sel-enter-from {
   opacity: 0;

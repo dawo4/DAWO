@@ -997,10 +997,10 @@ onUnmounted(() => {
 
           <!-- 服务商 -->
           <div v-show="aiTab === 'providers'" class="settings-stack">
-            <div class="settings-head">
-              <span class="settings-head-title">服务商</span>
-              <span class="settings-head-line" />
-              <span class="settings-head-meta">OpenAI 兼容接口 · Key 仅保存在本机</span>
+            <div class="card-head is-flush">
+              <span class="card-head-title">服务商</span>
+              <span class="card-head-line" />
+              <span class="card-head-meta">OpenAI 兼容接口 · Key 仅保存在本机</span>
             </div>
             <div class="settings-chips">
               <button v-for="p in PRESETS" :key="p.name" type="button" class="set-chip" @click="addProvider(p)">+ {{ p.name }}</button>
@@ -1113,10 +1113,10 @@ onUnmounted(() => {
 
           <!-- 任务模型 -->
           <div v-show="aiTab === 'tasks'" class="settings-stack">
-            <div class="settings-head">
-              <span class="settings-head-title">任务模型分配</span>
-              <span class="settings-head-line" />
-              <span class="settings-head-meta">不同任务可用不同模型</span>
+            <div class="card-head is-flush">
+              <span class="card-head-title">任务模型分配</span>
+              <span class="card-head-line" />
+              <span class="card-head-meta">不同任务可用不同模型</span>
             </div>
             <p class="settings-hint">
               「上下文窗口」填模型 token 上限，用于妙笔会话自动压缩；获取模型时能识别的会自动填。配好一行后可「应用到全部」。
@@ -1156,10 +1156,10 @@ onUnmounted(() => {
 
           <!-- 向量化检索 -->
           <div v-show="aiTab === 'vector'" class="settings-stack">
-            <div class="settings-head">
-              <span class="settings-head-title">向量化检索</span>
-              <span class="settings-head-line" />
-              <span class="settings-head-meta">语义搜索</span>
+            <div class="card-head is-flush">
+              <span class="card-head-title">向量化检索</span>
+              <span class="card-head-line" />
+              <span class="card-head-meta">语义搜索</span>
             </div>
             <p class="settings-hint">
               给全书文稿与资源库建立本地向量索引，驱动三处语义能力：逐章生文构思细纲前自动检索相关前文、妙笔对话按智能体分配注入相关片段（智能体库逐个开启）、
@@ -1169,9 +1169,9 @@ onUnmounted(() => {
 
             <!-- 嵌入服务（独立面板，与服务商列表互不影响） -->
             <div class="ink-card p-4 settings-stack-sm">
-              <div class="settings-head">
-                <span class="settings-head-title-sm">嵌入服务</span>
-                <span class="settings-head-line" />
+              <div class="card-head is-flush">
+                <span class="text-body font-semibold text-[var(--text)] whitespace-nowrap">嵌入服务</span>
+                <span class="card-head-line" />
                 <button
                   v-if="es.baseUrl || es.model || cfg.tasks[EMBEDDING_KEY]?.providerId"
                   type="button"
@@ -1313,9 +1313,9 @@ onUnmounted(() => {
 
           <!-- 联网搜索 -->
           <div v-show="aiTab === 'search'" class="settings-stack">
-            <div class="settings-head">
-              <span class="settings-head-title">联网搜索</span>
-              <span class="settings-head-line" />
+            <div class="card-head is-flush">
+              <span class="card-head-title">联网搜索</span>
+              <span class="card-head-line" />
             </div>
             <p class="settings-hint">
               智能体有两种联网方式：<b>① 服务商自带搜索</b>——在各服务商卡片上启用，由厂商平台执行（Kimi / 智谱 / MiMo / 通义）；<b>② DAWO 自带搜索工具</b>——在智能体库给智能体安装，走下面的搜索源。
@@ -1361,9 +1361,9 @@ onUnmounted(() => {
 
           <!-- 智能体行为 -->
           <div v-show="aiTab === 'behavior'" class="settings-stack">
-            <div class="settings-head">
-              <span class="settings-head-title">智能体行为</span>
-              <span class="settings-head-line" />
+            <div class="card-head is-flush">
+              <span class="card-head-title">智能体行为</span>
+              <span class="card-head-line" />
             </div>
             <div class="ink-field">
               <span class="ink-field-label">修改怎么算数</span>
@@ -1383,10 +1383,10 @@ onUnmounted(() => {
 
         <!-- ============ 外观 ============ -->
         <div v-if="tab === 'appearance'" class="settings-stack">
-          <div class="settings-head">
-            <span class="settings-head-title">外观</span>
-            <span class="settings-head-line" />
-            <span class="settings-head-meta">改动即时生效并自动保存</span>
+          <div class="card-head is-flush">
+            <span class="card-head-title">外观</span>
+            <span class="card-head-line" />
+            <span class="card-head-meta">改动即时生效并自动保存</span>
           </div>
 
           <div class="ink-card p-4 settings-stack-sm">
@@ -1483,10 +1483,10 @@ onUnmounted(() => {
 
           <!-- 全局记忆 -->
           <div class="ink-card p-5 settings-stack-sm">
-            <div class="settings-head">
-              <span class="settings-head-title">全局记忆</span>
-              <span class="settings-head-line" />
-              <span class="settings-head-meta">跨书通用 · {{ memGEntries.length }} 条</span>
+            <div class="card-head is-flush">
+              <span class="card-head-title">全局记忆</span>
+              <span class="card-head-line" />
+              <span class="card-head-meta">跨书通用 · {{ memGEntries.length }} 条</span>
               <button type="button" class="set-text-btn shrink-0" @click="openMemFile('global')">打开文件</button>
             </div>
             <div class="settings-row">
@@ -1514,10 +1514,10 @@ onUnmounted(() => {
 
           <!-- 书籍记忆 -->
           <div class="ink-card p-5 settings-stack-sm">
-            <div class="settings-head">
-              <span class="settings-head-title">书籍记忆</span>
-              <span class="settings-head-line" />
-              <span class="settings-head-meta">{{ lib.current ? `《${lib.current.title}》 · ${memBEntries.length} 条` : '未打开作品' }}</span>
+            <div class="card-head is-flush">
+              <span class="card-head-title">书籍记忆</span>
+              <span class="card-head-line" />
+              <span class="card-head-meta">{{ lib.current ? `《${lib.current.title}》 · ${memBEntries.length} 条` : '未打开作品' }}</span>
               <button
                 v-if="lib.current && memBEntries.length"
                 type="button"
@@ -1558,10 +1558,10 @@ onUnmounted(() => {
 
         <!-- ============ 提示词 ============ -->
         <div v-if="tab === 'prompts'" class="settings-stack">
-          <div class="settings-head">
-            <span class="settings-head-title">提示词</span>
-            <span class="settings-head-line" />
-            <span class="settings-head-meta">本机可编辑</span>
+          <div class="card-head is-flush">
+            <span class="card-head-title">提示词</span>
+            <span class="card-head-line" />
+            <span class="card-head-meta">本机可编辑</span>
           </div>
           <div class="settings-row">
             <InkSelect v-model="promptActive" class="w-64 shrink-0" :options="promptList.map((id) => ({ label: id, value: id }))" />
@@ -1576,9 +1576,9 @@ onUnmounted(() => {
 
         <!-- ============ 数据 ============ -->
         <div v-if="tab === 'data'" class="settings-stack">
-          <div class="settings-head">
-            <span class="settings-head-title">数据</span>
-            <span class="settings-head-line" />
+          <div class="card-head is-flush">
+            <span class="card-head-title">数据</span>
+            <span class="card-head-line" />
           </div>
           <div class="ink-card p-5 settings-stack-sm">
             <div class="section-title">书架根目录</div>
@@ -1593,10 +1593,10 @@ onUnmounted(() => {
 
         <!-- ============ 敏感词库 ============ -->
         <div v-if="tab === 'sensitive'" class="settings-stack">
-          <div class="settings-head">
-            <span class="settings-head-title">写作规避词</span>
-            <span class="settings-head-line" />
-            <span class="settings-head-meta">每行一个 · 共 {{ sensitiveCount }} 个</span>
+          <div class="card-head is-flush">
+            <span class="card-head-title">写作规避词</span>
+            <span class="card-head-line" />
+            <span class="card-head-meta">每行一个 · 共 {{ sensitiveCount }} 个</span>
           </div>
           <textarea
             v-model="sensitiveText"
@@ -1611,10 +1611,10 @@ onUnmounted(() => {
 
         <!-- ============ AI 调用记录 ============ -->
         <div v-if="tab === 'ailog'" class="settings-stack">
-          <div class="settings-head">
-            <span class="settings-head-title">AI 调用记录</span>
-            <span class="settings-head-line" />
-            <span class="settings-head-meta">仅保留最近 2000 条 · Token 按字符数估算</span>
+          <div class="card-head is-flush">
+            <span class="card-head-title">AI 调用记录</span>
+            <span class="card-head-line" />
+            <span class="card-head-meta">仅保留最近 2000 条 · Token 按字符数估算</span>
           </div>
 
           <!-- 统计卡 -->
@@ -1719,9 +1719,9 @@ onUnmounted(() => {
 
         <!-- ============ 保存与备份 ============ -->
         <div v-if="tab === 'backup'" class="settings-stack">
-          <div class="settings-head">
-            <span class="settings-head-title">保存与备份</span>
-            <span class="settings-head-line" />
+          <div class="card-head is-flush">
+            <span class="card-head-title">保存与备份</span>
+            <span class="card-head-line" />
           </div>
           <div class="ink-card p-5 settings-stack-sm">
             <div class="ink-field">
@@ -1781,15 +1781,15 @@ onUnmounted(() => {
           <div class="ink-card p-5 settings-row">
             <img :src="logoUrl" alt="DAWO" class="settings-logo" />
             <div class="flex-1 min-w-0">
-              <div class="settings-head-title">DAWO · AI 小说工作台</div>
-              <div class="settings-head-meta">当前版本 v{{ appVersion }} · 免费 · 本地优先</div>
+              <div class="card-head-title">DAWO · AI 小说工作台</div>
+              <div class="card-head-meta">当前版本 v{{ appVersion }} · 免费 · 本地优先</div>
             </div>
           </div>
 
           <div class="ink-card p-5 settings-stack-sm">
-            <div class="settings-head">
-              <span class="settings-head-title">软件更新</span>
-              <span class="settings-head-line" />
+            <div class="card-head is-flush">
+              <span class="card-head-title">软件更新</span>
+              <span class="card-head-line" />
             </div>
             <p class="settings-hint">
               更新源是 GitHub Releases。检查到新版本后先下载，重启即完成安装；书稿与配置不受影响。仓库私有期间可能拉不到更新信息，可点「打开 Releases 页」手动下载。
@@ -1968,35 +1968,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-.settings-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.settings-head-title {
-  font-family: var(--font-serif);
-  font-size: var(--fs-heading);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--text);
-  white-space: nowrap;
-}
-.settings-head-title-sm {
-  font-size: var(--fs-body);
-  font-weight: 600;
-  color: var(--text);
-  white-space: nowrap;
-}
-.settings-head-line {
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(to right, var(--border), transparent);
-}
-.settings-head-meta {
-  font-size: var(--fs-meta);
-  color: var(--text-faint);
-  white-space: nowrap;
 }
 .settings-row {
   display: flex;
