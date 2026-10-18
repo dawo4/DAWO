@@ -130,32 +130,32 @@ function fmtTime(iso: string): string {
 <template>
   <div class="h-full flex flex-col min-h-0">
     <!-- 头部 -->
-    <header class="shrink-0 flex items-center gap-2 px-3.5 py-2.5 border-b border-[var(--border)]">
+    <header class="shrink-0 flex items-center gap-2 px-3.5 py-2 border-b border-[var(--border)]">
       <div class="relative">
         <button
-          class="flex items-center gap-1.5 text-[13px] cursor-pointer px-2.5 py-1.5 rounded-lg hover:bg-[var(--hover)]"
+          class="flex items-center gap-1.5 text-label cursor-pointer px-2.5 py-1.5 rounded-[var(--r-sm)] hover:bg-[var(--hover)] transition-colors"
           @click="agentOpen = !agentOpen; historyOpen = false"
         >
-          <Sparkles :size="13" :style="{ color: 'var(--accent)' }" />
+          <Sparkles :size="13" class="text-[var(--accent)]" />
           <span class="font-medium">{{ currentAgent.name }}</span>
           <ChevronDown :size="13" class="text-[var(--text-faint)]" />
         </button>
         <div
           v-if="agentOpen"
-          class="absolute top-full left-0 mt-1 w-80 rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)] overflow-hidden z-40 max-h-[70vh] flex flex-col"
+          class="absolute top-full left-0 mt-1 w-80 pop overflow-hidden z-40 max-h-[70vh] flex flex-col"
         >
           <div class="overflow-y-auto">
             <template v-for="g in agentGroups" :key="g.key">
               <!-- 组头：可折叠的做成按钮 -->
               <button
                 v-if="g.collapsible"
-                class="w-full flex items-center gap-1 px-3.5 py-1.5 text-[10.5px] tracking-wider bg-[var(--bg-soft)] text-[var(--text-faint)] cursor-pointer hover:text-[var(--text-dim)] sticky top-0 z-10"
+                class="w-full flex items-center gap-1 px-3.5 py-1.5 text-micro tracking-wider bg-[var(--bg-soft)] text-[var(--text-faint)] cursor-pointer hover:text-[var(--text-dim)] sticky top-0 z-10"
                 @click="toolOpen = !toolOpen"
               >
                 <component :is="toolOpen ? ChevronDown : ChevronRight" :size="11" />
                 {{ g.label }}（{{ g.list.length }}）
               </button>
-              <div v-else class="px-3.5 py-1.5 text-[10.5px] tracking-wider bg-[var(--bg-soft)] text-[var(--text-faint)] sticky top-0 z-10">
+              <div v-else class="px-3.5 py-1.5 text-micro tracking-wider bg-[var(--bg-soft)] text-[var(--text-faint)] sticky top-0 z-10">
                 {{ g.label }}
               </div>
               <template v-if="!g.collapsible || toolOpen">
@@ -167,16 +167,12 @@ function fmtTime(iso: string): string {
                   @click="pickAgent(a.id)"
                 >
                   <div class="flex items-center gap-2">
-                    <span class="text-[13px]" :style="a.id === conv.agentId ? { color: 'var(--accent)' } : {}">{{ a.name }}</span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded-full border border-[var(--border)] text-[var(--text-faint)]">{{ a.stage }}</span>
-                    <span
-                      v-if="a.custom"
-                      class="text-[10px] px-1.5 py-0.5 rounded-full"
-                      :style="{ background: 'var(--panel-2)', color: 'var(--accent)' }"
-                    >自定义</span>
-                    <span v-if="a.webSearch" class="text-[10px] text-[var(--text-faint)]">联网</span>
+                    <span class="text-label" :style="a.id === conv.agentId ? { color: 'var(--accent)' } : {}">{{ a.name }}</span>
+                    <span class="ink-chip">{{ a.stage }}</span>
+                    <span v-if="a.custom" class="ink-chip ink-chip-accent">自定义</span>
+                    <span v-if="a.webSearch" class="text-micro text-[var(--text-faint)]">联网</span>
                   </div>
-                  <div class="text-[11px] text-[var(--text-faint)] mt-0.5">{{ a.desc }}</div>
+                  <div class="text-meta text-[var(--text-faint)] mt-0.5">{{ a.desc }}</div>
                 </button>
               </template>
             </template>
@@ -188,18 +184,18 @@ function fmtTime(iso: string): string {
 
       <div class="relative">
         <button
-          class="flex items-center gap-1.5 text-[11.5px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer px-2 py-1.5 rounded-lg hover:bg-[var(--hover)]"
+          class="flex items-center gap-1.5 text-meta text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer px-2 py-1.5 rounded-[var(--r-sm)] hover:bg-[var(--hover)] transition-colors"
           @click="historyOpen = !historyOpen; agentOpen = false"
         >
           <History :size="13" /> 历史 {{ conv.conversations.length }}
         </button>
         <div
           v-if="historyOpen"
-          class="absolute top-full right-0 mt-1 w-80 rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)] overflow-hidden z-40"
+          class="absolute top-full right-0 mt-1 w-80 pop overflow-hidden z-40"
         >
           <div class="flex items-center justify-between px-3.5 py-2 border-b border-[var(--border)]">
-            <span class="text-[11px] text-[var(--text-faint)]">会话记录</span>
-            <button class="text-[11px] cursor-pointer" :style="{ color: 'var(--accent)' }" @click="conv.newConversation(); historyOpen = false">新建会话</button>
+            <span class="text-meta text-[var(--text-faint)]">会话记录</span>
+            <button class="text-meta cursor-pointer" :style="{ color: 'var(--accent)' }" @click="conv.newConversation(); historyOpen = false">新建会话</button>
           </div>
           <div class="max-h-72 overflow-y-auto">
             <div
@@ -208,17 +204,17 @@ function fmtTime(iso: string): string {
               class="flex items-center gap-2 px-3.5 py-2.5 border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--hover)]"
             >
               <button class="flex-1 min-w-0 text-left cursor-pointer" @click="conv.loadConversation(c.id); historyOpen = false">
-                <div class="text-[12.5px] truncate" :style="c.id === conv.currentId ? { color: 'var(--accent)' } : {}">{{ c.title || '新会话' }}</div>
-                <div class="text-[10px] text-[var(--text-faint)]">{{ fmtTime(c.updatedAt) }} · {{ c.messageCount }} 条</div>
+                <div class="text-label truncate" :style="c.id === conv.currentId ? { color: 'var(--accent)' } : {}">{{ c.title || '新会话' }}</div>
+                <div class="text-micro text-[var(--text-faint)]">{{ fmtTime(c.updatedAt) }} · {{ c.messageCount }} 条</div>
               </button>
-              <button class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="removeConversation(c.id, c.title)">
+              <button class="ink-icon-btn is-danger" title="删除会话" @click="removeConversation(c.id, c.title)">
                 <Trash2 :size="13" />
               </button>
             </div>
-            <div v-if="!conv.conversations.length" class="px-3.5 py-6 text-center text-[12px] text-[var(--text-faint)]">暂无历史会话</div>
+            <div v-if="!conv.conversations.length" class="px-3.5 py-6 text-center text-label text-[var(--text-faint)]">暂无历史会话</div>
           </div>
           <button
-            class="w-full flex items-center justify-center gap-1.5 text-[11.5px] py-2 cursor-pointer border-t border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)]"
+            class="w-full flex items-center justify-center gap-1.5 text-meta py-2 cursor-pointer border-t border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] transition-colors"
             @click="conv.exportCurrent()"
           >
             <Download :size="13" /> 导出当前会话为 Markdown
@@ -233,40 +229,40 @@ function fmtTime(iso: string): string {
         <!-- 上下文压缩摘要卡：早期对话被自动压缩后置顶展示 -->
         <div
           v-if="conv.contextSummary"
-          class="rounded-xl border border-dashed border-[var(--border)] bg-[var(--panel)] px-4 py-3 cursor-pointer"
+          class="rounded-[var(--r-md)] border border-dashed border-[var(--border)] bg-[var(--panel)] px-4 py-3 cursor-pointer"
           @click="summaryOpen = !summaryOpen"
         >
-          <div class="flex items-center gap-2 text-[11.5px]" :style="{ color: 'var(--accent)' }">
+          <div class="flex items-center gap-2 text-label" :style="{ color: 'var(--accent)' }">
             <ScrollText :size="12" />
             <span>已自动压缩 {{ conv.messages.filter((m) => m.compacted).length }} 条早期对话，摘要随每轮发送</span>
             <ChevronDown :size="12" class="ml-auto transition-transform" :class="summaryOpen ? 'rotate-180' : ''" />
           </div>
-          <div v-if="summaryOpen" class="mt-2 text-[12px] text-[var(--text-dim)] whitespace-pre-wrap leading-5">{{ conv.contextSummary }}</div>
+          <div v-if="summaryOpen" class="mt-2 text-label text-[var(--text-dim)] whitespace-pre-wrap leading-5">{{ conv.contextSummary }}</div>
         </div>
 
         <div v-if="!conv.messages.length" class="pt-10">
           <div class="text-center mb-7">
             <div class="flex items-center justify-center gap-2.5 mb-2.5">
               <span class="h-px w-6" style="background: var(--accent)" />
-              <span class="text-[10.5px] tracking-[0.22em] text-[var(--text-faint)]">妙笔 · {{ currentAgent.stage || '智能体' }}</span>
+              <span class="section-title tracking-[0.14em]">妙笔 · {{ currentAgent.stage || '智能体' }}</span>
             </div>
-            <div class="font-serif-ink text-[24px] mb-2">{{ currentAgent.name }}</div>
-            <div class="text-[12.5px] text-[var(--text-faint)] max-w-[460px] mx-auto leading-5">{{ currentAgent.desc }}</div>
+            <div class="font-serif-ink text-display mb-2">{{ currentAgent.name }}</div>
+            <div class="text-label text-[var(--text-faint)] max-w-[460px] mx-auto leading-5">{{ currentAgent.desc }}</div>
           </div>
           <div class="grid gap-2.5" :class="props.fullWidth ? 'sm:grid-cols-2' : ''">
             <button
               v-for="w in currentAgent.welcome"
               :key="w"
-              class="text-left text-[12.5px] px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--panel)] hover:border-[var(--accent)] hover:bg-[var(--bg-soft)] hover:-translate-y-[2px] hover:shadow-[var(--shadow)] cursor-pointer transition-all duration-200 leading-5"
+              class="text-left text-label px-4 py-3 rounded-[var(--r-md)] border border-[var(--border)] bg-[var(--panel)] hover:border-[var(--accent-line)] hover:bg-[var(--bg-soft)] hover:-translate-y-0.5 hover:shadow-[var(--sh-1)] cursor-pointer transition-all duration-200 leading-5"
               @click="quickSend(w)"
             >
               {{ w }}
             </button>
           </div>
-          <div v-if="currentAgent.readScope.length" class="mt-6 text-[11.5px] text-[var(--text-faint)] text-center">
+          <div v-if="currentAgent.readScope.length" class="mt-6 text-meta text-[var(--text-faint)] text-center">
             可访问范围：{{ currentAgent.readScope.join(' · ') }}
           </div>
-          <div v-else class="mt-6 text-[11.5px] text-[var(--text-faint)] text-center">可访问全部稿件与资料</div>
+          <div v-else class="mt-6 text-meta text-[var(--text-faint)] text-center">可访问全部稿件与资料</div>
         </div>
 
         <ConversationMessage v-for="m in conv.messages" :key="m.id" :message="m" :agent-id="conv.agentId" />
@@ -281,3 +277,13 @@ function fmtTime(iso: string): string {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 浮层（智能体选择 / 历史会话）：统一纸感面板 + 二级阴影 */
+.pop {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  box-shadow: var(--sh-2);
+}
+</style>

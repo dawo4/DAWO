@@ -68,18 +68,18 @@ async function doReject() {
 </script>
 
 <template>
-  <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] overflow-hidden">
+  <div class="rounded-[var(--r-md)] border border-[var(--border)] bg-[var(--panel)] overflow-hidden">
     <!-- 头部 -->
     <div class="flex items-center gap-2 px-3.5 py-2.5 border-b border-[var(--border)]">
-      <Library :size="13" :style="{ color: 'var(--accent)' }" />
-      <span class="text-[12.5px] font-medium">资源库入库提案</span>
-      <span class="text-[11px] text-[var(--text-faint)]">{{ proposal.summary }}</span>
+      <Library :size="13" class="text-[var(--accent)]" />
+      <span class="text-label font-medium">资源库入库提案</span>
+      <span class="text-meta text-[var(--text-faint)]">{{ proposal.summary }}</span>
       <div class="flex-1" />
-      <span v-if="proposal.status === 'applied'" class="text-[11px] inline-flex items-center gap-1" style="color: var(--accent)">
+      <span v-if="proposal.status === 'applied'" class="text-meta inline-flex items-center gap-1 text-[var(--accent)]">
         <CircleCheck :size="12" /> 已入库
       </span>
-      <span v-else-if="proposal.status === 'rejected'" class="text-[11px] text-[var(--text-faint)]">已丢弃</span>
-      <span v-else class="text-[11px] text-[var(--text-faint)]">{{ pending.length }} 条待确认</span>
+      <span v-else-if="proposal.status === 'rejected'" class="text-meta text-[var(--text-faint)]">已丢弃</span>
+      <span v-else class="text-meta text-[var(--text-faint)]">{{ pending.length }} 条待确认</span>
     </div>
 
     <!-- 条目清单 -->
@@ -98,34 +98,33 @@ async function doReject() {
             :style="picked.includes(keyOf(i)) ? { background: 'var(--accent)', borderColor: 'var(--accent)' } : { borderColor: 'var(--border)' }"
             @click="toggle(i)"
           >
-            <CircleCheck v-if="picked.includes(keyOf(i))" :size="11" color="#1b1712" />
+            <CircleCheck v-if="picked.includes(keyOf(i))" :size="11" class="text-[var(--accent-ink)]" />
           </button>
-          <PackageCheck v-else :size="16" class="mt-0.5 shrink-0" :style="{ color: 'var(--accent)' }" />
+          <PackageCheck v-else :size="16" class="mt-0.5 shrink-0 text-[var(--accent)]" />
 
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--bg-soft)] text-[var(--text-dim)] shrink-0">
+              <span class="ink-chip shrink-0">
                 {{ LIB_LABEL[i.library] || i.library }}
               </span>
-              <span class="text-[10px] text-[var(--text-faint)] shrink-0">{{ i.group }}</span>
-              <span class="text-[12.5px] truncate">{{ i.name }}</span>
+              <span class="text-micro text-[var(--text-faint)] shrink-0">{{ i.group }}</span>
+              <span class="text-label truncate">{{ i.name }}</span>
               <span
                 v-if="i.exists && !applied.includes(keyOf(i))"
-                class="text-[10px] shrink-0 inline-flex items-center gap-0.5"
-                style="color: #d8a86a"
+                class="text-micro shrink-0 inline-flex items-center gap-0.5 ink-text-warn"
                 title="库中已有同名条目，入库会覆盖它"
               >
                 <CircleAlert :size="10" /> 将覆盖
               </span>
             </div>
-            <div v-if="i.summary" class="text-[11.5px] text-[var(--text-dim)] mt-0.5">{{ i.summary }}</div>
+            <div v-if="i.summary" class="text-meta text-[var(--text-dim)] mt-0.5">{{ i.summary }}</div>
             <div v-if="i.tags.length" class="flex gap-1 mt-1 flex-wrap">
-              <span v-for="t in i.tags" :key="t" class="text-[10px] text-[var(--text-faint)]">#{{ t }}</span>
+              <span v-for="t in i.tags" :key="t" class="text-micro text-[var(--text-faint)]">#{{ t }}</span>
             </div>
 
             <!-- 正文预览 -->
             <button
-              class="mt-1.5 text-[11px] text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer inline-flex items-center gap-0.5"
+              class="mt-1.5 text-meta text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer inline-flex items-center gap-0.5"
               @click="togglePreview(i)"
             >
               <component :is="expanded === keyOf(i) ? ChevronDown : ChevronRight" :size="11" />
@@ -133,7 +132,7 @@ async function doReject() {
             </button>
             <pre
               v-if="expanded === keyOf(i)"
-              class="mt-1.5 p-2.5 rounded-lg bg-[var(--bg-soft)] text-[12px] leading-6 whitespace-pre-wrap break-words max-h-56 overflow-y-auto select-text font-sans"
+              class="mt-1.5 p-2.5 rounded-[var(--r-sm)] bg-[var(--bg-soft)] text-label leading-6 whitespace-pre-wrap break-words max-h-56 overflow-y-auto select-text font-sans"
             >{{ i.content }}</pre>
           </div>
         </div>
@@ -141,17 +140,17 @@ async function doReject() {
     </div>
 
     <!-- 操作 -->
-    <div v-if="!settled && pending.length" class="flex items-center gap-2 px-3.5 py-2.5 bg-[var(--bg-soft)]/50">
-      <button class="text-[11.5px] text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="toggleAll">
+    <div v-if="!settled && pending.length" class="flex items-center gap-2 px-3.5 py-2.5 bg-[var(--bg-soft)]">
+      <button class="text-meta text-[var(--text-dim)] hover:text-[var(--accent)] cursor-pointer" @click="toggleAll">
         {{ picked.length === pending.length ? '全不选' : '全选' }}
       </button>
       <div class="flex-1" />
-      <InkButton variant="ghost" :disabled="busy" @click="doReject">全部丢弃</InkButton>
-      <InkButton :disabled="busy || !pickedPending.length" @click="doApply">
+      <InkButton variant="ghost" size="sm" :disabled="busy" @click="doReject">全部丢弃</InkButton>
+      <InkButton size="sm" :disabled="busy || !pickedPending.length" @click="doApply">
         入库 {{ pickedPending.length }} 条
       </InkButton>
     </div>
-    <div v-else-if="settled && proposal.message" class="px-3.5 py-2 text-[11px] text-[var(--text-faint)]">
+    <div v-else-if="settled && proposal.message" class="px-3.5 py-2 text-meta text-[var(--text-faint)]">
       {{ proposal.message }}
     </div>
   </div>

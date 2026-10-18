@@ -7,8 +7,9 @@ import { onHeaderAction } from '../ui/headerActions'
 import { inkConfirm } from '../ui/inkPrompt'
 import AgentConversation from '../components/conversation/AgentConversation.vue'
 import InkButton from '../ui/InkButton.vue'
+import EmptyHint from '../ui/EmptyHint.vue'
 import { usePanelDrag } from '../ui/usePanelDrag'
-import { Download, Plus, Trash2, Sparkles, Clock } from 'lucide-vue-next'
+import { Download, Plus, Trash2, Sparkles, Clock, BookOpen } from 'lucide-vue-next'
 
 const app = useAppStore()
 const lib = useLibraryStore()
@@ -75,9 +76,14 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="!lib.current" class="h-full flex flex-col items-center justify-center text-[var(--text-faint)] gap-4">
-    <p>先打开一部作品，妙笔才能读到你的稿子</p>
-    <InkButton @click="app.go('bookshelf')">去书架</InkButton>
+  <div v-if="!lib.current" class="h-full">
+    <EmptyHint
+      :icon="BookOpen"
+      title="先打开一部作品"
+      desc="妙笔需要读到你的稿子，才能针对剧情与设定作答"
+      action="去书架"
+      @action="app.go('bookshelf')"
+    />
   </div>
 
   <div v-else class="h-full flex">
@@ -88,51 +94,42 @@ onUnmounted(() => {
     >
       <div class="panel-resizer right-0" :class="{ 'is-dragging': listDrag.dragging.value }" @mousedown="listDrag.onDown($event, 1)" />
       <div class="px-3 py-2.5 border-b border-[var(--border)] space-y-2">
-        <button
-          class="w-full flex items-center justify-center gap-1.5 text-[12.5px] py-1.5 rounded-lg cursor-pointer text-[#1b1712] font-medium transition-[filter,box-shadow] hover:brightness-110"
-          style="background: var(--accent); box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 20%, transparent)"
-          @click="conv.newConversation()"
-        >
-          <Plus :size="13" /> 新建会话
-        </button>
-        <input v-model="listQuery" class="ink-input h-7 py-0 text-[12px]" placeholder="搜索会话…" />
+        <InkButton block @click="conv.newConversation()"><Plus :size="13" /> 新建会话</InkButton>
+        <input v-model="listQuery" class="ink-input h-7 py-0 text-label" placeholder="搜索会话…" />
       </div>
 
       <div class="flex-1 overflow-y-auto py-1.5 px-1.5 space-y-0.5">
         <div
           v-for="c in filteredConversations"
           :key="c.id"
-          class="group flex items-center gap-1.5 pl-2.5 pr-1.5 py-2 cursor-pointer rounded-lg border-l-2 transition-colors"
-          :class="c.id === conv.currentId ? '' : 'border-transparent hover:bg-[var(--hover)]'"
-          :style="
-            c.id === conv.currentId
-              ? { borderColor: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 8%, transparent)' }
-              : {}
-          "
+          class="conv-item group"
+          :class="{ 'is-on': c.id === conv.currentId }"
           @click="conv.loadConversation(c.id)"
         >
           <div class="min-w-0 flex-1">
-            <div class="text-[12.5px] truncate" :style="c.id === conv.currentId ? { color: 'var(--accent)' } : {}">
-              {{ c.title || '新会话' }}
-            </div>
-            <div class="text-[10.5px] text-[var(--text-faint)] flex items-center gap-1 mt-0.5">
+            <div class="text-label truncate">{{ c.title || '新会话' }}</div>
+            <div class="text-meta text-[var(--text-faint)] flex items-center gap-1 mt-0.5">
               <Clock :size="9" />{{ fmtTime(c.updatedAt) }} · {{ c.messageCount }} 条
             </div>
           </div>
           <button
-            class="opacity-0 group-hover:opacity-100 p-1 rounded-md text-[var(--text-faint)] hover:text-[#e08a7a] hover:bg-[var(--hover)] cursor-pointer transition-opacity"
+            class="ink-icon-btn is-danger opacity-0 group-hover:opacity-100"
+            title="删除会话"
             @click.stop="removeConversation(c.id, c.title)"
           >
             <Trash2 :size="12" />
           </button>
         </div>
-        <div v-if="!filteredConversations.length" class="mx-1.5 my-1 py-6 text-center rounded-lg border border-dashed border-[var(--border)] text-[11.5px] text-[var(--text-faint)]">
+        <p
+          v-if="!filteredConversations.length"
+          class="mx-1.5 my-1 py-6 text-center rounded-[var(--r-sm)] border border-dashed border-[var(--border)] text-label text-[var(--text-faint)]"
+        >
           暂无历史会话
-        </div>
+        </p>
       </div>
 
       <button
-        class="shrink-0 flex items-center justify-center gap-1.5 text-[11.5px] py-2.5 border-t border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors"
+        class="shrink-0 flex items-center justify-center gap-1.5 text-meta py-2.5 border-t border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors"
         @click="conv.exportCurrent()"
       >
         <Download :size="12" /> 导出当前会话
@@ -143,24 +140,16 @@ onUnmounted(() => {
     <section class="flex-1 min-w-0 flex flex-col">
       <!-- 上下文指示条：chips 化，一眼看清 AI 正在针对什么工作 -->
       <div class="shrink-0 h-10 flex items-center gap-1.5 px-5 border-b border-[var(--border)]">
-        <Sparkles :size="13" :style="{ color: 'var(--accent)' }" />
-        <span class="text-[11px] text-[var(--text-faint)] mr-1">上下文</span>
-        <template v-for="(p, i) in contextParts" :key="p + i">
-          <span
-            class="text-[11px] px-2 py-0.5 rounded-full"
-            :style="
-              i === contextParts.length - 1
-                ? { background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }
-                : { background: 'var(--bg-soft)', color: 'var(--text-dim)' }
-            "
-          >
-            {{ p }}
-          </span>
-        </template>
+        <Sparkles :size="13" class="text-[var(--accent)]" />
+        <span class="text-meta text-[var(--text-faint)] mr-1">上下文</span>
+        <span
+          v-for="(p, i) in contextParts"
+          :key="p + i"
+          class="ink-chip"
+          :class="i === contextParts.length - 1 ? 'ink-chip-accent' : ''"
+        >{{ p }}</span>
         <div class="flex-1" />
-        <span class="text-[11px] text-[var(--text-faint)]">
-          智能体在这里能读写整部作品；改稿会先给差异，由你决定是否接受
-        </span>
+        <span class="text-meta text-[var(--text-faint)]">智能体在这里能读写整部作品；改稿会先给差异，由你决定是否接受</span>
       </div>
 
       <div class="flex-1 min-h-0">
@@ -169,3 +158,36 @@ onUnmounted(() => {
     </section>
   </div>
 </template>
+
+<style scoped>
+/* 会话条目：左缘 2px 强调标记 + 极淡强调底（与全站选中态同一语言） */
+.conv-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px 8px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background-color var(--dur-2), color var(--dur-2);
+}
+.conv-item:hover {
+  background: var(--hover);
+}
+.conv-item.is-on {
+  background: var(--accent-soft);
+}
+.conv-item.is-on::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+.conv-item.is-on .text-label {
+  color: var(--accent);
+}
+</style>

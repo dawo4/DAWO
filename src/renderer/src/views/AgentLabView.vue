@@ -9,6 +9,7 @@ import InkModal from '../ui/InkModal.vue'
 import InkToggle from '../ui/InkToggle.vue'
 import InkSelect from '../ui/InkSelect.vue'
 import InkCombo from '../ui/InkCombo.vue'
+import EmptyHint from '../ui/EmptyHint.vue'
 import { inkConfirm } from '../ui/inkPrompt'
 import type { CustomAgent, LibKind } from '../types'
 import { Bot, Plus, Pencil, Trash2, Globe, Sparkles, LoaderCircle, LibraryBig, Users, FileSearch, Cpu } from 'lucide-vue-next'
@@ -299,156 +300,200 @@ function scopeText(scope: string[]): string {
 
 <template>
   <div class="h-full overflow-y-auto">
-    <div class="max-w-[1000px] mx-auto px-6 py-6">
-      <!-- 顶部 -->
-      <div class="flex items-end justify-between mb-6 rise-in">
-        <div>
-          <h1 class="font-serif-ink text-2xl mb-1">智能体库</h1>
-          <p class="text-[12.5px] text-[var(--text-faint)]">
-            描述你想要的智能体，AI 会替你创建；在这里决定它能碰哪些库、能不能上网，以及是否在妙笔启用
-          </p>
+    <div class="page">
+      <!-- 页头 -->
+      <div class="rise-in page-head items-end">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2.5 mb-2">
+            <span class="h-px w-7" style="background: var(--accent)" />
+            <span class="section-title tracking-[0.14em]">AI 助理</span>
+          </div>
+          <h1 class="font-serif-ink text-display leading-tight mb-1.5">智能体库</h1>
+          <p class="page-sub">描述你想要的智能体，AI 会替你创建；在这里决定它能碰哪些库、能不能上网，以及是否在妙笔启用</p>
         </div>
         <InkButton @click="openCreate"><Plus :size="14" /> AI 创建智能体</InkButton>
       </div>
 
       <!-- 自定义智能体 -->
-      <div class="mb-8 rise-in" style="animation-delay: 60ms">
-        <div class="flex items-center gap-2 mb-3">
-          <Bot :size="14" :style="{ color: 'var(--accent)' }" />
-          <span class="text-[13.5px] font-medium">自定义智能体</span>
-          <span class="text-[11px] text-[var(--text-faint)]">{{ customList.length }} 个 · {{ enabledCount }} 个已启用</span>
+      <div class="rise-in" style="animation-delay: 60ms">
+        <div class="card-head">
+          <Bot :size="14" class="text-[var(--accent)]" />
+          <span class="card-head-title">自定义智能体</span>
+          <span class="card-head-line" />
+          <span class="card-head-meta">{{ customList.length }} 个 · {{ enabledCount }} 个已启用</span>
         </div>
-        <div v-if="!customList.length" class="rounded-xl border border-dashed border-[var(--border)] p-8 text-center">
-          <p class="text-[13px] text-[var(--text-dim)] mb-1">还没有自定义智能体</p>
-          <p class="text-[11.5px] text-[var(--text-faint)]">点右上角「AI 创建智能体」，用一句话描述职责就行——比如「帮我查服装、饮食、官职这些历史细节是否穿帮」</p>
+        <div v-if="!customList.length" class="ink-card h-[200px]">
+          <EmptyHint
+            :icon="Bot"
+            title="还没有自定义智能体"
+            desc="用一句话描述职责就能生成——比如「帮我查服装、饮食、官职这些历史细节是否穿帮」"
+            action="AI 创建智能体"
+            @action="openCreate"
+          />
         </div>
-        <div v-else class="grid gap-3 sm:grid-cols-2">
-          <div
-            v-for="a in customList"
-            :key="a.id"
-            class="rounded-xl border bg-[var(--panel)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow)]"
-            :class="a.enabled ? 'border-[var(--accent)]' : 'border-[var(--border)]'"
-            :style="a.enabled ? { background: 'color-mix(in srgb, var(--accent) 4%, var(--panel))' } : {}"
-          >
-            <div class="flex items-center gap-2 mb-1.5">
-              <span class="text-[14px] font-medium">{{ a.name }}</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded-full" :style="{ background: 'var(--panel-2)', color: 'var(--accent)' }">{{ a.stage }}</span>
-              <span v-if="a.webSearch" class="inline-flex items-center gap-0.5 text-[10px] text-[var(--text-faint)]"><Globe :size="10" /> 联网</span>
-              <span v-if="a.orchestrator" class="inline-flex items-center gap-0.5 text-[10px] text-[var(--text-faint)]"><Users :size="10" /> 分配</span>
-              <span v-if="a.libsRead.length" class="inline-flex items-center gap-0.5 text-[10px] text-[var(--text-faint)]"><LibraryBig :size="10" /> {{ a.libsRead.length }} 个库</span>
-              <div class="flex-1" />
-              <button class="tool-btn" title="编辑" @click="openEdit(a)"><Pencil :size="12" /></button>
-              <button class="tool-btn hover:text-[#e08a7a]" title="删除" @click="removeCustom(a)"><Trash2 :size="12" /></button>
+        <div v-else class="ink-card overflow-hidden">
+          <div v-for="a in customList" :key="a.id" class="agent-item" :class="{ 'is-on': a.enabled }">
+            <div class="flex items-start gap-3 px-4 py-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-body truncate">{{ a.name }}</span>
+                  <span class="ink-chip">{{ a.stage }}</span>
+                  <span v-if="a.webSearch" class="ink-chip"><Globe :size="10" /> 联网</span>
+                  <span v-if="a.orchestrator" class="ink-chip"><Users :size="10" /> 分配</span>
+                  <span v-if="a.libsRead.length" class="ink-chip"><LibraryBig :size="10" /> {{ a.libsRead.length }} 个库</span>
+                </div>
+                <div class="text-label text-[var(--text-dim)] mt-1">{{ a.desc }}</div>
+                <div class="text-meta text-[var(--text-faint)] mt-0.5">
+                  可读：{{ scopeText(a.readScope) }}{{ a.libsWrite ? ' · 可写入资源库' : '' }}
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <InkToggle :model-value="a.enabled" label="妙笔启用" @update:model-value="() => toggleEnabled(a)" />
+                <button class="ink-icon-btn is-muted" title="编辑" @click="openEdit(a)"><Pencil :size="13" /></button>
+                <button class="ink-icon-btn is-danger" title="删除" @click="removeCustom(a)"><Trash2 :size="13" /></button>
+              </div>
             </div>
-            <div class="text-[12px] text-[var(--text-dim)] mb-2">{{ a.desc }}</div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-3">可读：{{ scopeText(a.readScope) }}{{ a.libsWrite ? ' · 可写入资源库' : '' }}</div>
-            <div class="mt-2 pt-2 border-t border-[var(--border)]">
-              <button class="w-full flex items-center gap-1.5 text-left group cursor-pointer" title="点击展开：为这个智能体单独指定模型（不指定则跟随 设置 → AI 服务 → 智能体对话）" @click="toggleModelEdit(a.id)">
-                <Cpu :size="11" class="shrink-0" :style="{ color: (agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? 'var(--accent)' : 'var(--text-faint)' }" />
-                <span class="text-[10.5px] text-[var(--text-faint)] shrink-0">模型</span>
+            <div class="px-4 pb-3">
+              <button
+                class="w-full flex items-center gap-1.5 text-left group cursor-pointer"
+                title="点击展开：为这个智能体单独指定模型（不指定则跟随 设置 → AI 服务 → 智能体对话）"
+                @click="toggleModelEdit(a.id)"
+              >
+                <Cpu
+                  :size="11"
+                  class="shrink-0"
+                  :style="{ color: (agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? 'var(--accent)' : 'var(--text-faint)' }"
+                />
+                <span class="text-meta text-[var(--text-faint)] shrink-0">模型</span>
                 <span
-                  class="text-[11px] truncate flex-1 transition-colors"
+                  class="text-label truncate flex-1 transition-colors"
                   :class="(agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? '' : 'text-[var(--text-faint)]'"
                   :style="(agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? { color: 'var(--accent)' } : {}"
                 >{{ modelSummaryOf(a.id) }}</span>
-                <Pencil v-if="modelEditingId !== a.id" :size="10" class="shrink-0 opacity-0 group-hover:opacity-70 transition-opacity" style="color: var(--text-faint)" />
-              </button>
-              <div v-if="modelEditingId === a.id" class="mt-2 space-y-1.5">
-                <InkSelect class="w-full" :model-value="agentModelOf(a.id).providerId" :options="providerOptions" @update:model-value="(v: string | number) => setAgentProvider(a.id, v)" />
-                <InkCombo class="w-full" :model-value="agentModelOf(a.id).model" :options="modelsOf(agentModelOf(a.id).providerId)" placeholder="模型名（设置页「获取模型」后可下拉选择，也可手填）" @update:model-value="(v: string | number) => setAgentModelName(a.id, v)" />
-                <div class="flex justify-end">
-                  <button class="text-[10.5px] px-2 py-0.5 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors" @click="toggleModelEdit(a.id)">收起</button>
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-[11px]" :style="a.enabled ? { color: 'var(--accent)' } : { color: 'var(--text-faint)' }">
-                {{ a.enabled ? '已在妙笔启用' : '未启用' }}
-              </span>
-              <button
-                class="relative w-9 h-5 rounded-full transition-colors cursor-pointer"
-                :style="{ background: a.enabled ? 'var(--accent)' : 'var(--border)' }"
-                @click="toggleEnabled(a)"
-              >
-                <span
-                  class="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all"
-                  :style="{ left: a.enabled ? '18px' : '2px' }"
+                <Pencil
+                  v-if="modelEditingId !== a.id"
+                  :size="10"
+                  class="shrink-0 opacity-0 group-hover:opacity-70 transition-opacity"
+                  style="color: var(--text-faint)"
                 />
               </button>
+              <div v-if="modelEditingId === a.id" class="mt-2 grid gap-1.5 sm:grid-cols-2">
+                <InkSelect
+                  class="w-full"
+                  :model-value="agentModelOf(a.id).providerId"
+                  :options="providerOptions"
+                  @update:model-value="(v: string | number) => setAgentProvider(a.id, v)"
+                />
+                <InkCombo
+                  class="w-full"
+                  :model-value="agentModelOf(a.id).model"
+                  :options="modelsOf(agentModelOf(a.id).providerId)"
+                  placeholder="模型名（设置页「获取模型」后可下拉选择，也可手填）"
+                  @update:model-value="(v: string | number) => setAgentModelName(a.id, v)"
+                />
+                <div class="sm:col-span-2 flex justify-end">
+                  <button class="ink-chip-btn" @click="toggleModelEdit(a.id)">收起</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 内置智能体：联网开关 -->
+      <!-- 内置智能体 -->
       <div class="rise-in" style="animation-delay: 120ms">
-        <div class="flex items-center gap-2 mb-3">
-          <Sparkles :size="14" :style="{ color: 'var(--accent)' }" />
-          <span class="text-[13.5px] font-medium">内置智能体</span>
-          <span class="text-[11px] text-[var(--text-faint)]">点击卡片右下角可给它们安装联网搜索</span>
+        <div class="card-head">
+          <Sparkles :size="14" class="text-[var(--accent)]" />
+          <span class="card-head-title">内置智能体</span>
+          <span class="card-head-line" />
+          <span class="card-head-meta">可给它们安装联网搜索 / 分配模式 / 语义检索</span>
         </div>
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div v-for="a in AGENTS" :key="a.id" class="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4">
-            <div class="flex items-center gap-2 mb-1.5">
-              <span class="text-[14px] font-medium">{{ a.name }}</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded-full border border-[var(--border)] text-[var(--text-faint)]">{{ a.stage }}</span>
-              <span
-                v-if="a.panel"
-                class="text-[10px] px-1.5 py-0.5 rounded-full"
-                :style="{ background: 'var(--panel-2)', color: 'var(--accent)' }"
-                title="通常由对应资料面板一键调用，妙笔选择列表里默认折叠"
-              >资料区工具</span>
+        <div class="ink-card overflow-hidden">
+          <div v-for="a in AGENTS" :key="a.id" class="agent-item">
+            <div class="flex items-start gap-3 px-4 py-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-body truncate">{{ a.name }}</span>
+                  <span class="ink-chip">{{ a.stage }}</span>
+                  <span
+                    v-if="a.panel"
+                    class="ink-chip ink-chip-accent"
+                    title="通常由对应资料面板一键调用，妙笔选择列表里默认折叠"
+                  >资料区工具</span>
+                </div>
+                <div class="text-label text-[var(--text-dim)] mt-1">{{ a.desc }}</div>
+                <div class="text-meta text-[var(--text-faint)] mt-0.5">可读：{{ scopeText(a.readScope) }}</div>
+              </div>
+              <div class="flex items-center gap-1.5 flex-wrap justify-end shrink-0" style="max-width: 330px">
+                <button
+                  class="ink-chip-btn"
+                  :class="{ 'is-on': app.config?.agentWebSearch?.[a.id] }"
+                  :title="app.config?.agentWebSearch?.[a.id] ? '已安装联网搜索，点击移除' : '安装联网搜索'"
+                  @click="toggleBuiltinWeb(a.id)"
+                >
+                  <Globe :size="12" />
+                  {{ app.config?.agentWebSearch?.[a.id] ? '已装联网搜索' : '安装联网搜索' }}
+                </button>
+                <button
+                  class="ink-chip-btn"
+                  :class="{ 'is-on': app.config?.agentOrchestrator?.[a.id] }"
+                  :title="app.config?.agentOrchestrator?.[a.id] ? '分配模式已开启，点击关闭' : '开启分配模式：它可在妙笔里把工作分配给其他智能体，每次分配需你确认'"
+                  @click="toggleBuiltinOrch(a.id)"
+                >
+                  <Users :size="12" />
+                  {{ app.config?.agentOrchestrator?.[a.id] ? '已开分配模式' : '开启分配模式' }}
+                </button>
+                <button
+                  class="ink-chip-btn"
+                  :class="{ 'is-on': app.config?.agentVectorSearch?.[a.id] }"
+                  :title="app.config?.agentVectorSearch?.[a.id] ? '语义检索已开启，点击关闭' : '开启语义检索：对话前自动检索全书文稿与资源库注入相关片段（需先在 设置→AI服务→向量化检索 配置嵌入服务）'"
+                  @click="toggleBuiltinVector(a.id)"
+                >
+                  <FileSearch :size="12" />
+                  {{ app.config?.agentVectorSearch?.[a.id] ? '已开语义检索' : '开启语义检索' }}
+                </button>
+              </div>
             </div>
-            <div class="text-[12px] text-[var(--text-dim)] mb-2">{{ a.desc }}</div>
-            <div class="text-[11px] text-[var(--text-faint)] mb-3">可读：{{ scopeText(a.readScope) }}</div>
-            <div class="flex items-center gap-2 flex-wrap mb-1">
+            <div class="px-4 pb-3">
               <button
-                class="inline-flex items-center gap-1.5 text-[11.5px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-                :class="app.config?.agentWebSearch?.[a.id] ? 'bg-[var(--panel-2)]' : 'bg-[var(--bg-soft)] text-[var(--text-dim)] hover:text-[var(--text)]'"
-                :style="app.config?.agentWebSearch?.[a.id] ? { color: 'var(--accent)' } : {}"
-                :title="app.config?.agentWebSearch?.[a.id] ? '已安装联网搜索，点击移除' : '安装联网搜索'"
-                @click="toggleBuiltinWeb(a.id)"
+                class="w-full flex items-center gap-1.5 text-left group cursor-pointer"
+                title="点击展开：为这个智能体单独指定模型（不指定则跟随 设置 → AI 服务 → 智能体对话）"
+                @click="toggleModelEdit(a.id)"
               >
-                <Globe :size="12" />
-                {{ app.config?.agentWebSearch?.[a.id] ? '已装联网搜索' : '安装联网搜索' }}
-              </button>
-              <button
-                class="inline-flex items-center gap-1.5 text-[11.5px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-                :class="app.config?.agentOrchestrator?.[a.id] ? 'bg-[var(--panel-2)]' : 'bg-[var(--bg-soft)] text-[var(--text-dim)] hover:text-[var(--text)]'"
-                :style="app.config?.agentOrchestrator?.[a.id] ? { color: 'var(--accent)' } : {}"
-                :title="app.config?.agentOrchestrator?.[a.id] ? '分配模式已开启，点击关闭' : '开启分配模式：它可在妙笔里把工作分配给其他智能体，每次分配需你确认'"
-                @click="toggleBuiltinOrch(a.id)"
-              >
-                <Users :size="12" />
-                {{ app.config?.agentOrchestrator?.[a.id] ? '已开分配模式' : '开启分配模式' }}
-              </button>
-              <button
-                class="inline-flex items-center gap-1.5 text-[11.5px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-                :class="app.config?.agentVectorSearch?.[a.id] ? 'bg-[var(--panel-2)]' : 'bg-[var(--bg-soft)] text-[var(--text-dim)] hover:text-[var(--text)]'"
-                :style="app.config?.agentVectorSearch?.[a.id] ? { color: 'var(--accent)' } : {}"
-                :title="app.config?.agentVectorSearch?.[a.id] ? '语义检索已开启，点击关闭' : '开启语义检索：对话前自动检索全书文稿与资源库注入相关片段（需先在 设置→AI服务→向量化检索 配置嵌入服务）'"
-                @click="toggleBuiltinVector(a.id)"
-              >
-                <FileSearch :size="12" />
-                {{ app.config?.agentVectorSearch?.[a.id] ? '已开语义检索' : '开启语义检索' }}
-              </button>
-            </div>
-            <div class="mt-2 pt-2 border-t border-[var(--border)]">
-              <button class="w-full flex items-center gap-1.5 text-left group cursor-pointer" title="点击展开：为这个智能体单独指定模型（不指定则跟随 设置 → AI 服务 → 智能体对话）" @click="toggleModelEdit(a.id)">
-                <Cpu :size="11" class="shrink-0" :style="{ color: (agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? 'var(--accent)' : 'var(--text-faint)' }" />
-                <span class="text-[10.5px] text-[var(--text-faint)] shrink-0">模型</span>
+                <Cpu
+                  :size="11"
+                  class="shrink-0"
+                  :style="{ color: (agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? 'var(--accent)' : 'var(--text-faint)' }"
+                />
+                <span class="text-meta text-[var(--text-faint)] shrink-0">模型</span>
                 <span
-                  class="text-[11px] truncate flex-1 transition-colors"
+                  class="text-label truncate flex-1 transition-colors"
                   :class="(agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? '' : 'text-[var(--text-faint)]'"
                   :style="(agentModelOf(a.id).providerId || agentModelOf(a.id).model) ? { color: 'var(--accent)' } : {}"
                 >{{ modelSummaryOf(a.id) }}</span>
-                <Pencil v-if="modelEditingId !== a.id" :size="10" class="shrink-0 opacity-0 group-hover:opacity-70 transition-opacity" style="color: var(--text-faint)" />
+                <Pencil
+                  v-if="modelEditingId !== a.id"
+                  :size="10"
+                  class="shrink-0 opacity-0 group-hover:opacity-70 transition-opacity"
+                  style="color: var(--text-faint)"
+                />
               </button>
-              <div v-if="modelEditingId === a.id" class="mt-2 space-y-1.5">
-                <InkSelect class="w-full" :model-value="agentModelOf(a.id).providerId" :options="providerOptions" @update:model-value="(v: string | number) => setAgentProvider(a.id, v)" />
-                <InkCombo class="w-full" :model-value="agentModelOf(a.id).model" :options="modelsOf(agentModelOf(a.id).providerId)" placeholder="模型名（设置页「获取模型」后可下拉选择，也可手填）" @update:model-value="(v: string | number) => setAgentModelName(a.id, v)" />
-                <div class="flex justify-end">
-                  <button class="text-[10.5px] px-2 py-0.5 rounded-full text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer transition-colors" @click="toggleModelEdit(a.id)">收起</button>
+              <div v-if="modelEditingId === a.id" class="mt-2 grid gap-1.5 sm:grid-cols-2">
+                <InkSelect
+                  class="w-full"
+                  :model-value="agentModelOf(a.id).providerId"
+                  :options="providerOptions"
+                  @update:model-value="(v: string | number) => setAgentProvider(a.id, v)"
+                />
+                <InkCombo
+                  class="w-full"
+                  :model-value="agentModelOf(a.id).model"
+                  :options="modelsOf(agentModelOf(a.id).providerId)"
+                  placeholder="模型名（设置页「获取模型」后可下拉选择，也可手填）"
+                  @update:model-value="(v: string | number) => setAgentModelName(a.id, v)"
+                />
+                <div class="sm:col-span-2 flex justify-end">
+                  <button class="ink-chip-btn" @click="toggleModelEdit(a.id)">收起</button>
                 </div>
               </div>
             </div>
@@ -461,7 +506,7 @@ function scopeText(scope: string[]): string {
     <InkModal :open="modalOpen" :title="editingId ? '编辑自定义智能体' : 'AI 创建智能体'" wide @close="closeModal">
       <!-- 第一步：需求描述 -->
       <div v-if="step === 1" class="space-y-3">
-        <p class="text-[12.5px] text-[var(--text-dim)]">
+        <p class="text-label text-[var(--text-dim)]">
           描述这个智能体要做什么、擅长什么、什么时候用得上。AI 会生成完整的职责、提示词与权限建议，之后你可以逐项修改。
         </p>
         <textarea
@@ -469,8 +514,8 @@ function scopeText(scope: string[]): string {
           class="ink-textarea h-28"
           placeholder="例如：帮我考据古代背景的细节——服饰、饮食、官职、礼仪这些，我写到哪它查到哪，发现穿帮就指出来并给替换建议"
         />
-        <p v-if="draftErr" class="text-[12.5px] text-[#e08a7a]">{{ draftErr }}</p>
-        <p v-if="drafting" class="ink-dots text-[12px]" style="color: var(--accent)">
+        <p v-if="draftErr" class="text-label ink-text-danger">{{ draftErr }}</p>
+        <p v-if="drafting" class="ink-dots text-label" style="color: var(--accent)">
           正在起草，模型响应通常需要 10~40 秒，请保持窗口打开
         </p>
         <div class="flex items-center gap-2 justify-end">
@@ -486,28 +531,28 @@ function scopeText(scope: string[]): string {
       <!-- 第二步：预览 / 编辑表单 -->
       <div v-else class="space-y-4">
         <div class="grid grid-cols-2 gap-3">
-          <label class="text-[12px] text-[var(--text-dim)] block">
+          <label class="text-label text-[var(--text-dim)] block">
             名称
             <input v-model="form.name" class="ink-input mt-1" placeholder="智能体名" />
           </label>
-          <label class="text-[12px] text-[var(--text-dim)] block">
+          <label class="text-label text-[var(--text-dim)] block">
             分类标签
             <input v-model="form.stage" class="ink-input mt-1" placeholder="如：考据 / 文风" />
           </label>
         </div>
-        <label class="text-[12px] text-[var(--text-dim)] block">
+        <label class="text-label text-[var(--text-dim)] block">
           一句话职责
           <input v-model="form.desc" class="ink-input mt-1" placeholder="显示在妙笔选择列表里" />
         </label>
 
         <div>
-          <div class="text-[12px] text-[var(--text-dim)] mb-1.5">可读写目录（越少越聚焦）</div>
+          <div class="text-label text-[var(--text-dim)] mb-1.5">可读写目录（越少越聚焦）</div>
           <div class="flex gap-2 flex-wrap">
             <button
               v-for="s in SCOPE_ITEMS"
               :key="s"
-              class="text-[12px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-              :class="form.readScope.includes(s) ? 'bg-[var(--panel-2)]' : 'bg-[var(--bg-soft)] text-[var(--text-dim)]'"
+              class="ink-chip-btn"
+              :class="form.readScope.includes(s) ? 'is-on' : ''"
               :style="form.readScope.includes(s) ? { color: 'var(--accent)' } : {}"
               @click="form.readScope.includes(s) ? form.readScope.splice(form.readScope.indexOf(s), 1) : form.readScope.push(s)"
             >
@@ -518,13 +563,13 @@ function scopeText(scope: string[]): string {
         </div>
 
         <div>
-          <div class="text-[12px] text-[var(--text-dim)] mb-1.5">资源库权限（能引用哪些库的内容）</div>
+          <div class="text-label text-[var(--text-dim)] mb-1.5">资源库权限（能引用哪些库的内容）</div>
           <div class="flex gap-2 flex-wrap items-center">
             <button
               v-for="l in LIB_ITEMS"
               :key="l.key"
-              class="text-[12px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-              :class="form.libsRead.includes(l.key) ? 'bg-[var(--panel-2)]' : 'bg-[var(--bg-soft)] text-[var(--text-dim)]'"
+              class="ink-chip-btn"
+              :class="form.libsRead.includes(l.key) ? 'is-on' : ''"
               :style="form.libsRead.includes(l.key) ? { color: 'var(--accent)' } : {}"
               @click="form.libsRead.includes(l.key) ? form.libsRead.splice(form.libsRead.indexOf(l.key), 1) : form.libsRead.push(l.key)"
             >
@@ -536,13 +581,13 @@ function scopeText(scope: string[]): string {
         </div>
 
         <div>
-          <div class="text-[12px] text-[var(--text-dim)] mb-1.5">结构化板块（时间线 / 词典 / 伏笔 / 境界等，允许读写）</div>
+          <div class="text-label text-[var(--text-dim)] mb-1.5">结构化板块（时间线 / 词典 / 伏笔 / 境界等，允许读写）</div>
           <div class="flex gap-2 flex-wrap">
             <button
               v-for="sb in STRUCT_ITEMS"
               :key="sb.key"
-              class="text-[12px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-              :class="form.structBoards.includes(sb.key) ? 'bg-[var(--panel-2)]' : 'bg-[var(--bg-soft)] text-[var(--text-dim)]'"
+              class="ink-chip-btn"
+              :class="form.structBoards.includes(sb.key) ? 'is-on' : ''"
               :style="form.structBoards.includes(sb.key) ? { color: 'var(--accent)' } : {}"
               @click="form.structBoards.includes(sb.key) ? form.structBoards.splice(form.structBoards.indexOf(sb.key), 1) : form.structBoards.push(sb.key)"
             >
@@ -551,19 +596,19 @@ function scopeText(scope: string[]): string {
             <span class="text-[11px] text-[var(--text-faint)] self-center">不选的板块 AI 看不见也改不了（写操作仍走提案审阅）</span>
           </div>
           <template v-if="customPanelNames.length">
-            <div class="text-[12px] text-[var(--text-dim)] mt-2.5 mb-1.5">自定义面板（本书自建，允许读写）</div>
+            <div class="text-label text-[var(--text-dim)] mt-2.5 mb-1.5">自定义面板（本书自建，允许读写）</div>
             <div class="flex gap-2 flex-wrap">
               <button
                 v-for="n in customPanelNames"
                 :key="n"
-                class="text-[12px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-                :class="form.panelBoards.includes(n) ? 'bg-[var(--panel-2)]' : 'bg-[var(--bg-soft)] text-[var(--text-dim)]'"
+                class="ink-chip-btn"
+                :class="form.panelBoards.includes(n) ? 'is-on' : ''"
                 :style="form.panelBoards.includes(n) ? { color: 'var(--accent)' } : {}"
                 @click="togglePanelBoard(n)"
               >
                 {{ n }}
               </button>
-              <span class="text-[11px] text-[var(--text-faint)] self-center">不选的面板该智能体无法读写（通过 read_panel / write_panel 访问）</span>
+              <span class="text-meta text-[var(--text-faint)] self-center">不选的面板该智能体无法读写（通过 read_panel / write_panel 访问）</span>
             </div>
           </template>
         </div>
@@ -571,23 +616,23 @@ function scopeText(scope: string[]): string {
         <InkToggle v-model="form.webSearch" label="安装联网搜索（查现实资料 / 考据 / 市场）" />
         <div class="space-y-1">
           <InkToggle v-model="form.orchestrator" label="分配模式（可把工作分配给其他智能体执行）" />
-          <p class="text-[10.5px] text-[var(--text-faint)] leading-4">开启后它在妙笔里可作为主智能体指挥团队，每次分配都会先征求你同意。</p>
+          <p class="text-meta text-[var(--text-faint)] leading-4">开启后它在妙笔里可作为主智能体指挥团队，每次分配都会先征求你同意。</p>
         </div>
         <div class="space-y-1">
           <InkToggle v-model="form.vectorSearch" label="语义检索（对话前自动检索全书注入相关片段）" />
-          <p class="text-[10.5px] text-[var(--text-faint)] leading-4">需先在「设置 → AI 服务 → 向量化检索」配置嵌入服务；未配置时开启也不生效。</p>
+          <p class="text-meta text-[var(--text-faint)] leading-4">需先在「设置 → AI 服务 → 向量化检索」配置嵌入服务；未配置时开启也不生效。</p>
         </div>
 
         <div>
-          <div class="text-[12px] text-[var(--text-dim)] mb-1.5">欢迎语建议（最多 4 条，留空忽略）</div>
+          <div class="text-label text-[var(--text-dim)] mb-1.5">欢迎语建议（最多 4 条，留空忽略）</div>
           <div class="grid grid-cols-2 gap-2">
-            <input v-for="(_, i) in form.welcome" :key="i" v-model="form.welcome[i]" class="ink-input h-8 py-0 text-[12.5px]" placeholder="建议提问" />
+            <input v-for="(_, i) in form.welcome" :key="i" v-model="form.welcome[i]" class="ink-input h-8 py-0 text-label" placeholder="建议提问" />
           </div>
         </div>
 
-        <label class="text-[12px] text-[var(--text-dim)] block">
+        <label class="text-label text-[var(--text-dim)] block">
           系统提示词（职责 / 工作方法 / 输出风格）
-          <textarea v-model="form.prompt" class="ink-textarea mt-1 h-52 font-mono text-[12.5px]" />
+          <textarea v-model="form.prompt" class="ink-textarea mt-1 h-52 font-mono text-label" />
         </label>
 
         <div class="flex items-center gap-2 justify-end">
@@ -598,3 +643,33 @@ function scopeText(scope: string[]): string {
     </InkModal>
   </div>
 </template>
+
+<style scoped>
+/* 智能体列表：扁平分隔行；启用态用左缘强调标记（与全站选中态同一语言） */
+.agent-item {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  transition: background-color var(--dur-2);
+}
+.agent-item:last-child {
+  border-bottom: 0;
+}
+.agent-item:hover {
+  background: var(--bg-soft);
+}
+.agent-item.is-on {
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+.agent-item.is-on::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+}
+.agent-item.is-on:hover {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+</style>

@@ -217,85 +217,69 @@ async function toggleApproval() {
   <div class="relative">
     <!-- 引用与附件 chips -->
     <div class="flex flex-wrap gap-1.5 mb-2">
-      <span
-        v-for="(s, i) in conv.skillRefs"
-        :key="'s' + i"
-        class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-[var(--bg-soft)]"
-      >
-        <Sparkles :size="11" :style="{ color: 'var(--accent)' }" />{{ s.name }}
-        <button class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="conv.removeSkillRef(i)"><X :size="11" /></button>
+      <span v-for="(s, i) in conv.skillRefs" :key="'s' + i" class="ink-chip-btn">
+        <Sparkles :size="11" class="text-[var(--accent)]" />{{ s.name }}
+        <button class="text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="conv.removeSkillRef(i)"><X :size="11" /></button>
       </span>
       <!-- 圆桌模式 -->
       <button
-        class="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full cursor-pointer transition-colors"
-        :class="teamOpen || teamActive ? 'bg-[var(--panel-2)]' : 'bg-[var(--bg-soft)] text-[var(--text-dim)] hover:text-[var(--text)]'"
-        :style="teamOpen || teamActive ? { color: 'var(--accent)' } : {}"
+        class="ink-chip-btn"
+        :class="{ 'is-on': teamOpen || teamActive }"
         :title="teamActive ? `圆桌：${teamAgents.length} 位成员按顺序发言` : '圆桌模式：多位智能体按顺序接力讨论'"
         @click="teamOpen = !teamOpen"
       >
         <Users :size="11" />
         圆桌
-        <span v-if="teamActive" class="text-[10px] opacity-70">{{ teamAgents.length }} 位</span>
+        <span v-if="teamActive" class="text-micro opacity-70">{{ teamAgents.length }} 位</span>
       </button>
       <!-- @关联章节 -->
       <button
-        class="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full cursor-pointer transition-colors"
-        :class="chapterOpen || refChars ? 'bg-[var(--panel-2)]' : 'bg-[var(--bg-soft)] text-[var(--text-dim)] hover:text-[var(--text)]'"
-        :style="chapterOpen || refChars ? { color: 'var(--accent)' } : {}"
+        class="ink-chip-btn"
+        :class="{ 'is-on': chapterOpen || refChars }"
         @click="chapterOpen = !chapterOpen; pickMode = ''"
       >
         @关联章节
-        <span class="text-[10px] opacity-70">共 {{ refChars }} 字</span>
+        <span class="text-micro opacity-70">共 {{ refChars }} 字</span>
       </button>
-      <span
-        v-for="(m, i) in conv.materialRefs"
-        :key="'m' + i"
-        class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-[var(--bg-soft)]"
-      >
-        <BookOpen :size="11" :style="{ color: 'var(--accent)' }" />{{ m.name }}
-        <button class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="conv.removeMaterialRef(i)"><X :size="11" /></button>
+      <span v-for="(m, i) in conv.materialRefs" :key="'m' + i" class="ink-chip-btn">
+        <BookOpen :size="11" class="text-[var(--accent)]" />{{ m.name }}
+        <button class="text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="conv.removeMaterialRef(i)"><X :size="11" /></button>
       </span>
-      <span
-        v-for="(n, i) in conv.noteRefs"
-        :key="'n' + i"
-        class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-[var(--bg-soft)]"
-      >
-        <Lightbulb :size="11" :style="{ color: 'var(--accent)' }" />{{ n.name }}
-        <button class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="conv.removeNoteRef(i)"><X :size="11" /></button>
+      <span v-for="(n, i) in conv.noteRefs" :key="'n' + i" class="ink-chip-btn">
+        <Lightbulb :size="11" class="text-[var(--accent)]" />{{ n.name }}
+        <button class="text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="conv.removeNoteRef(i)"><X :size="11" /></button>
       </span>
-      <span
-        v-for="(a, i) in conv.attachments"
-        :key="'a' + i"
-        class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-[var(--bg-soft)]"
-      >
+      <span v-for="(a, i) in conv.attachments" :key="'a' + i" class="ink-chip-btn">
         <template v-if="a.image">
-          <ImageIcon :size="11" :style="{ color: 'var(--accent)' }" />{{ a.name }}
+          <ImageIcon :size="11" class="text-[var(--accent)]" />{{ a.name }}
         </template>
         <template v-else>
           <Paperclip :size="11" />{{ a.name }} · {{ a.text.length }} 字
         </template>
-        <button class="text-[var(--text-faint)] hover:text-[#e08a7a] cursor-pointer" @click="conv.removeAttachment(i)"><X :size="11" /></button>
+        <button class="text-[var(--text-faint)] hover:text-[var(--danger)] cursor-pointer" @click="conv.removeAttachment(i)"><X :size="11" /></button>
       </span>
-      <span v-if="hasImages && !providerVision" class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full text-[#e08a7a]" title="当前服务商未开启「支持图片理解」，请到 设置 → AI 服务 开启">
+      <span
+        v-if="hasImages && !providerVision"
+        class="ink-chip ink-soft-danger ink-text-danger"
+        style="cursor: default"
+        title="当前服务商未开启「支持图片理解」，请到 设置 → AI 服务 开启"
+      >
         ⚠ 当前模型未开启识图
       </span>
     </div>
 
     <!-- 章节引用选择器 -->
-    <div
-      v-if="chapterOpen"
-      class="absolute bottom-full left-0 w-[420px] max-w-[90vw] mb-2 rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)] overflow-hidden z-40"
-    >
+    <div v-if="chapterOpen" class="pop absolute bottom-full left-0 w-[420px] max-w-[90vw] mb-2 overflow-hidden z-40">
       <div class="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)]">
         <Search :size="13" class="text-[var(--text-faint)]" />
-        <input v-model="pickQuery" class="flex-1 bg-transparent outline-none text-[12px]" placeholder="搜索章节…" autofocus />
-        <button class="text-[11px] text-[var(--text-faint)] hover:text-[var(--text)] cursor-pointer" @click="chapterOpen = false">关闭</button>
+        <input v-model="pickQuery" class="flex-1 bg-transparent outline-none text-label" placeholder="搜索章节…" autofocus />
+        <button class="text-meta text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer" @click="chapterOpen = false">关闭</button>
       </div>
       <div class="max-h-72 overflow-y-auto">
         <div v-for="c in chapters" :key="c.path" class="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] last:border-b-0">
-          <span class="text-[12.5px] flex-1 truncate">{{ c.name }}</span>
+          <span class="text-label flex-1 truncate">{{ c.name }}</span>
           <button
-            class="text-[11.5px] px-2.5 py-0.5 rounded-full cursor-pointer"
+            class="text-meta px-2.5 py-0.5 rounded-full cursor-pointer"
             :class="chapterRefed(c.path) ? 'text-[var(--text-faint)] cursor-default' : 'hover:bg-[var(--hover)]'"
             :style="chapterRefed(c.path) ? {} : { color: 'var(--accent)' }"
             :disabled="chapterRefed(c.path)"
@@ -304,23 +288,20 @@ async function toggleApproval() {
             {{ chapterRefed(c.path) ? '已引用' : '引用' }}
           </button>
         </div>
-        <div v-if="!chapters.length" class="px-3 py-6 text-center text-[11.5px] text-[var(--text-faint)]">
+        <div v-if="!chapters.length" class="px-3 py-6 text-center text-label text-[var(--text-faint)]">
           {{ lib.current ? '这部作品还没有章节' : '尚未打开作品' }}
         </div>
       </div>
-      <div class="px-3 py-1.5 border-t border-[var(--border)] text-[10px] text-[var(--text-faint)]">
+      <div class="px-3 py-1.5 border-t border-[var(--border)] text-micro text-[var(--text-faint)]">
         引用的章节会随每次提问一并交给智能体，便于它对照原文
       </div>
     </div>
 
     <!-- 圆桌成员选择器 -->
-    <div
-      v-if="teamOpen"
-      class="absolute bottom-full left-0 w-[420px] max-w-[90vw] mb-2 rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)] overflow-hidden z-40"
-    >
+    <div v-if="teamOpen" class="pop absolute bottom-full left-0 w-[420px] max-w-[90vw] mb-2 overflow-hidden z-40">
       <div class="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
-        <span class="text-[12px] font-medium">圆桌模式</span>
-        <button class="text-[11px] text-[var(--text-faint)] hover:text-[var(--text)] cursor-pointer" @click="teamOpen = false">关闭</button>
+        <span class="text-label font-medium">圆桌模式</span>
+        <button class="text-meta text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer" @click="teamOpen = false">关闭</button>
       </div>
       <div class="max-h-64 overflow-y-auto">
         <button
@@ -331,25 +312,25 @@ async function toggleApproval() {
         >
           <span
             v-if="teamAgents.includes(a.id)"
-            class="w-5 h-5 rounded-full text-[10px] flex items-center justify-center shrink-0 text-[#1b1712] font-medium"
+            class="w-5 h-5 rounded-full text-micro flex items-center justify-center shrink-0 text-[var(--accent-ink)] font-medium"
             :style="{ background: 'var(--accent)' }"
           >
             {{ teamAgents.indexOf(a.id) + 1 }}
           </span>
           <span v-else class="w-5 h-5 rounded-full border border-[var(--border)] shrink-0" />
           <span class="flex-1 min-w-0">
-            <span class="text-[12.5px]" :style="teamAgents.includes(a.id) ? { color: 'var(--accent)' } : {}">{{ a.name }}</span>
-            <span class="text-[11px] text-[var(--text-faint)] ml-2">{{ a.desc }}</span>
+            <span class="text-label" :style="teamAgents.includes(a.id) ? { color: 'var(--accent)' } : {}">{{ a.name }}</span>
+            <span class="text-meta text-[var(--text-faint)] ml-2">{{ a.desc }}</span>
           </span>
         </button>
       </div>
       <div class="px-3 py-2 border-t border-[var(--border)] flex items-center justify-between gap-2">
-        <span class="text-[10px] text-[var(--text-faint)] leading-4">
+        <span class="text-micro text-[var(--text-faint)] leading-4">
           {{ teamActive ? '发送后成员按编号顺序接力发言，后者能看到前面的发言' : '至少选择 2 位成员；点击顺序即发言顺序' }}
         </span>
         <button
           v-if="teamAgents.length"
-          class="text-[11px] text-[var(--text-dim)] hover:text-[#e08a7a] cursor-pointer shrink-0"
+          class="text-meta text-[var(--text-dim)] hover:text-[var(--danger)] cursor-pointer shrink-0"
           @click="conv.clearTeam()"
         >
           散团
@@ -358,19 +339,16 @@ async function toggleApproval() {
     </div>
 
     <!-- 选择器 -->
-    <div
-      v-if="pickMode"
-      class="absolute bottom-full left-0 right-0 mb-2 rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)] overflow-hidden z-40"
-    >
+    <div v-if="pickMode" class="pop absolute bottom-full left-0 right-0 mb-2 overflow-hidden z-40">
       <div class="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)]">
         <Search :size="13" class="text-[var(--text-faint)]" />
         <input
           v-model="pickQuery"
-          class="flex-1 bg-transparent outline-none text-[12px]"
+          class="flex-1 bg-transparent outline-none text-label"
           :placeholder="pickMode === 'skill' ? '搜索技能（黄金三章 / 去 AI 味 / 弧光…）' : pickMode === 'note' ? '搜索灵感便签' : '搜索素材'"
           autofocus
         />
-        <button class="text-[11px] text-[var(--text-faint)] hover:text-[var(--text)] cursor-pointer" @click="pickMode = ''">关闭</button>
+        <button class="text-meta text-[var(--text-faint)] hover:text-[var(--accent)] cursor-pointer" @click="pickMode = ''">关闭</button>
       </div>
       <div class="max-h-60 overflow-y-auto">
         <button
@@ -379,46 +357,41 @@ async function toggleApproval() {
           class="w-full text-left px-3 py-2 hover:bg-[var(--hover)] cursor-pointer border-b border-[var(--border)] last:border-b-0"
           @click="choosePick(it.entry)"
         >
-          <div class="text-[12.5px]">{{ it.entry.name }}</div>
-          <div class="text-[11px] text-[var(--text-faint)] truncate">{{ it.entry.group }} · {{ it.entry.summary || '无摘要' }}</div>
+          <div class="text-label">{{ it.entry.name }}</div>
+          <div class="text-meta text-[var(--text-faint)] truncate">{{ it.entry.group }} · {{ it.entry.summary || '无摘要' }}</div>
         </button>
-        <div v-if="!pickItems.length" class="px-3 py-6 text-center text-[12px] text-[var(--text-faint)]">
+        <div v-if="!pickItems.length" class="px-3 py-6 text-center text-label text-[var(--text-faint)]">
           暂无条目，可到「资源库」新建
         </div>
       </div>
     </div>
 
     <!-- 模型参数浮层 -->
-    <div
-      v-if="paramsOpen"
-      class="absolute bottom-full right-0 mb-2 w-80 rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)] p-3.5 space-y-3.5 z-40"
-    >
-      <div class="text-[11px] text-[var(--text-faint)]">
+    <div v-if="paramsOpen" class="pop absolute bottom-full right-0 mb-2 w-80 p-3.5 space-y-3.5 z-40">
+      <div class="text-meta text-[var(--text-faint)]">
         当前模型：<span style="color: var(--accent)">{{ providerName }} · {{ modelName }}</span>
       </div>
       <div>
-        <div class="text-[11px] text-[var(--text-dim)] mb-1.5">思考程度</div>
+        <div class="text-meta text-[var(--text-dim)] mb-1.5">思考程度</div>
         <InkSegmented v-model="thinkingLevel" :options="THINKING_LEVELS" />
       </div>
       <div>
-        <div class="text-[11px] text-[var(--text-dim)] mb-1.5">创意程度</div>
+        <div class="text-meta text-[var(--text-dim)] mb-1.5">创意程度</div>
         <InkSegmented v-model="creativeLevel" :options="CREATIVE_LEVELS" />
       </div>
       <div class="flex justify-between items-center pt-1">
-        <button class="text-[11px] underline text-[var(--text-faint)] cursor-pointer" @click="app.go('settings')">去设置任务模型</button>
-        <button class="text-[11px] px-3 py-1 rounded-lg cursor-pointer text-[#1b1712]" :style="{ background: 'var(--accent)' }" @click="saveParams(); paramsOpen = false">
-          保存
-        </button>
+        <button class="text-meta underline text-[var(--text-faint)] cursor-pointer hover:text-[var(--accent)]" @click="app.go('settings')">去设置任务模型</button>
+        <button class="ink-chip-btn is-on" @click="saveParams(); paramsOpen = false">保存</button>
       </div>
     </div>
 
     <!-- 输入区 -->
-    <div class="rounded-xl border border-[var(--border)] bg-[var(--panel)] focus-within:border-[var(--accent)] transition-colors">
+    <div class="rounded-[var(--r-md)] border border-[var(--border)] bg-[var(--panel)] focus-within:border-[var(--accent)] transition-colors">
       <textarea
         ref="area"
         v-model="text"
         rows="1"
-        class="w-full bg-transparent outline-none resize-none px-3.5 pt-3 text-[13.5px] leading-[1.8] max-h-[220px]"
+        class="w-full bg-transparent outline-none resize-none px-3.5 pt-3 text-body leading-[1.8] max-h-[220px]"
         :placeholder="
           teamActive
             ? `圆桌就绪：${teamAgents.length} 位成员将按顺序发言…`
@@ -428,26 +401,25 @@ async function toggleApproval() {
         @keydown="onKeydown"
       />
       <div class="flex items-center gap-1 px-2.5 pb-2 pt-1.5">
-        <button class="p-1.5 rounded-lg text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer" title="附加文本文件或图片（多模态模型可识图）" @click="fileInput?.click()">
+        <button class="ink-icon-btn" title="附加文本文件或图片（多模态模型可识图）" @click="fileInput?.click()">
           <Paperclip :size="15" />
         </button>
-        <button class="p-1.5 rounded-lg text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer" title="引用技能" @click="pickMode = pickMode === 'skill' ? '' : 'skill'; pickQuery = ''">
+        <button class="ink-icon-btn" title="引用技能" @click="pickMode = pickMode === 'skill' ? '' : 'skill'; pickQuery = ''">
           <Sparkles :size="15" />
         </button>
-        <button class="p-1.5 rounded-lg text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer" title="引用素材" @click="pickMode = pickMode === 'material' ? '' : 'material'; pickQuery = ''">
+        <button class="ink-icon-btn" title="引用素材" @click="pickMode = pickMode === 'material' ? '' : 'material'; pickQuery = ''">
           <BookOpen :size="15" />
         </button>
-        <button class="p-1.5 rounded-lg text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer" title="引用灵感便签" @click="pickMode = pickMode === 'note' ? '' : 'note'; pickQuery = ''">
+        <button class="ink-icon-btn" title="引用灵感便签" @click="pickMode = pickMode === 'note' ? '' : 'note'; pickQuery = ''">
           <Lightbulb :size="15" />
         </button>
-        <button class="p-1.5 rounded-lg text-[var(--text-dim)] hover:text-[var(--accent)] hover:bg-[var(--hover)] cursor-pointer" title="模型参数" @click="paramsOpen = !paramsOpen">
+        <button class="ink-icon-btn" title="模型参数" @click="paramsOpen = !paramsOpen">
           <Settings2 :size="15" />
         </button>
 
         <button
-          class="ml-1 text-[11px] px-2.5 py-1 rounded-full cursor-pointer transition-colors"
-          :class="conv.approvalMode === 'auto-approve' ? 'bg-[var(--panel-2)] font-medium' : 'text-[var(--text-dim)] hover:text-[var(--text)]'"
-          :style="conv.approvalMode === 'auto-approve' ? { color: 'var(--accent)' } : {}"
+          class="ink-chip-btn ml-1"
+          :class="{ 'is-on': conv.approvalMode === 'auto-approve' }"
           :title="conv.approvalMode === 'auto-approve' ? '智能体的改动静默写入文稿' : '智能体只给差异，你点接受才写入'"
           @click="toggleApproval"
         >
@@ -457,8 +429,17 @@ async function toggleApproval() {
         <div class="flex-1" />
 
         <button
-          class="mr-2 text-[11px] cursor-pointer px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-colors"
-          :class="usagePercent >= 80 ? 'text-[#e08a7a] bg-[var(--panel-2)]' : 'text-[var(--text-faint)] hover:text-[var(--text-dim)] hover:bg-[var(--hover)]'"
+          class="ink-chip-btn mr-2 tnum"
+          :class="{ 'is-on': usagePercent !== null && usagePercent < 80 }"
+          :style="
+            usagePercent >= 80
+              ? {
+                  color: 'var(--danger)',
+                  borderColor: 'color-mix(in srgb, var(--danger) 55%, transparent)',
+                  background: 'color-mix(in srgb, var(--danger) 9%, transparent)'
+                }
+              : {}
+          "
           :title="
             usagePercent !== null
               ? `本会话估算占用模型上下文窗口 ${usagePercent}%；达到 80% 时，下一轮发送会自动压缩早期对话`
@@ -468,34 +449,28 @@ async function toggleApproval() {
         >
           上下文 ≈{{ contextTokens }} tok
           <span v-if="usagePercent !== null" class="inline-block w-12 h-1 rounded-full overflow-hidden bg-[var(--border)] align-middle">
-            <span class="block h-full rounded-full" :style="{ width: Math.min(usagePercent, 100) + '%', background: usagePercent >= 80 ? '#e08a7a' : 'var(--accent)' }" />
+            <span
+              class="block h-full w-full rounded-full origin-left"
+              :style="{
+                transform: `scaleX(${Math.min(usagePercent, 100) / 100})`,
+                background: usagePercent >= 80 ? 'var(--danger)' : 'var(--accent)',
+                transition: 'transform var(--dur-3) var(--ease-out)'
+              }"
+            />
           </span>
           <span v-if="usagePercent !== null">{{ usagePercent }}%</span>
         </button>
 
-        <button
-          v-if="conv.running"
-          class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer border border-[var(--border)] text-[var(--text-dim)] hover:text-[#e08a7a]"
-          title="停止生成"
-          @click="conv.stop()"
-        >
+        <button v-if="conv.running" class="ink-icon-btn is-danger ml-1" title="停止生成" @click="conv.stop()">
           <Square :size="13" />
         </button>
-        <button
-          v-else
-          class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-[filter,box-shadow] hover:brightness-110"
-          :class="canSend ? '' : 'opacity-35 cursor-not-allowed'"
-          :style="{ background: 'var(--accent)', color: '#1b1712', boxShadow: canSend ? '0 2px 10px color-mix(in srgb, var(--accent) 25%, transparent)' : 'none' }"
-          :disabled="!canSend"
-          title="发送（Enter）"
-          @click="send"
-        >
+        <button v-else class="ink-icon-btn-solid ml-1" :disabled="!canSend" title="发送（Enter）" @click="send">
           <ArrowUp :size="15" />
         </button>
       </div>
     </div>
 
-    <div v-if="ctxOpen" class="mt-1.5 text-[11px] text-[var(--text-faint)] leading-5">
+    <div v-if="ctxOpen" class="mt-1.5 text-meta text-[var(--text-faint)] leading-5">
       当前会话累计约 {{ contextChars }} 字（≈ {{ contextTokens }} tokens）。引用技能与素材会在每次发送时注入系统提示词。
       <template v-if="usagePercent === null">
         尚未设置模型上下文窗口，<button class="underline cursor-pointer hover:text-[var(--accent)]" @click="app.go('settings')">去设置 → AI 服务填写</button>（或重新点「获取模型」自动识别），到 80% 时下一轮发送会自动压缩早期对话。
@@ -506,3 +481,13 @@ async function toggleApproval() {
     <input ref="fileInput" type="file" accept=".md,.txt,.markdown,image/*" multiple class="hidden" @change="onFiles" />
   </div>
 </template>
+
+<style scoped>
+/* 浮层（章节引用 / 圆桌 / 素材选择 / 模型参数）：统一纸感面板 + 二级阴影 */
+.pop {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  box-shadow: var(--sh-2);
+}
+</style>

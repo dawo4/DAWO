@@ -179,30 +179,31 @@ onActivated(() => {
 
 <template>
   <div class="h-full overflow-y-auto">
-    <div class="max-w-[1120px] mx-auto px-8 py-8 space-y-8">
-      <!-- 标题 -->
-      <div class="rise-in flex items-end justify-between gap-4">
-        <div>
+    <div class="page">
+      <!-- 页头 -->
+      <div class="rise-in page-head items-end">
+        <div class="min-w-0">
           <div class="flex items-center gap-2.5 mb-2">
             <span class="h-px w-7" style="background: var(--accent)" />
-            <span class="text-[10.5px] tracking-[0.22em] text-[var(--text-faint)]">数据</span>
+            <span class="section-title tracking-[0.14em]">数据</span>
           </div>
-          <h1 class="font-serif-ink text-[26px] leading-tight">创作数据</h1>
+          <h1 class="font-serif-ink text-display leading-tight mb-1.5">创作数据</h1>
+          <p class="page-sub">写作热力图 · AI 成本 · 每日明细</p>
         </div>
       </div>
 
       <!-- 写作热力图 -->
-      <div class="rise-in rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5" style="box-shadow: var(--shadow); animation-delay: 60ms">
-        <div class="flex items-center gap-1.5 mb-4">
-          <CalendarDays :size="13" :style="{ color: 'var(--accent)' }" />
-          <span class="text-[13px] font-medium tracking-wide">写作热力图</span>
-          <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
-          <span class="text-[10.5px] text-[var(--text-faint)]">近一年 · 合计 {{ yearTotal.toLocaleString() }} 字 · {{ activeDays }} 天动笔</span>
+      <div class="rise-in ink-card p-5" style="box-shadow: var(--sh-1); animation-delay: 60ms">
+        <div class="card-head">
+          <CalendarDays :size="13" class="text-[var(--accent)]" />
+          <span class="card-head-title">写作热力图</span>
+          <span class="card-head-line" />
+          <span class="card-head-meta">近一年 · 合计 <b class="tnum">{{ yearTotal.toLocaleString() }}</b> 字 · {{ activeDays }} 天动笔</span>
         </div>
         <div class="overflow-x-auto pb-1">
           <div class="inline-flex flex-col gap-[3px] min-w-full">
             <!-- 月份标签行 -->
-            <div class="flex gap-[3px] text-[9px] text-[var(--text-faint)]" style="height: 14px">
+            <div class="flex gap-[3px] text-micro text-[var(--text-faint)]" style="height: 14px">
               <template v-for="(m, i) in monthLabels" :key="i">
                 <span :style="{ marginLeft: i === 0 ? `${m.col * 14}px` : `${(m.col - (monthLabels[i - 1]?.col ?? 0) - 1) * 14}px` }">{{ m.text }}</span>
               </template>
@@ -218,7 +219,7 @@ onActivated(() => {
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-1.5 mt-3 text-[10px] text-[var(--text-faint)] justify-end">
+        <div class="flex items-center gap-1.5 mt-3 text-meta text-[var(--text-faint)] justify-end">
           <span>少</span>
           <span class="w-[11px] h-[11px] rounded-[2px]" style="background: var(--bg-soft)" />
           <span class="w-[11px] h-[11px] rounded-[2px]" style="background: color-mix(in srgb, var(--accent) 32%, var(--bg-soft))" />
@@ -229,15 +230,15 @@ onActivated(() => {
       </div>
 
       <!-- AI 成本统计 -->
-      <div class="rise-in rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5" style="box-shadow: var(--shadow); animation-delay: 120ms">
-        <div class="flex items-center gap-1.5 mb-4">
-          <Coins :size="13" :style="{ color: 'var(--accent)' }" />
-          <span class="text-[13px] font-medium tracking-wide">AI 成本统计</span>
-          <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
-          <span class="text-[10.5px] text-[var(--text-faint)]">基于最近 2000 条调用记录 · 合计 {{ fmtCost(totalCost) }} · {{ fmtNum(totalTokens) }} tokens</span>
+      <div class="rise-in ink-card p-5" style="box-shadow: var(--sh-1); animation-delay: 120ms">
+        <div class="card-head">
+          <Coins :size="13" class="text-[var(--accent)]" />
+          <span class="card-head-title">AI 成本统计</span>
+          <span class="card-head-line" />
+          <span class="card-head-meta">最近 2000 条记录 · 合计 <b class="tnum">{{ fmtCost(totalCost) }}</b> · <b class="tnum">{{ fmtNum(totalTokens) }}</b> tokens</span>
         </div>
 
-        <div class="flex items-start gap-2 mb-3 text-[11px] text-[var(--text-faint)] leading-5">
+        <div class="flex items-start gap-2 mb-3 text-meta text-[var(--text-faint)] leading-5">
           <Info :size="12" class="shrink-0 mt-0.5" />
           <span>
             单价为「元 / 百万 token」混合口径（输入输出合并估算，与各厂商分档计费有出入，仅供量级参考）。
@@ -245,25 +246,25 @@ onActivated(() => {
           </span>
         </div>
 
-        <div v-if="!byModel.length" class="py-6 text-center text-[12px] text-[var(--text-faint)] rounded-lg border border-dashed border-[var(--border)]">
+        <div v-if="!byModel.length" class="py-6 text-center text-label text-[var(--text-faint)] rounded-[var(--r-sm)] border border-dashed border-[var(--border)]">
           还没有 AI 调用记录
         </div>
         <div v-else class="space-y-1.5">
-          <div v-for="m in byModel" :key="m.model" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-[var(--bg-soft)]">
-            <span class="text-[12px] flex-1 min-w-0 truncate" :title="m.model">{{ m.model }}</span>
-            <span class="text-[11px] text-[var(--text-faint)] tabular-nums w-16 text-right">{{ m.calls }} 次</span>
-            <span class="text-[11px] text-[var(--text-faint)] tabular-nums w-20 text-right">{{ fmtNum(m.tokens) }} tok</span>
-            <span class="text-[12px] tabular-nums w-24 text-right" style="color: var(--accent)">{{ fmtCost(m.cost) }}</span>
-            <span class="text-[10px] text-[var(--text-faint)] w-20 text-right">¥{{ priceOf(m.model) }}/M</span>
+          <div v-for="m in byModel" :key="m.model" class="flex items-center gap-3 px-3 py-2 rounded-[var(--r-sm)] bg-[var(--bg-soft)]">
+            <span class="text-label flex-1 min-w-0 truncate" :title="m.model">{{ m.model }}</span>
+            <span class="text-meta tnum text-[var(--text-faint)] w-16 text-right">{{ m.calls }} 次</span>
+            <span class="text-meta tnum text-[var(--text-faint)] w-20 text-right">{{ fmtNum(m.tokens) }} tok</span>
+            <span class="text-label tnum w-24 text-right" style="color: var(--accent)">{{ fmtCost(m.cost) }}</span>
+            <span class="text-micro tnum text-[var(--text-faint)] w-20 text-right">¥{{ priceOf(m.model) }}/M</span>
             <input
               v-model="newPrice[m.model]"
-              class="ink-input w-20 py-0.5 text-[11px] text-center tabular-nums"
+              class="ink-input w-20 py-0.5 text-meta text-center tnum"
               placeholder="单价"
               :title="`填 ${m.model} 的单价（元/百万 token），回车或点保存`"
               @keydown.enter="savePrice(m.model)"
             />
             <button
-              class="text-[11px] px-2 py-0.5 rounded-md cursor-pointer border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors shrink-0"
+              class="text-meta px-2 py-0.5 rounded-[var(--r-xs)] cursor-pointer border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--accent)] hover:border-[var(--accent-line)] transition-colors shrink-0"
               @click="savePrice(m.model)"
             >
               存
@@ -273,13 +274,13 @@ onActivated(() => {
       </div>
 
       <!-- 每日明细（30 天） -->
-      <div class="rise-in rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5" style="box-shadow: var(--shadow); animation-delay: 180ms">
-        <div class="flex items-center gap-1.5 mb-4">
-          <span class="text-[13px] font-medium tracking-wide">最近 30 天明细</span>
-          <span class="h-px flex-1 ml-1.5" style="background: linear-gradient(to right, var(--border), transparent)" />
+      <div class="rise-in ink-card p-5" style="box-shadow: var(--sh-1); animation-delay: 180ms">
+        <div class="card-head">
+          <span class="card-head-title">最近 30 天明细</span>
+          <span class="card-head-line" />
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full text-[12px] tabular-nums">
+          <table class="w-full text-label tnum">
             <thead>
               <tr class="text-[var(--text-faint)] text-left">
                 <th class="py-1.5 pr-4 font-normal">日期</th>
@@ -299,7 +300,15 @@ onActivated(() => {
                 <td class="py-1.5 pr-4 text-right">
                   <div class="flex items-center gap-2">
                     <div class="flex-1 h-[4px] rounded-full overflow-hidden" style="background: var(--bg-soft)">
-                      <div class="h-full rounded-full" :style="{ width: (d.tokens / maxDayTokens) * 100 + '%', background: 'var(--accent)', opacity: 0.6 }" />
+                      <div
+                        class="h-full w-full rounded-full"
+                        :style="{
+                          transform: `scaleX(${d.tokens / maxDayTokens})`,
+                          transformOrigin: 'left',
+                          background: 'var(--accent)',
+                          opacity: 0.6
+                        }"
+                      />
                     </div>
                     <span class="w-12 text-right" :class="d.tokens ? '' : 'text-[var(--text-faint)]'">{{ fmtNum(d.tokens) }}</span>
                   </div>

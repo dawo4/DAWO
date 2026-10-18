@@ -388,6 +388,111 @@ body {
     background: var(--accent-soft);
     color: var(--accent);
   }
+  /* 可点击的小标签（筛选 / 多选 / 权限开关）：静置描边，开启走强调色 */
+  .ink-chip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    font-size: var(--fs-meta);
+    color: var(--text-dim);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color var(--dur-2), background-color var(--dur-2), border-color var(--dur-2);
+  }
+  .ink-chip-btn:hover {
+    color: var(--text);
+    border-color: var(--border-strong);
+    background: var(--hover);
+  }
+  .ink-chip-btn.is-on {
+    color: var(--accent);
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
+  }
+  .ink-chip-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  /* 方形图标按钮（工具栏 / 行内操作） */
+  .ink-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: var(--r-sm);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: color var(--dur-2), background-color var(--dur-2);
+  }
+  .ink-icon-btn:hover {
+    color: var(--accent);
+    background: var(--hover);
+  }
+  .ink-icon-btn.is-on {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .ink-icon-btn.is-danger:hover {
+    color: var(--danger);
+  }
+  .ink-icon-btn.is-muted {
+    color: var(--text-faint);
+  }
+  /* 强调色实底图标按钮（发送等主操作） */
+  .ink-icon-btn-solid {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: var(--r-sm);
+    background: var(--accent);
+    color: var(--accent-ink);
+    box-shadow: var(--sh-1);
+    cursor: pointer;
+    transition: filter var(--dur-2), opacity var(--dur-2);
+  }
+  .ink-icon-btn-solid:not(:disabled):hover {
+    filter: brightness(1.06);
+  }
+  .ink-icon-btn-solid:disabled {
+    opacity: 0.35;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+  /* 卡片头：图标 + 衬线标题 + 渐隐 hairline + 右侧元信息 */
+  .card-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0.875rem;
+  }
+  .card-head-title {
+    font-family: var(--font-serif);
+    font-size: var(--fs-heading);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .card-head-line {
+    flex: 1;
+    height: 1px;
+    margin-left: 6px;
+    background: linear-gradient(to right, var(--border), transparent);
+  }
+  .card-head-meta {
+    font-size: var(--fs-meta);
+    color: var(--text-faint);
+    white-space: nowrap;
+  }
   /* 分隔线：极细 hairline */
   .ink-hairline {
     height: 1px;
