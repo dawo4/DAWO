@@ -8,17 +8,21 @@ import InkSelect from '../ui/InkSelect.vue'
 import InkCombo from '../ui/InkCombo.vue'
 import InkToggle from '../ui/InkToggle.vue'
 import InkSegmented from '../ui/InkSegmented.vue'
+import SponsorModal from '../ui/SponsorModal.vue'
 import { onHeaderAction } from '../ui/headerActions'
 import { inkPrompt, inkConfirm } from '../ui/inkPrompt'
 import { renderMarkdown } from '../ui/markdown'
 import { aiRun } from '../ai'
 import { useLibraryStore } from '../store/library'
 import { CREATIVE_LEVELS, THINKING_LEVELS, levelToTemp, tempToLevel } from '../ui/writingScale'
-import { Plus, Trash2, FolderOpen, RefreshCw, Search, Palette, Database, Bot, FileText, History, HardDrive, ArchiveRestore, CloudUpload, ShieldCheck, LoaderCircle, CircleCheck, CircleX, ImagePlus, Globe, Eye, Brain, Github, Radar, Info } from 'lucide-vue-next'
+import { Plus, Trash2, FolderOpen, RefreshCw, Search, Palette, Database, Bot, FileText, History, HardDrive, ArchiveRestore, CloudUpload, ShieldCheck, LoaderCircle, CircleCheck, CircleX, ImagePlus, Globe, Eye, Brain, Github, Radar, Info, Heart } from 'lucide-vue-next'
 import dawoLogo from '../assets/dawo-logo.png'
 
 const logoUrl = dawoLogo
 const appVersion = __APP_VERSION__
+
+/** 赞助弹窗开关（入口在 设置 → 关于） */
+const sponsorOpen = ref(false)
 
 const app = useAppStore()
 const lib = useLibraryStore()
@@ -1821,6 +1825,20 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <!-- 赞助支持：无广告、无付费墙，纯自愿 -->
+          <div class="ink-card p-5 settings-stack-sm">
+            <div class="card-head is-flush">
+              <span class="card-head-title">赞助支持</span>
+              <span class="card-head-line" />
+              <span class="card-head-meta">完全自愿</span>
+            </div>
+            <p class="settings-hint">DAWO 没有广告，也没有付费墙。如果它对你的写作有帮助，欢迎请作者喝杯咖啡。</p>
+            <div class="settings-row">
+              <InkButton @click="sponsorOpen = true"><Heart :size="13" /> 赞助支持</InkButton>
+              <span class="settings-hint">微信 / 支付宝扫码</span>
+            </div>
+          </div>
+
           <div class="ink-card p-5 settings-stack-sm">
             <div class="card-head is-flush">
               <span class="card-head-title">软件更新</span>
@@ -1901,6 +1919,9 @@ onUnmounted(() => {
       </div>
     </div>
   </div>
+
+  <!-- 赞助弹窗：挂在页面根级，任一标签页都能打开 -->
+  <SponsorModal :open="sponsorOpen" @close="sponsorOpen = false" />
 </template>
 
 <style scoped>
