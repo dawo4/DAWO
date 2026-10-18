@@ -1835,7 +1835,7 @@ onUnmounted(() => {
             <p class="settings-hint">DAWO 没有广告，也没有付费墙。如果它对你的写作有帮助，欢迎请作者喝杯咖啡。</p>
             <div class="settings-row">
               <InkButton @click="sponsorOpen = true"><Heart :size="13" /> 赞助支持</InkButton>
-              <span class="settings-hint">微信 / 支付宝扫码</span>
+              <span class="settings-hint">微信 / 支付宝扫码，或到爱发电支持</span>
             </div>
           </div>
 
