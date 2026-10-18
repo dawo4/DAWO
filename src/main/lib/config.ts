@@ -9,6 +9,8 @@ export interface Provider {
   apiKey: string
   /** 多模态：支持图片理解（vision），开启后聊天可附图 */
   vision?: boolean
+  /** 自带联网搜索协议：省略/auto = 按 baseUrl 自动识别；none = 明确关闭；其余显式指定厂商协议 */
+  searchProtocol?: 'auto' | 'none' | 'moonshot' | 'bigmodel' | 'mimo' | 'dashscope'
 }
 
 export interface TaskCfg {

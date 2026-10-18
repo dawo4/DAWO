@@ -13,7 +13,7 @@ import * as memory from './lib/memory'
 import * as ailog from './lib/ailog'
 import * as backup from './lib/backup'
 import { runAi, abortRun, fetchModels, testProvider, AiRunParams } from './ai'
-import { providerSearchSupported } from './lib/websearch'
+import { providerSearchSupported, type SearchProtocol } from './lib/websearch'
 import { scanLocalServices } from './lib/localscan'
 import { historyDiff } from './lib/library'
 import { startBatchRevise, batchAbort, BatchParams } from './lib/batch'
@@ -107,7 +107,7 @@ export function registerIpc(): void {
     return fetchModels(provider)
   })
   ipcMain.handle('ai:testProvider', (_e, provider: { baseUrl: string; apiKey: string }, model: string) => testProvider(provider, model))
-  ipcMain.handle('ai:providerSearchSupported', (_e, baseUrl: string) => providerSearchSupported(baseUrl))
+  ipcMain.handle('ai:providerSearchSupported', (_e, baseUrl: string, protocol?: SearchProtocol) => providerSearchSupported(baseUrl, protocol))
   ipcMain.handle('local:scan', (_e, apiKey?: string) => scanLocalServices(apiKey))
 
   // ============ 历史快照 / 批量修订 ============

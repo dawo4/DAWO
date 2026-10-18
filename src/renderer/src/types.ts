@@ -1,6 +1,6 @@
 export interface AppConfig {
   libraryRoot: string
-  providers: { id: string; name: string; baseUrl: string; apiKey: string; /** 支持图片理解（多模态） */ vision?: boolean; /** 上下文窗口自动识别失败时手填 */ contextSize?: number }[]
+  providers: { id: string; name: string; baseUrl: string; apiKey: string; /** 支持图片理解（多模态） */ vision?: boolean; /** 上下文窗口自动识别失败时手填 */ contextSize?: number; /** 自带联网搜索协议：省略/auto = 按 baseUrl 自动识别，none = 明确关闭，其余显式指定厂商协议（自定义网关 / 中转同厂商协议时用） */ searchProtocol?: 'auto' | 'none' | 'moonshot' | 'bigmodel' | 'mimo' | 'dashscope' }[]
   tasks: Record<string, { providerId: string; model: string; temperature: number }>
   agentParams: {
     thinkingLevel: 'off' | 'low' | 'medium' | 'high'

@@ -1286,7 +1286,7 @@ export async function runAgent(win: BrowserWindow, params: AgentRunParams): Prom
       depth: 0
     }
     // 服务商自带联网搜索：按开关追加厂商专用工具/参数（Kimi $web_search、智谱 web_search、MiMo web_search、通义 enable_search）
-    const searchPatch = cfg.providerSearch?.[provider.id] ? providerSearchPatch(provider.baseUrl) : null
+    const searchPatch = cfg.providerSearch?.[provider.id] ? providerSearchPatch(provider.baseUrl, provider.searchProtocol) : null
     // 厂商自带搜索可用时优先用它，不再注入墨案自带的联网工具，避免两套搜索重复触发
     const tools = toolSchemasFor({
       webSearch: agent.webSearch && !searchPatch,

@@ -675,8 +675,18 @@ function setCtx(providerId: string, model: string, v: string) {
 }
 
 // ============ 服务商自带联网搜索 ============
-/** 各服务商的接口地址是否支持自带搜索（Kimi / 智谱 / MiMo / 通义） */
+/** 各服务商的接口地址是否支持自带搜索（按 searchProtocol 指定的协议，或按地址自动识别） */
 const searchSupported = reactive<Record<string, boolean>>({})
+
+/** 协议选项：自动识别 + 四家已核对参数的厂商 + 明确关闭 */
+const SEARCH_PROTOCOLS = [
+  { label: '自动识别', value: 'auto' },
+  { label: '不使用', value: 'none' },
+  { label: 'Kimi', value: 'moonshot' },
+  { label: '智谱', value: 'bigmodel' },
+  { label: 'MiMo', value: 'mimo' },
+  { label: '通义', value: 'dashscope' }
+]
 
 async function refreshSearchSupport() {
   for (const p of cfg.providers) {
@@ -685,8 +695,17 @@ async function refreshSearchSupport() {
       delete searchSupported[p.id]
       continue
     }
-    searchSupported[p.id] = await window.api.aiProviderSearchSupported(base)
+    searchSupported[p.id] = await window.api.aiProviderSearchSupported(base, p.searchProtocol)
   }
+}
+
+/** 切换自带搜索协议：落盘并重算该服务商是否可用（选定具体协议时，自定义/中转地址也能启用） */
+async function setSearchProtocol(p: { id: string; searchProtocol?: string }, v: string) {
+  p.searchProtocol = v as 'auto' | 'none' | 'moonshot' | 'bigmodel' | 'mimo' | 'dashscope'
+  // 协议关闭（或该地址在自动识别下不可用）时，顺手关掉已启用的开关，避免留下无效配置
+  if (v === 'none' || !searchSupported[p.id]) delete cfg.providerSearch[p.id]
+  await save()
+  await refreshSearchSupport()
 }
 
 async function toggleProviderSearch(id: string) {
@@ -1092,19 +1111,34 @@ onUnmounted(() => {
                 <span class="settings-hint flex-1 min-w-0">多模态模型（能看图的）请开启；纯文本模型请保持关闭，否则附图会报错</span>
               </div>
 
-              <!-- 服务商自带联网搜索（Kimi / 智谱 / MiMo / 通义支持） -->
-              <div v-if="searchSupported[p.id]" class="settings-row">
-                <button
-                  type="button"
-                  class="set-toggle-chip"
-                  :class="{ 'is-on': cfg.providerSearch[p.id] }"
-                  :title="cfg.providerSearch[p.id] ? '已启用：智能体对话时由服务商平台执行联网搜索，点击关闭' : '启用后智能体对话可使用该厂商平台侧的联网搜索（如 Kimi $web_search，按次计费）'"
-                  @click="toggleProviderSearch(p.id)"
-                >
-                  <Globe :size="12" />
-                  {{ cfg.providerSearch[p.id] ? '已启用自带联网搜索' : '启用自带联网搜索' }}
-                </button>
-                <span class="settings-hint flex-1 min-w-0">由厂商平台执行搜索，按厂商定价计费；MiMo 需先在其控制台开通联网服务插件</span>
+              <!-- 服务商自带联网搜索：协议可由用户指定（默认按接口地址自动识别）。
+                   不支持时不再静默隐藏，而是说明原因并指引用 DAWO 自带搜索源。 -->
+              <div class="settings-row flex-wrap">
+                <span class="settings-hint shrink-0">自带联网搜索</span>
+                <InkSelect
+                  :model-value="p.searchProtocol || 'auto'"
+                  class="w-28 shrink-0"
+                  :options="SEARCH_PROTOCOLS"
+                  @update:model-value="(v: string) => setSearchProtocol(p, v)"
+                />
+                <template v-if="searchSupported[p.id]">
+                  <button
+                    type="button"
+                    class="set-toggle-chip"
+                    :class="{ 'is-on': cfg.providerSearch[p.id] }"
+                    :title="cfg.providerSearch[p.id] ? '已启用：智能体对话时由服务商平台执行联网搜索，点击关闭' : '启用后智能体对话可使用该厂商平台侧的联网搜索（如 Kimi $web_search，按次计费）'"
+                    @click="toggleProviderSearch(p.id)"
+                  >
+                    <Globe :size="12" />
+                    {{ cfg.providerSearch[p.id] ? '已启用' : '启用' }}
+                  </button>
+                  <span class="settings-hint flex-1 min-w-0">由厂商平台执行搜索，按厂商定价计费；MiMo 需先在其控制台开通联网服务插件</span>
+                </template>
+                <span v-else class="settings-hint flex-1 min-w-0">
+                  这个接口不支持服务端联网（DeepSeek 等开放 API 没有联网，联网只在它自家网页 / App 里）。
+                  要让智能体联网，到「联网搜索」标签页配搜索源（免费源 / 博查 / Tavily）——那是 DAWO 自己执行的搜索，任何服务商都能用；
+                  若是中转 / 自建网关，可把上面协议手动指成对应厂商。
+                </span>
               </div>
             </div>
 
@@ -1320,6 +1354,7 @@ onUnmounted(() => {
             <p class="settings-hint">
               智能体有两种联网方式：<b>① 服务商自带搜索</b>——在各服务商卡片上启用，由厂商平台执行（Kimi / 智谱 / MiMo / 通义）；<b>② DAWO 自带搜索工具</b>——在智能体库给智能体安装，走下面的搜索源。
               <span style="color: var(--accent)">两种同时可用时优先用服务商自带搜索</span>，此时不会触发 DAWO 的搜索工具。
+              部分厂商（如 DeepSeek）的开放 API 不含服务端联网，联网只在它自家网页 / App 里——这类服务商只能用 ②，但 <b>②对任何服务商都有效</b>。
             </p>
             <div class="settings-row flex-wrap">
               <span class="settings-hint shrink-0">已启用自带搜索：</span>

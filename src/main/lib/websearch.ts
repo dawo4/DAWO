@@ -202,20 +202,35 @@ export async function readWebpage(url: string): Promise<string> {
 }
 
 /** 是否支持「服务商自带联网搜索」，返回给设置页展示用 */
-export function providerSearchSupported(baseUrl: string): boolean {
-  return providerSearchPatch(baseUrl) !== null
+export function providerSearchSupported(baseUrl: string, protocol: SearchProtocol = 'auto'): boolean {
+  return providerSearchPatch(baseUrl, protocol) !== null
 }
 
 /**
- * 服务商自带联网搜索的请求参数映射（按 baseUrl 域名识别厂商）。
+ * 服务商自带联网搜索的请求参数映射。
+ * 两种来源：① 服务商卡片上显式指定的协议（searchProtocol）；② 未指定时按 baseUrl 域名自动识别。
  * 参数均核对自各家 2026-09 官方文档：
  * - Kimi（moonshot）：tools 声明 builtin_function $web_search，¥0.03/次，模型返回 tool_calls 后需把 arguments 原样回传
  * - 智谱（bigmodel）：tools 声明 web_search 工具，平台侧执行，对客户端透明
  * - MiMo（xiaomimimo）：tools 声明 web_search 工具（需在 MiMo 控制台开通联网服务插件），平台侧执行
  * - 通义（dashscope）：顶层 enable_search: true
+ * DeepSeek 等厂商的开放 API 没有服务端联网，识别不到就返回 null（联网只在自家网页/App 里）。
  * 返回 null 表示该厂商不支持或未识别。
  */
-export function providerSearchPatch(baseUrl: string): { tools?: unknown[]; extra?: Record<string, unknown> } | null {
+export type SearchProtocol = 'auto' | 'none' | 'moonshot' | 'bigmodel' | 'mimo' | 'dashscope'
+
+export function providerSearchPatch(
+  baseUrl: string,
+  protocol: SearchProtocol = 'auto'
+): { tools?: unknown[]; extra?: Record<string, unknown> } | null {
+  // 显式协议优先：用户可以在自定义服务商上手动指定协议（自定义网关 / 代理同厂商协议时用得上）
+  if (protocol === 'none') return null
+  if (protocol === 'moonshot') return { tools: [{ type: 'builtin_function', function: { name: '$web_search' } }] }
+  if (protocol === 'bigmodel') return { tools: [{ type: 'web_search', web_search: { enable: true } }] }
+  // force_search 省略 = 意图识别，由模型自主判断是否搜索
+  if (protocol === 'mimo') return { tools: [{ type: 'web_search', max_keyword: 3 }] }
+  if (protocol === 'dashscope') return { extra: { enable_search: true } }
+
   const host = baseUrl.toLowerCase()
   if (host.includes('moonshot.cn') || host.includes('moonshot.ai') || host.includes('kimi.com')) {
     return { tools: [{ type: 'builtin_function', function: { name: '$web_search' } }] }
@@ -224,7 +239,6 @@ export function providerSearchPatch(baseUrl: string): { tools?: unknown[]; extra
     return { tools: [{ type: 'web_search', web_search: { enable: true } }] }
   }
   if (host.includes('xiaomimimo.com') || host.includes('mimo.mi.com')) {
-    // force_search 省略 = 意图识别，由模型自主判断是否搜索
     return { tools: [{ type: 'web_search', max_keyword: 3 }] }
   }
   if (host.includes('dashscope.aliyuncs.com')) {
